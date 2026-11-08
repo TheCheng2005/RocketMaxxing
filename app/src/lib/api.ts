@@ -6,6 +6,16 @@ const KEY = "rocketmaxxing.token";
 /** Designs to open, passed in the window's address (a double-clicked file, a second launch). */
 export const launchFiles: string[] = new URLSearchParams(location.hash.replace(/^#/, "")).getAll("open");
 
+/**
+ * Designs handed to the window while it is open: RocketMaxxing's window loads the page's address again with them, and
+ * as only the part after "#" changes, the page stays. Returns them and clears the address.
+ */
+export function handedFiles(): string[] {
+  const files = new URLSearchParams(location.hash.replace(/^#/, "")).getAll("open");
+  history.replaceState(null, "", location.pathname + location.search);
+  return files;
+}
+
 function readToken(): string {
   const hash = new URLSearchParams(location.hash.replace(/^#/, ""));
   const t = hash.get("token");

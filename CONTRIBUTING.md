@@ -30,7 +30,7 @@ node scripts/view_shots.mjs docs/examples/maple-10k-view.html docs/examples   # 
                                     # headless browser and retake its screenshots (needs Playwright with Chromium)
 python3 scripts/test_codex.py       # the real Codex CLI against the server (needs `npm i -g @openai/codex`)
 ./gradlew mcpb && python3 scripts/test_mcpb.py   # Claude Desktop extension for your computer, started like Claude Desktop does
-./gradlew rocketmaxxing             # the desktop app (needs Node.js 20+ for its interface)
+./gradlew rocketmaxxing             # the desktop app (needs Node.js 20+ for its interface; downloads Chromium once)
 python3 scripts/test_rocketmaxxing.py build/install/openrocket-mcp/bin/rocketmaxxing   # start the app and use it
 (cd app && npm run check)           # type-check the app's interface
 ```

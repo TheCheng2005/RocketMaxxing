@@ -40,6 +40,8 @@
   let gif = $derived(pathOf(result?.gif));
   // "mp4" is the file and its size, or (without ffmpeg) a note saying why there is none.
   let video = $derived(/\.mp4\s*\(/.test(result?.mp4 ?? "") ? pathOf(result.mp4) : null);
+  // RocketMaxxing's window (Chromium without the H.264 licence) cannot play the MP4: it shows the GIF instead.
+  const playsMp4 = document.createElement("video").canPlayType('video/mp4; codecs="avc1.640028"') !== "";
   let mp4Note = $derived(result?.mp4 && !video ? String(result.mp4) : "");
   let sheet = $derived(pathOf(result?.stills));
 </script>
@@ -63,7 +65,7 @@
 
   {#if busy}<RocketLoader text="Simulating the flight and drawing every frame: about a minute for a long video." />{/if}
   {#if result}
-    {#if video}
+    {#if video && (playsMp4 || !gif)}
       <!-- svelte-ignore a11y_media_has_caption -->
       <video src={fileUrl(video)} controls autoplay loop muted></video>
     {:else if gif}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { connected, keepAlive, launchFiles } from "./lib/api";
+  import { connected, handedFiles, keepAlive, launchFiles } from "./lib/api";
   import { app, init, run, undo, redo, save, openDialog, openPath, removeSelected, move, copySelected, paste, duplicate, type Page } from "./lib/state.svelte";
   import { oneWindow, rememberPage, lastPage } from "./lib/oneWindow";
   import TopBar from "./lib/TopBar.svelte";
@@ -48,13 +48,15 @@
   }
   let replaced = $state(false);
   const PAGES: Page[] = ["home", "design", "motors", "flights", "flightdata", "targets", "standards", "analysis"];
+  /** The start: designs handed over meanwhile wait for it. */
+  let started: Promise<unknown> = Promise.resolve();
 
   onMount(() => {
     if (!connected) return;
     keepAlive();
     watchPageErrors();
     oneWindow(() => (replaced = true));
-    run(init)
+    started = run(init)
       .then(async () => {
         // Designs double-clicked in Finder or Explorer, or handed over by a second launch; else where the last window was.
         for (const f of launchFiles) await openPath(f);
@@ -72,6 +74,16 @@
   $effect(() => {
     if (ready) rememberPage(app.page);
   });
+
+  // A design double-clicked, or given to a second launch, while this window is open.
+  function onHashChange() {
+    const files = handedFiles();
+    if (!connected || !files.length) return;
+    started.then(async () => {
+      for (const f of files) await openPath(f);
+      if (app.design) app.page = "design";
+    });
+  }
 
   function typing(e: KeyboardEvent) {
     const t = e.target as HTMLElement;
@@ -142,7 +154,7 @@
   }
 </script>
 
-<svelte:window onkeydown={onKey} oncontextmenu={onContext} />
+<svelte:window onkeydown={onKey} oncontextmenu={onContext} onhashchange={onHashChange} />
 
 {#if !connected}
   <div class="offline">

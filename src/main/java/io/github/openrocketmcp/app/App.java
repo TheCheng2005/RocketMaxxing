@@ -1,6 +1,8 @@
 package io.github.openrocketmcp.app;
 
+import java.awt.Component;
 import java.awt.Desktop;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -10,8 +12,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+
+import javax.swing.JOptionPane;
 
 import io.github.openrocketmcp.Main;
 import io.github.openrocketmcp.mcp.Log;
@@ -25,7 +32,8 @@ import io.github.openrocketmcp.tools.DesignLocks;
 
 /**
  * RocketMaxxing, the desktop app: the same engine and tools as the MCP server, with its own interface, offline. Starts
- * the local server and opens the interface in a browser window; stops when that window has been closed for a while.
+ * the local server and opens the interface in the app's own window (Chromium, {@link AppWindow}), or in a browser
+ * window when there is no Chromium to start; then stops when that browser window has been closed for a while.
  */
 public final class App {
 	public static final String NAME = "RocketMaxxing";
@@ -37,6 +45,7 @@ public final class App {
 			  --port N          local port (default: any free one)
 			  --ui DIR          folder of the built interface (default: next to the program)
 			  --no-browser      do not open a window; print the address instead
+			  --browser         open the interface in Chrome, Edge or the default browser instead of the app's window
 			  --dev URL         also accept calls from a development server, e.g. http://localhost:5173
 			  FILE.ork ...      designs to open (a running RocketMaxxing for the same folder opens them instead)
 			""";
@@ -45,6 +54,10 @@ public final class App {
 	private static String baseUrl;
 	private static boolean windows;
 	private static final List<String> pending = new ArrayList<>();
+	/** RocketMaxxing's own window (Chromium), once open; null when the interface is in a browser instead. */
+	private static AppWindow window;
+	/** Chromium starting up for that window, while the engine starts; null when there is no Chromium to start. */
+	private static CompletableFuture<AppWindow> chromium;
 
 	private App() {
 	}
@@ -61,10 +74,16 @@ public final class App {
 			boolean screen = !linux || notBlank(System.getenv("DISPLAY")) || notBlank(System.getenv("WAYLAND_DISPLAY"));
 			System.setProperty("java.awt.headless", screen ? "false" : "true");
 		}
+		if (MacDesktop.isMac()) {
+			System.setProperty("apple.awt.application.name", NAME); // the menu bar's name, also when run from a terminal
+			System.setProperty("apple.laf.useScreenMenuBar", "true"); // the window's menus in the Mac menu bar
+			System.setProperty("apple.awt.application.appearance", "system"); // the title bar follows dark mode
+		}
 		Path ws = Path.of(opt(a, "--workspace", System.getProperty("user.home") + File.separator + NAME)).toAbsolutePath().normalize();
 		Files.createDirectories(ws);
 		List<String> files = designFiles(a);
 		boolean noBrowser = a.contains("--no-browser");
+		boolean inBrowser = a.contains("--browser");
 		String devUrl = opt(a, "--dev", null);
 
 		// One app per designs folder: a later launch hands its files to the running one and exits.
@@ -85,6 +104,11 @@ public final class App {
 		// macOS: the Dock and Finder talk to the app from the start (a design double-clicked to launch it arrives now).
 		AtomicReference<Context> ctxRef = new AtomicReference<>();
 		boolean dock = devUrl == null && MacDesktop.install(() -> show(List.of()), App::show, () -> unsaved(ctxRef.get()));
+		if (!noBrowser && !inBrowser && devUrl == null && !GraphicsEnvironment.isHeadless()) {
+			// Two Chromiums cannot share a folder: one per designs folder, as there is one app per designs folder.
+			String key = Instance.key(ws) + (instance == null ? "-" + ProcessHandle.current().pid() : "");
+			chromium = startChromium(Instance.dir().resolve("chromium").resolve(key), () -> unsaved(ctxRef.get()));
+		}
 
 		OrRuntime.init(); // before any request: OpenRocket's databases fail for good if touched before it starts
 		Context ctx = new Context(Standards.discover(ws), ws, false);
@@ -125,8 +149,8 @@ public final class App {
 		}
 		Log.info(NAME + " " + VERSION + " (engine " + Main.VERSION + ") on http://127.0.0.1:" + bound.getPort() + " ; workspace " + ws
 				+ (MacDesktop.ACTIVE.isEmpty() ? "" : " ; macOS: " + String.join(", ", MacDesktop.ACTIVE)));
-		boolean window = !noBrowser && devUrl == null && ready(url, files);
-		if (!window) {
+		boolean opened = !noBrowser && devUrl == null && ready(url, files, ws);
+		if (!opened) {
 			System.out.println("Open " + withFiles(url, files));
 			if (devUrl != null) {
 				System.out.println("Development: open " + devUrl + "/#token=" + app.token() + "&port=" + bound.getPort());
@@ -134,8 +158,9 @@ public final class App {
 			new CountDownLatch(1).await();
 			return;
 		}
-		if (dock) {
-			// macOS: the app stays in the Dock with no window, as Mac apps do, until it is quit.
+		if (dock || window != null) {
+			// The app's own window: it quits when the window closes (on the Mac, with Quit; the app stays in the Dock
+			// with no window, as Mac apps do).
 			new CountDownLatch(1).await();
 		}
 		// Desktop use: stop once the window has been gone for two minutes (the page checks in every 20 s).
@@ -150,28 +175,89 @@ public final class App {
 		}
 	}
 
-	/** Opens the first window, with the files given at launch and any that arrived while starting. */
-	private static synchronized boolean ready(String url, List<String> files) {
-		List<String> first = new ArrayList<>(files);
-		first.addAll(pending);
-		pending.clear();
-		windows = open(withFiles(url, first));
-		baseUrl = url;
-		return windows;
+	/** Starts Chromium for the app's window in the background; null when this installation has none. */
+	private static CompletableFuture<AppWindow> startChromium(Path cache, Supplier<List<String>> unsaved) {
+		Path bundle;
+		try {
+			bundle = Chromium.find();
+		} catch (LinkageError e) { // the JCEF classes are missing
+			Log.info("No JCEF in this build: " + e);
+			return null;
+		}
+		if (bundle == null) {
+			return null;
+		}
+		CompletableFuture<AppWindow> started = new CompletableFuture<>();
+		Thread t = new Thread(() -> {
+			try {
+				started.complete(AppWindow.start(bundle, cache, unsaved));
+			} catch (Throwable e) {
+				started.completeExceptionally(e);
+			}
+		}, "chromium-start");
+		t.setDaemon(true);
+		t.start();
+		return started;
 	}
 
 	/**
-	 * A window with these designs open. The page keeps one window: a new one replaces the one before (a browser
-	 * window cannot be brought to the front from here), so the Dock, a second launch and Finder all land in front.
+	 * Opens the first window, with the files given at launch and any that arrived while starting: the app's own window
+	 * when Chromium started, else a browser's. Waits for Chromium without holding the lock, so a design double-clicked
+	 * meanwhile (handled on the event thread, which Chromium needs too) only queues up.
+	 */
+	private static boolean ready(String url, List<String> files, Path ws) {
+		AppWindow w = null;
+		if (chromium != null) {
+			try {
+				w = chromium.get(2, TimeUnit.MINUTES);
+				w.open(withFiles(url, files), ws);
+			} catch (Exception | LinkageError e) {
+				Log.info("RocketMaxxing's window did not start (" + (e.getCause() != null ? e.getCause() : e)
+						+ "); opening the interface in a browser instead.");
+				w = null;
+			}
+		}
+		synchronized (App.class) {
+			baseUrl = url;
+			if (w != null) {
+				window = w;
+				windows = true;
+				if (!pending.isEmpty()) {
+					w.show(withFiles(url, pending));
+					pending.clear();
+				}
+				return true;
+			}
+			List<String> first = new ArrayList<>(files);
+			first.addAll(pending);
+			pending.clear();
+			windows = open(withFiles(url, first));
+			return windows;
+		}
+	}
+
+	/**
+	 * The window with these designs open, in front: the Dock, a second launch and Finder all land there. The app's own
+	 * window comes to the front and opens them; a browser window cannot be brought to the front from here, so a new one
+	 * replaces the one before.
 	 */
 	static synchronized void show(List<String> files) {
 		if (baseUrl == null) {
 			pending.addAll(files);
 			return;
 		}
-		if (windows) {
+		if (window != null) {
+			window.show(files.isEmpty() ? null : withFiles(baseUrl, files));
+		} else if (windows) {
 			open(withFiles(baseUrl, files));
 		}
+	}
+
+	/** Asks first when designs have unsaved changes; true to go on and quit. */
+	static boolean mayQuit(Component parent, List<String> open) {
+		return open.isEmpty() || JOptionPane.showConfirmDialog(parent,
+				"Unsaved changes in " + String.join(", ", open) + ".\nQuit anyway and lose them?",
+				"Quit " + NAME, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
 	}
 
 	static String withFiles(String url, List<String> files) {

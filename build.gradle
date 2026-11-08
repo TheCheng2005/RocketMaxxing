@@ -21,6 +21,13 @@ dependencies {
     implementation 'org.apache.xmlgraphics:batik-codec:1.19'
     // RocketMaxxing's optional assistant (the team's own API key; off by default).
     implementation 'com.anthropic:anthropic-java:3.2.0'
+    // RocketMaxxing's window: Chromium embedded through JCEF. This is the Java part (about 2 MB); Chromium itself
+    // (about 150 MB) is unpacked for the desktop app only (rocketmaxxingChromium below). JOGL draws off-screen
+    // browsers only; the window is a real one (only JCEF's CefBrowserOsr and CefRenderer use JOGL).
+    implementation('me.friwi:jcefmaven:152.0.6') {
+        exclude group: 'me.friwi', module: 'jogl-all'
+        exclude group: 'me.friwi', module: 'gluegen-rt'
+    }
 
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -96,8 +103,10 @@ tasks.register('mcpb', Zip) {
     from('src/main/resources/openrocketmcp/icon.png')
     into('lib') {
         from layout.buildDirectory.dir('install/openrocket-mcp/lib')
-        // The desktop app's assistant (the Anthropic SDK and what it brings) is not part of the MCP server.
-        exclude 'anthropic-java-*', 'okhttp-*', 'okio-*', 'kotlin-*', 'jackson-*', 'jsonschema-*'
+        // The desktop app's assistant (the Anthropic SDK and what it brings) and its window (JCEF and what it brings)
+        // are not part of the MCP server.
+        exclude 'anthropic-java-*', 'okhttp-*', 'okio-*', 'kotlin-*', 'jackson-*', 'jsonschema-*',
+                'jcefmaven-*', 'jcef-api-*', 'commons-compress-*', 'commons-codec-*'
     }
     into('runtime') {
         from mcpbDir.map { it.dir('runtime') }
@@ -132,12 +141,42 @@ tasks.register('rocketmaxxingUi', Exec) {
     commandLine npm, 'run', 'build'
 }
 
+// Chromium for RocketMaxxing's window, for this platform (about 150 MB). Its version must be the jcef-api version that
+// jcefmaven above was built with (see jcefmaven's pom); the app checks they match before it starts Chromium.
+def chromiumPlatform = (hostOs.isWindows() ? 'windows' : hostOs.isMacOsX() ? 'macosx' : 'linux') + '-' +
+        (System.getProperty('os.arch') in ['aarch64', 'arm64'] ? 'arm64' : 'amd64')
+def chromiumDir = layout.buildDirectory.dir('chromium')
+configurations {
+    chromium { transitive = false }
+}
+dependencies {
+    chromium "me.friwi:jcef-natives-${chromiumPlatform}:jcef-17e805a+cef-152.0.6+g708dc14+chromium-152.0.7977.83"
+}
+
+// Unpacked when the app is built, with jcefmaven's own installer, so the app never downloads or unpacks it itself.
+tasks.register('rocketmaxxingChromium', JavaExec) {
+    group = 'build'
+    description = 'Unpacks Chromium for RocketMaxxing\'s window into build/chromium.'
+    dependsOn 'classes'
+    classpath = sourceSets.main.runtimeClasspath + configurations.chromium
+    mainClass = 'io.github.openrocketmcp.app.Chromium'
+    jvmArgs '-Djava.awt.headless=true'
+    args chromiumDir.get().asFile.path
+    inputs.files(configurations.chromium)
+    outputs.dir(chromiumDir)
+}
+
+// jcefmaven's window code reaches into the macOS toolkit (it says so in its README).
+def rocketmaxxingJvmOpts = ['-Xss4m', '-XX:+UseParallelGC'] + (hostOs.isMacOsX()
+        ? ['sun.awt', 'sun.lwawt', 'sun.lwawt.macosx'].collect { "--add-opens=java.desktop/${it}=ALL-UNNAMED".toString() }
+        : [])
+
 def rocketmaxxingScripts = tasks.register('rocketmaxxingScripts', CreateStartScripts) {
     mainClass = 'io.github.openrocketmcp.app.App'
     applicationName = 'rocketmaxxing'
     outputDir = layout.buildDirectory.dir('rocketmaxxing-scripts').get().asFile
     classpath = tasks.named('jar').get().outputs.files + configurations.runtimeClasspath
-    defaultJvmOpts = ['-Xss4m', '-XX:+UseParallelGC']
+    defaultJvmOpts = rocketmaxxingJvmOpts
 }
 
 distributions {
@@ -145,18 +184,20 @@ distributions {
         contents {
             from(rocketmaxxingScripts) { into 'bin' }
             from(appUiDir) { into 'ui' }
+            // Only there once the desktop app has been built (like ui): the MCP server never needs it.
+            from(chromiumDir) { into 'chromium' }
         }
     }
 }
 
-tasks.named('installDist') { mustRunAfter 'rocketmaxxingUi' }
-tasks.named('distZip') { mustRunAfter 'rocketmaxxingUi' }
-tasks.named('distTar') { mustRunAfter 'rocketmaxxingUi' }
+tasks.named('installDist') { mustRunAfter 'rocketmaxxingUi', 'rocketmaxxingChromium' }
+tasks.named('distZip') { mustRunAfter 'rocketmaxxingUi', 'rocketmaxxingChromium' }
+tasks.named('distTar') { mustRunAfter 'rocketmaxxingUi', 'rocketmaxxingChromium' }
 
 tasks.register('rocketmaxxing') {
     group = 'distribution'
     description = 'Builds the RocketMaxxing desktop app: build/install/openrocket-mcp/bin/rocketmaxxing'
-    dependsOn 'rocketmaxxingUi', 'installDist'
+    dependsOn 'rocketmaxxingUi', 'rocketmaxxingChromium', 'installDist'
 }
 
 // ------------------------------------------------------------------------------------------------------------------

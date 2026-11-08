@@ -71,15 +71,13 @@ final class MacDesktop {
 				ACTIVE.add("about");
 			}
 			if (d.isSupported(Desktop.Action.APP_QUIT_HANDLER)) {
+				// With the app's own window, Chromium takes Quit over from here (AppWindow asks the same question).
 				d.setQuitHandler((e, response) -> {
-					List<String> open = unsaved.get();
-					if (!open.isEmpty() && JOptionPane.showConfirmDialog(null,
-							"Unsaved changes in " + String.join(", ", open) + ".\nQuit anyway and lose them?",
-							"Quit " + App.NAME, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION) {
+					if (App.mayQuit(null, unsaved.get())) {
+						response.performQuit();
+					} else {
 						response.cancelQuit();
-						return;
 					}
-					response.performQuit();
 				});
 				ACTIVE.add("quit");
 			}

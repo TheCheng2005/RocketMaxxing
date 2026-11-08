@@ -337,7 +337,8 @@ front from outside. Everything open stays open, and the new window returns to th
 Linux the installers also register `.ork` and `.rkt`, and the app stops two minutes after its window is closed.
 
 Optional extras are found where Homebrew, MacPorts or conda put them, even though an app started from the Dock does
-not see the Terminal's PATH: `brew install ffmpeg` for MP4 videos, CalculiX (`conda install -c conda-forge calculix`)
+not see the Terminal's PATH: `brew install ffmpeg` for MP4 videos (the app's own window plays the GIF, as its Chromium
+has no H.264 player; the MP4 is for sharing), CalculiX (`conda install -c conda-forge calculix`)
 for the fin FEA, and Claude Code or Codex for the assistant.
 
 To run from source: Java 17 or newer. Building the interface the first time also needs Node.js 20 or newer.
@@ -349,15 +350,21 @@ cd RocketMaxxing
 build/install/openrocket-mcp/bin/rocketmaxxing        # Windows: build\install\openrocket-mcp\bin\rocketmaxxing.bat
 ```
 
-The app opens in its own window (Chrome or Edge in app mode if installed, otherwise your default browser). The file
-dialogs start in `~/RocketMaxxing`. On Windows and Linux the app quits two minutes after its window is closed; on the
-Mac it stays in the Dock until you quit it.
+The app opens in its own window: the interface runs in Chromium, which `./gradlew rocketmaxxing` downloads once
+(about 150 MB, from Maven Central) and unpacks into the build, so nothing is downloaded when the app runs. A design
+double-clicked or handed over while it runs opens in that window, which comes to the front. On the Mac the window has
+RocketMaxxing's own menus (File, Edit, Window), closing it keeps the app in the Dock, and Quit asks first when a design
+has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. The installers
+still open the interface in a browser until Chromium is bundled with them. With `--browser`, or when its Chromium
+cannot start, the app opens Chrome or Edge in app mode if installed (otherwise your default browser) and quits two
+minutes after that window is closed. The file dialogs start in `~/RocketMaxxing`.
 
 | Option | |
 |---|---|
 | `--workspace DIR` | Designs folder (default `~/RocketMaxxing`) |
 | `--port N` | Local port (default: any free one) |
 | `--no-browser` | Print the address instead of opening a window |
+| `--browser` | Open the interface in a browser instead of the app's own window |
 | `--dev URL` | Also accept calls from a development server |
 | `FILE.ork ...` | Designs to open (a running RocketMaxxing for the same folder opens them) |
 
@@ -391,6 +398,9 @@ cd app && npm install && npm run dev
 ```
 
 Open the address the engine prints (`http://localhost:5173/#token=...`). `npm run check` type-checks the interface.
+To look inside the app's own window, start it with
+`ROCKETMAXXING_OPTS=-Drocketmaxxing.chromium.args=--remote-debugging-port=9222` and open `chrome://inspect` in Chrome.
+Leave this off otherwise: any program on the computer can control the window through that port.
 `npm run build` first checks that no two files' names differ only in capitals (`scripts/check-names.mjs`): macOS and
 Windows treat those as the same file, and the Mac and Windows builds broke on that once.
 `AppToolsTest` covers the app tools and the local server, `AssistantTest` the assistant against a stand-in for the API,
