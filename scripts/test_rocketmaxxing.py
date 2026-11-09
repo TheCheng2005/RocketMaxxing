@@ -49,13 +49,14 @@ def window(cmd):
         if os.path.exists(chromium):
             with open(chromium, errors="replace") as f:
                 out += "\n--- chromium.log:\n" + f.read()[-2000:]
-        # The page's address, when the app was started with --remote-debugging-port=$DEVTOOLS_PORT (CI diagnostics).
+        # The window's pages, when the app was started with --remote-debugging-port=$DEVTOOLS_PORT (CI diagnostics).
         if os.environ.get("DEVTOOLS_PORT"):
             try:
-                pages = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{os.environ['DEVTOOLS_PORT']}/json", timeout=5).read())
-                out = "pages: " + ", ".join(p.get("url", "")[:300] for p in pages) + "\n" + out
-            except (OSError, ValueError) as e:
-                out = f"pages: none ({e})\n" + out
+                pages = subprocess.run(["node", os.path.join(ROOT, "scripts", "devtools_pages.mjs"), os.environ["DEVTOOLS_PORT"]],
+                                       capture_output=True, text=True, timeout=60)
+                out = "pages:\n" + pages.stdout + pages.stderr[-500:] + "\n" + out
+            except (OSError, subprocess.SubprocessError) as e:
+                out = f"pages: unknown ({e})\n" + out
         return out
 
     def wait_for(test, what):

@@ -146,6 +146,11 @@ final class AppWindow {
 					external(target); // "Report on GitHub": the system's browser, never a second window
 					return true;
 				}
+
+				@Override
+				public void onAfterCreated(CefBrowser b) {
+					Log.info("Window page " + b.getIdentifier() + " created" + (b == browser ? "" : " (not the window's own)"));
+				}
 			});
 			client.addRequestHandler(new CefRequestHandlerAdapter() {
 				@Override
