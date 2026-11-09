@@ -131,15 +131,18 @@ class FlightAnimationTest {
 		assertEquals(null, v.gif(), "MP4 alone");
 		assertEquals(Files.size(mp4), v.mp4Bytes());
 		// It plays: every frame decodes, at the animation's size, in the rendered colours.
-		org.jcodec.api.FrameGrab grab = org.jcodec.api.FrameGrab.createFrameGrab(org.jcodec.common.io.NIOUtils.readableChannel(mp4.toFile()));
 		int frames = 0;
 		BufferedImage middle = null;
-		org.jcodec.common.model.Picture pic;
-		while ((pic = grab.getNativeFrame()) != null) {
-			if (frames == a.frames / 2) {
-				middle = org.jcodec.scale.AWTUtil.toBufferedImage(pic);
+		// Closed before the test ends: Windows cannot delete a file that is still open.
+		try (org.jcodec.common.io.SeekableByteChannel in = org.jcodec.common.io.NIOUtils.readableChannel(mp4.toFile())) {
+			org.jcodec.api.FrameGrab grab = org.jcodec.api.FrameGrab.createFrameGrab(in);
+			org.jcodec.common.model.Picture pic;
+			while ((pic = grab.getNativeFrame()) != null) {
+				if (frames == a.frames / 2) {
+					middle = org.jcodec.scale.AWTUtil.toBufferedImage(pic);
+				}
+				frames++;
 			}
-			frames++;
 		}
 		assertEquals(a.frames, frames);
 		assertEquals(480, middle.getWidth());
