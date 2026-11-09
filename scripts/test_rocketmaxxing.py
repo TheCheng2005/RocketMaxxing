@@ -43,7 +43,13 @@ def window(cmd):
 
     def tail():
         log.seek(0)
-        return log.read()[-3000:]
+        out = log.read()[-3000:]
+        # Chromium's own log (AppWindow: next to its cache, one folder per designs folder)
+        chromium = os.path.join(os.path.expanduser("~"), ".rocketmaxxing", "chromium", key, "chromium.log")
+        if os.path.exists(chromium):
+            with open(chromium, errors="replace") as f:
+                out += "\n--- chromium.log:\n" + f.read()[-3000:]
+        return out
 
     def wait_for(test, what):
         deadline = time.time() + 180
@@ -146,4 +152,8 @@ if __name__ == "__main__":
         main()
     except AssertionError as e:
         print("FAILED:", e)
+        if os.environ.get("GITHUB_ACTIONS"):
+            # Also as an annotation on the run's summary, readable without the job's log.
+            text = str(e)[-6000:].replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+            print("::error title=RocketMaxxing test failed::" + text)
         sys.exit(1)
