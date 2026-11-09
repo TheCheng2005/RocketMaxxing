@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 
 import com.google.gson.JsonObject;
 import com.sun.net.httpserver.HttpExchange;
@@ -41,7 +40,6 @@ public final class AppServer {
 	private volatile Path files;
 	private HttpServer http;
 	private String origin;
-	private final AtomicLong lastSeen = new AtomicLong(0);
 
 	/** {@code ui}: folder of the built interface (null: the copy inside the jar, if any). */
 	public AppServer(McpServer server, Path ui, List<String> extraOrigins) {
@@ -60,11 +58,6 @@ public final class AppServer {
 	/** Lets the page show what the engine writes (videos, pictures, drawings) from this folder: GET /file?path=...&token=... */
 	public void files(Path workspace) {
 		this.files = workspace.toAbsolutePath().normalize();
-	}
-
-	/** Milliseconds since epoch of the page's last request (0: never). */
-	public long lastSeen() {
-		return lastSeen.get();
 	}
 
 	public InetSocketAddress start(int port) throws IOException {
@@ -155,7 +148,6 @@ public final class AppServer {
 			send(ex, 401, "text/plain", "Missing or wrong token".getBytes(StandardCharsets.UTF_8));
 			return;
 		}
-		lastSeen.set(System.currentTimeMillis());
 		byte[] body = ex.getRequestBody().readNBytes(MAX_BODY + 1);
 		if (body.length > MAX_BODY) {
 			send(ex, 413, "text/plain", "Too large".getBytes(StandardCharsets.UTF_8));

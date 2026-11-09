@@ -1,6 +1,8 @@
 <script lang="ts">
   import { House, Rocket, Flame, ChartSpline, FileChartLine, Target, BookOpenCheck, ClipboardCheck, LifeBuoy } from "@lucide/svelte";
-  import { app, type Page } from "./state.svelte";
+  import { app, toast, type Page } from "./state.svelte";
+  import { call } from "./api";
+  import { updates, checkNow } from "./updates.svelte";
   import { ui } from "./search/ui.svelte";
   import { openMenu } from "./menu/menu.svelte";
   import { designTour } from "./tour/tours";
@@ -9,7 +11,7 @@
   // Help, at the foot of the rail: the Guide's parts, the tour and the shortcuts, one click away.
   function help(e: MouseEvent) {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    openMenu(r.right + 6, r.top - 250, [
+    openMenu(r.right + 6, r.top - 300, [
       { header: "Help and tips" },
       { label: "Getting started", run: () => (ui.guide = "start") },
       { label: "What each page is for", run: () => (ui.guide = "pages") },
@@ -19,6 +21,13 @@
       { label: "Tour of the Design page", off: !app.design && "Open a design first", run: () => designTour() },
       "-",
       { label: "Search for anything", shortcut: keys("K"), run: () => (ui.search = true) },
+      "-",
+      { label: "Check for updates…", off: updates.checking && "Checking", run: () => checkNow() },
+      {
+        label: `About RocketMaxxing ${app.session?.version ?? ""}: licences`,
+        off: !app.session?.notices && "Only in the built app",
+        run: () => call("app_reveal", { path: app.session!.notices, open: true }).catch((e) => toast(String(e?.message ?? e))),
+      },
     ]);
   }
 

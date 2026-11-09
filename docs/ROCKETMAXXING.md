@@ -49,7 +49,7 @@ pulled apart in an exploded view, and right-click, search, a Guide and a tour ma
 |---|---|---|
 | Design | Rocket design | Parts list on the left, the rocket in the middle, the selected part's properties on the right (no pop-up dialog). The add-part buttons are below the view; the ones that can't go where you are pointing are greyed out. Summary shows stability against your rule set's minimum, mass, length and a quick flight of the active configuration. Fins show their outline (freeform fins are drawn and edited there); parts with a catalogue have a Catalogue button; every part can be given a paint colour. Parts move by dragging in the list or along the rocket in the view (lining up with their neighbours), and the view has an exploded mode (see below). Picture makes an exploded, cut-away or outside 3-D image with a numbered parts list, or the side drawing with CG and CP. The Avionics bay button lays out a whole electronics bay between two tubes. |
 | Motors | Motors & Configuration | Motors, recovery and stages as three tables on one page, a row per flight configuration. The motor list is OpenRocket's own database (the thrustcurve.org motors that come with OpenRocket 24.12, offline): it can be searched, filtered to motors that fit the mount, and shows the thrust curve. Import file adds a .eng, .rse or zipped motor file; Your own motor makes one from static-fire data (a thrust curve to paste or load from CSV, or an average thrust and burn time) with its masses, delays and CG. Both are kept in the designs folder's `motors/` and load whenever the app starts, so a design keeps its motor. |
-| Flights | Flight simulations | The simulations, the launch conditions of the selected one, and its plot. Video turns the selected flight into an animation (a chase camera, the separations and canopies, the numbers on screen): a GIF, an MP4 when ffmpeg is installed, and a sheet of key-moment stills. |
+| Flights | Flight simulations | The simulations, the launch conditions of the selected one, and its plot. Video turns the selected flight into an animation (a chase camera, the separations and canopies, the numbers on screen): an MP4 saved to your Downloads folder (Open video and Show in folder once it is made; nothing plays inside the app), with the key-moment stills beside it and a GIF for chat if you ask. |
 | Standards | (not in OpenRocket) | The team's standards, which every check uses: the competition rule set, the launch site, recovery and structures safety factors, shear pin ratings, material data, altimeter, battery and radio settings. Only what the team changes goes into its file (`openrocket-mcp.json`); a dot marks those values, and each can go back to its default. |
 | Targets | (not in OpenRocket) | The team's targets: a minimum, goal and maximum for apogee, speeds, rail exit, stability, flutter margin, mass, descent rates, landing and more, each with the margin to the nearer limit (met, close within 5%, missed), checked again after each edit. The competition rules sit beside them. |
 | Flight data | (not in OpenRocket) | After a flight: load the altimeter log and see it against the simulation flown in the day's conditions, with the drag factor that matches the measured apogee (and, when the log has an accelerometer, thrust and drag fitted separately). Read a folder of past rockets and logs to see how well apogee was predicted over the years, and open or compare any of them. |
@@ -305,7 +305,16 @@ RocketMaxxing runs on macOS (Apple Silicon and Intel), Windows and Linux. Instal
 platform: `./gradlew rocketmaxxingInstaller` makes a `.msi` on Windows (needs WiX 3), a `.dmg` on macOS and a `.deb` on
 Linux (needs `fakeroot`) in `build/installers/`; `-PinstallerType=app-image` makes a folder that runs without
 installing. The *RocketMaxxing installers* workflow builds all four (two for the Mac) on every push to `main` and to
-the working branches, after starting each packaged app and using it; the installers are the run's artifacts.
+the working branches, after starting each packaged app, using it and opening a design in its window; the installers
+are the run's artifacts. Each is about 240 to 300 MB: it carries its own Java and the Chromium the window runs on, so
+nothing else needs installing. Released versions are on the
+[Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases), one installer per computer, named after it
+(`RocketMaxxing-0.1.0-macos-apple-silicon.dmg` and so on). Help › About lists the third-party software inside and
+its licences (`THIRD-PARTY-NOTICES.txt`, next to the program). When it starts, RocketMaxxing asks GitHub once a
+day whether a newer version is out and, if so, shows a card with the installer for this computer (Help › Check for
+updates asks now; Settings › Files turns the daily check off). It downloads nothing by itself: install the new version
+over the old one; designs, settings and the team standards stay where they are. The check sends only the request
+itself (no designs, no identifiers), and 0.x versions are offered pre-releases too.
 
 ### On a Mac
 
@@ -319,25 +328,29 @@ the working branches, after starting each packaged app and using it; the install
    once, then in **System Settings > Privacy & Security** click **Open Anyway** next to "RocketMaxxing was blocked",
    and confirm. Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/RocketMaxxing.app`. After that it opens
    like any other app.
-4. It opens in Chrome or Edge in app mode if one is installed, otherwise in Safari. Designs go in `~/RocketMaxxing`.
+4. It opens in its own window. Designs go in `~/RocketMaxxing`.
 
-On the Mac, RocketMaxxing lives in the Dock; its window is a browser's, so the menu bar at the top shows the browser's
-menus while you work in it. Clicking the Dock icon brings the window back (closing the window keeps the app running,
-as Mac apps do), and the Dock icon's menu and RocketMaxxing's own menu bar (shown when you click the Dock icon) have
-Show RocketMaxxing Window and Open Design (⌘O). About and Quit are in the RocketMaxxing menu; Quit asks first when a
-design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing (or use
-Open With). Shortcuts are shown as ⌘ and work with Cmd: ⌘S, ⇧⌘S, ⌘O, ⌘Z, ⇧⌘Z.
+On the Mac, the menu bar shows RocketMaxxing's menus while you work in its window: File (Open Design ⌘O, Save ⌘S, Save
+As ⇧⌘S, Close Window ⌘W), Edit (Undo, Redo, Cut, Copy, Paste, Select All) and Window (Minimize ⌘M). Closing the
+window keeps the app running in the Dock, as Mac apps do; clicking the Dock icon brings the window back, and the Dock
+icon's menu has Show RocketMaxxing Window and Open Design. About and Quit are in the RocketMaxxing menu; Quit asks
+first when a design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing
+(or use Open With). Shortcuts are shown as ⌘ and work with Cmd: ⌘S, ⇧⌘S, ⌘O, ⌘Z, ⇧⌘Z.
 
 ### One app, one window
 
 On every system there is one RocketMaxxing per designs folder. Starting it again, or double-clicking a design while it
-runs, hands over to the running app instead of starting a second one, and a new window opens with the design; the
-older window steps aside (it closes, or says to use the new one), since a browser window cannot be brought to the
-front from outside. Everything open stays open, and the new window returns to the page you were on. On Windows and
-Linux the installers also register `.ork` and `.rkt`, and the app stops two minutes after its window is closed.
+runs, hands over to the running app instead of starting a second one: its window comes to the front and opens the
+design, and everything open stays open. On Windows and Linux the installers also register `.ork` and `.rkt`, and
+closing the window quits the app (it asks first when a design has unsaved changes).
+
+What the interface remembers (recent designs, colour scheme, units, folded panels, the tours you have seen, the 3-D
+view's mode) is kept between launches in `~/.rocketmaxxing/ui-prefs.json`, for every designs folder; delete the file
+to start afresh.
 
 Optional extras are found where Homebrew, MacPorts or conda put them, even though an app started from the Dock does
-not see the Terminal's PATH: `brew install ffmpeg` for MP4 videos, CalculiX (`conda install -c conda-forge calculix`)
+not see the Terminal's PATH: `brew install ffmpeg` for smaller video files (without it the app makes the MP4
+itself), CalculiX (`conda install -c conda-forge calculix`)
 for the fin FEA, and Claude Code or Codex for the assistant.
 
 To run from source: Java 17 or newer. Building the interface the first time also needs Node.js 20 or newer.
@@ -349,15 +362,20 @@ cd RocketMaxxing
 build/install/openrocket-mcp/bin/rocketmaxxing        # Windows: build\install\openrocket-mcp\bin\rocketmaxxing.bat
 ```
 
-The app opens in its own window (Chrome or Edge in app mode if installed, otherwise your default browser). The file
-dialogs start in `~/RocketMaxxing`. On Windows and Linux the app quits two minutes after its window is closed; on the
-Mac it stays in the Dock until you quit it.
+The app opens in its own window: the interface runs in Chromium, which `./gradlew rocketmaxxing` downloads once
+(about 150 MB, from Maven Central) and unpacks into the build, and which the installers include, so nothing is
+downloaded when the app runs. A design
+double-clicked or handed over while it runs opens in that window, which comes to the front. On the Mac the window has
+RocketMaxxing's own menus (File, Edit, Window), closing it keeps the app in the Dock, and Quit asks first when a design
+has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. If the window
+cannot open (no Chromium in the build, for example), the app says why and stops; with `--no-browser` it still runs,
+and the address it prints opens the interface in a browser. The file dialogs start in `~/RocketMaxxing`.
 
 | Option | |
 |---|---|
 | `--workspace DIR` | Designs folder (default `~/RocketMaxxing`) |
 | `--port N` | Local port (default: any free one) |
-| `--no-browser` | Print the address instead of opening a window |
+| `--no-browser` | Print the address instead of opening the window (to open it in a browser) |
 | `--dev URL` | Also accept calls from a development server |
 | `FILE.ork ...` | Designs to open (a running RocketMaxxing for the same folder opens them) |
 
@@ -391,6 +409,9 @@ cd app && npm install && npm run dev
 ```
 
 Open the address the engine prints (`http://localhost:5173/#token=...`). `npm run check` type-checks the interface.
+To look inside the app's own window, start it with
+`ROCKETMAXXING_OPTS=-Drocketmaxxing.chromium.args=--remote-debugging-port=9222` and open `chrome://inspect` in Chrome.
+Leave this off otherwise: any program on the computer can control the window through that port.
 `npm run build` first checks that no two files' names differ only in capitals (`scripts/check-names.mjs`): macOS and
 Windows treat those as the same file, and the Mac and Windows builds broke on that once.
 `AppToolsTest` covers the app tools and the local server, `AssistantTest` the assistant against a stand-in for the API,

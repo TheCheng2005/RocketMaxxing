@@ -19,8 +19,18 @@ dependencies {
     // SVG -> PNG for images shown in the chat (our plots and drawings).
     implementation 'org.apache.xmlgraphics:batik-transcoder:1.19'
     implementation 'org.apache.xmlgraphics:batik-codec:1.19'
+    // MP4 videos of the flight without ffmpeg (pure Java H.264; BSD licence). ffmpeg, when installed, still makes them.
+    implementation 'org.jcodec:jcodec:0.2.5'
+    implementation 'org.jcodec:jcodec-javase:0.2.5'
     // RocketMaxxing's optional assistant (the team's own API key; off by default).
     implementation 'com.anthropic:anthropic-java:3.2.0'
+    // RocketMaxxing's window: Chromium embedded through JCEF. This is the Java part (about 2 MB); Chromium itself
+    // (about 150 MB) is unpacked for the desktop app only (rocketmaxxingChromium below). JOGL draws off-screen
+    // browsers only; the window is a real one (only JCEF's CefBrowserOsr and CefRenderer use JOGL).
+    implementation('me.friwi:jcefmaven:152.0.6') {
+        exclude group: 'me.friwi', module: 'jogl-all'
+        exclude group: 'me.friwi', module: 'gluegen-rt'
+    }
 
     testImplementation platform('org.junit:junit-bom:5.13.4')
     testImplementation 'org.junit.jupiter:junit-jupiter'
@@ -44,6 +54,9 @@ tasks.withType(JavaCompile).configureEach {
 test {
     useJUnitPlatform()
     jvmArgs '-Djava.awt.headless=true'
+    // KnownPluginsTest has OpenRocket scan every class on the classpath, beside the other tests: Gradle's default
+    // 512 MB was not always enough once the window's JCEF jars were added.
+    maxHeapSize = '1g'
     systemProperty 'mcp.verbose', System.getProperty('mcp.verbose', 'false')
     systemProperty 'bench', System.getProperty('bench', 'false')
     if (System.getProperty('openrocketmcp.threads')) systemProperty 'openrocketmcp.threads', System.getProperty('openrocketmcp.threads')
@@ -93,11 +106,14 @@ tasks.register('mcpb', Zip) {
     destinationDirectory = layout.buildDirectory.dir('distributions')
     from(mcpbDir.map { it.file('manifest.json') })
     from('LICENSE')
+    from(tasks.named('thirdPartyNotices'))
     from('src/main/resources/openrocketmcp/icon.png')
     into('lib') {
         from layout.buildDirectory.dir('install/openrocket-mcp/lib')
-        // The desktop app's assistant (the Anthropic SDK and what it brings) is not part of the MCP server.
-        exclude 'anthropic-java-*', 'okhttp-*', 'okio-*', 'kotlin-*', 'jackson-*', 'jsonschema-*'
+        // The desktop app's assistant (the Anthropic SDK and what it brings) and its window (JCEF and what it brings)
+        // are not part of the MCP server.
+        exclude 'anthropic-java-*', 'okhttp-*', 'okio-*', 'kotlin-*', 'jackson-*', 'jsonschema-*',
+                'jcefmaven-*', 'jcef-api-*', 'commons-compress-*', 'commons-codec-*'
     }
     into('runtime') {
         from mcpbDir.map { it.dir('runtime') }
@@ -132,12 +148,148 @@ tasks.register('rocketmaxxingUi', Exec) {
     commandLine npm, 'run', 'build'
 }
 
+// Chromium for RocketMaxxing's window, for this platform (about 150 MB). Its version must be the jcef-api version that
+// jcefmaven above was built with (see jcefmaven's pom); the app checks they match before it starts Chromium.
+def chromiumPlatform = (hostOs.isWindows() ? 'windows' : hostOs.isMacOsX() ? 'macosx' : 'linux') + '-' +
+        (System.getProperty('os.arch') in ['aarch64', 'arm64'] ? 'arm64' : 'amd64')
+def chromiumDir = layout.buildDirectory.dir('chromium')
+configurations {
+    chromium { transitive = false }
+}
+dependencies {
+    chromium "me.friwi:jcef-natives-${chromiumPlatform}:jcef-17e805a+cef-152.0.6+g708dc14+chromium-152.0.7977.83"
+}
+
+// Unpacked when the app is built, with jcefmaven's own installer, so the app never downloads or unpacks it itself.
+tasks.register('rocketmaxxingChromium', JavaExec) {
+    group = 'build'
+    description = 'Unpacks Chromium for RocketMaxxing\'s window into build/chromium.'
+    dependsOn 'classes'
+    classpath = sourceSets.main.runtimeClasspath + configurations.chromium
+    mainClass = 'io.github.openrocketmcp.app.Chromium'
+    jvmArgs '-Djava.awt.headless=true'
+    args chromiumDir.get().asFile.path
+    inputs.files(configurations.chromium)
+    outputs.dir(chromiumDir)
+}
+
+// ------------------------------------------------------------------------------------------------------------------
+// Third-party licence notices, shipped with the desktop app, its installers and the Claude Desktop extension: every
+// Java library in the runtime (licence from its POM, and the LICENSE / NOTICE files inside the jar), the interface's
+// JavaScript packages (from the npm lockfile, with their LICENSE files), Chromium's (CEF) licences, and where the
+// Java runtime keeps its own.
+def noticesFile = layout.buildDirectory.file('notices/THIRD-PARTY-NOTICES.txt')
+tasks.register('thirdPartyNotices') {
+    group = 'build'
+    description = 'Writes build/notices/THIRD-PARTY-NOTICES.txt.'
+    def runtime = configurations.runtimeClasspath
+    inputs.files(runtime)
+    inputs.file('app/package-lock.json').optional()
+    outputs.file(noticesFile)
+    doLast {
+        def out = new StringBuilder()
+        def rule = '=' * 100 + '\n'
+        out << "RocketMaxxing and the OpenRocket MCP server\n"
+        out << "Copyright the RocketMaxxing contributors. GNU General Public License v3.0 or later (LICENSE).\n"
+        out << "Source code: https://github.com/TheCheng2005/RocketMaxxing\n\n"
+        out << "This program includes the third-party software listed below, under the licences shown.\n\n"
+
+        // Licences from a POM, following its parents (many projects declare the licence in a parent POM).
+        def pomLicences
+        pomLicences = { String g, String n, String v, int depth ->
+            def cfg = configurations.detachedConfiguration(dependencies.create("${g}:${n}:${v}@pom"))
+            cfg.transitive = false
+            def files = cfg.resolvedConfiguration.lenientConfiguration.files
+            if (files.isEmpty()) return []
+            def pom = new groovy.xml.XmlSlurper(false, false).parse(files.first())
+            def list = pom.licenses.license.collect { l -> "${l.name.text().trim()}${l.url.text().trim() ? ' <' + l.url.text().trim() + '>' : ''}" }
+            if (list.isEmpty() && depth < 5 && pom.parent.artifactId.text()) {
+                return pomLicences(pom.parent.groupId.text(), pom.parent.artifactId.text(), pom.parent.version.text(), depth + 1)
+            }
+            return list
+        }
+        def texts = new LinkedHashMap<String, String>() // licence and notice texts, each once
+        out << rule << "JAVA LIBRARIES\n" << rule
+        runtime.resolvedConfiguration.resolvedArtifacts.sort { it.moduleVersion.id.toString() }.each { a ->
+            def id = a.moduleVersion.id
+            def lic = []
+            try {
+                lic = pomLicences(id.group, id.name, id.version, 0)
+            } catch (Exception e) {
+                lic = []
+            }
+            out << "\n${id.group}:${id.name}:${id.version}\n  Licence: ${lic ? lic.join('; ') : 'see the project (no licence in its POM)'}\n"
+            if (a.file.name.endsWith('.jar')) {
+                new java.util.zip.ZipFile(a.file).withCloseable { z ->
+                    z.entries().findAll { e -> !e.directory && e.name ==~ /(?i)META-INF\/[^\/]*(LICEN[CS]E|NOTICE)[^\/]*/ }.each { e ->
+                        def text = z.getInputStream(e).getText('UTF-8').trim()
+                        if (text) {
+                            def key = text.md5()
+                            if (!texts.containsKey(key)) {
+                                texts[key] = "--- ${id.group}:${id.name} ${e.name}\n\n${text}\n"
+                            }
+                            out << "  Text: ${e.name} (below)\n"
+                        }
+                    }
+                }
+            }
+        }
+
+        out << "\n" << rule << "INTERFACE (JAVASCRIPT) PACKAGES\n" << rule
+        def lock = file('app/package-lock.json')
+        if (lock.isFile()) {
+            def packages = new groovy.json.JsonSlurper().parse(lock).packages
+            packages.findAll { k, v -> k && !v.dev }.sort { it.key }.each { path, v ->
+                def name = path.substring(path.lastIndexOf('node_modules/') + 'node_modules/'.length())
+                out << "\n${name} ${v.version ?: ''}\n  Licence: ${v.license ?: 'see the package'}\n"
+                def dir = file("app/${path}")
+                def licenceFile = dir.isDirectory() ? dir.listFiles().find { it.isFile() && it.name ==~ /(?i)(LICEN[CS]E|COPYING|NOTICE)(\..*)?/ } : null
+                if (licenceFile) {
+                    def text = licenceFile.getText('UTF-8').trim()
+                    def key = text.md5()
+                    if (!texts.containsKey(key)) {
+                        texts[key] = "--- ${name} ${licenceFile.name}\n\n${text}\n"
+                    }
+                    out << "  Text: ${licenceFile.name} (below)\n"
+                }
+            }
+        }
+
+        out << "\n" << rule << "CHROMIUM (THE DESKTOP APP'S WINDOW)\n" << rule
+        out << "\nChromium Embedded Framework (CEF) and JCEF, through jcefmaven: BSD licence (below, from the bundle).\n"
+        out << "Chromium itself is made of many open-source components; their licences are built into Chromium and\n"
+        out << "listed at https://source.chromium.org/chromium/chromium/src/+/main:LICENSE and in each release's credits.\n"
+        def chromium = layout.buildDirectory.dir('chromium').get().asFile
+        if (chromium.isDirectory()) {
+            chromium.listFiles().findAll { it.name ==~ /(?i).*LICEN[CS]E.*\.txt/ }.sort { it.name }.each { f ->
+                texts[f.text.md5()] = "--- Chromium bundle: ${f.name}\n\n${f.getText('UTF-8').trim()}\n"
+            }
+        }
+
+        out << "\n" << rule << "JAVA RUNTIME\n" << rule
+        out << "\nThe installers include a Java runtime (OpenJDK, GPL v2 with the Classpath Exception). Its own licence\n"
+        out << "and third-party notices are in the runtime's legal/ folder.\n"
+
+        out << "\n" << rule << "LICENCE AND NOTICE TEXTS\n" << rule << "\n"
+        texts.values().each { out << it << "\n" }
+        def f = noticesFile.get().asFile
+        f.parentFile.mkdirs()
+        f.setText(out.toString(), 'UTF-8')
+        logger.lifecycle("Third-party notices: ${f} (${runtime.resolvedConfiguration.resolvedArtifacts.size()} Java libraries)")
+    }
+}
+
+// jcefmaven's window code reaches into the macOS toolkit (it says so in its README).
+def rocketmaxxingJvmOpts = ['-Xss4m', '-XX:+UseParallelGC'] + (hostOs.isMacOsX()
+        ? ['sun.awt', 'sun.lwawt', 'sun.lwawt.macosx'].collect { "--add-opens=java.desktop/${it}=ALL-UNNAMED".toString() }
+        : [])
+
 def rocketmaxxingScripts = tasks.register('rocketmaxxingScripts', CreateStartScripts) {
     mainClass = 'io.github.openrocketmcp.app.App'
     applicationName = 'rocketmaxxing'
     outputDir = layout.buildDirectory.dir('rocketmaxxing-scripts').get().asFile
     classpath = tasks.named('jar').get().outputs.files + configurations.runtimeClasspath
-    defaultJvmOpts = ['-Xss4m', '-XX:+UseParallelGC']
+    defaultJvmOpts = rocketmaxxingJvmOpts
 }
 
 distributions {
@@ -145,18 +297,21 @@ distributions {
         contents {
             from(rocketmaxxingScripts) { into 'bin' }
             from(appUiDir) { into 'ui' }
+            from(tasks.named('thirdPartyNotices'))
+            // Only there once the desktop app has been built (like ui): the MCP server never needs it.
+            from(chromiumDir) { into 'chromium' }
         }
     }
 }
 
-tasks.named('installDist') { mustRunAfter 'rocketmaxxingUi' }
-tasks.named('distZip') { mustRunAfter 'rocketmaxxingUi' }
-tasks.named('distTar') { mustRunAfter 'rocketmaxxingUi' }
+tasks.named('installDist') { mustRunAfter 'rocketmaxxingUi', 'rocketmaxxingChromium' }
+tasks.named('distZip') { mustRunAfter 'rocketmaxxingUi', 'rocketmaxxingChromium' }
+tasks.named('distTar') { mustRunAfter 'rocketmaxxingUi', 'rocketmaxxingChromium' }
 
 tasks.register('rocketmaxxing') {
     group = 'distribution'
     description = 'Builds the RocketMaxxing desktop app: build/install/openrocket-mcp/bin/rocketmaxxing'
-    dependsOn 'rocketmaxxingUi', 'installDist'
+    dependsOn 'rocketmaxxingUi', 'rocketmaxxingChromium', 'installDist'
 }
 
 // ------------------------------------------------------------------------------------------------------------------
@@ -169,8 +324,10 @@ def packagingDir = layout.buildDirectory.dir('jpackage')
 tasks.register('rocketmaxxingPackageInput', Sync) {
     dependsOn 'rocketmaxxing'
     from(layout.buildDirectory.dir('install/openrocket-mcp/lib'))
-    // jpackage puts the input next to the jars; the app looks for its interface there.
+    from(tasks.named('thirdPartyNotices'))
+    // jpackage puts the input next to the jars; the app looks for its interface and its Chromium there.
     into('ui') { from appUiDir }
+    into('chromium') { from chromiumDir }
     into packagingDir.map { it.dir('input') }
 }
 
@@ -219,7 +376,7 @@ tasks.register('rocketmaxxingInstaller', Exec) {
                '--main-jar', tasks.named('jar').get().archiveFileName.get(),
                '--main-class', 'io.github.openrocketmcp.app.App',
                '--runtime-image', mcpbDir.get().dir('runtime').asFile.path,
-               '--java-options', '-Xss4m -XX:+UseParallelGC', '--icon', icon.path, '--dest', out.get().asFile.path]
+               '--java-options', rocketmaxxingJvmOpts.join(' '), '--icon', icon.path, '--dest', out.get().asFile.path]
     if (type != 'app-image') {
         // Double-clicking an OpenRocket or RockSim design opens it in RocketMaxxing.
         cmd += ['--license-file', 'LICENSE',

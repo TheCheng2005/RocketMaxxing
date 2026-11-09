@@ -113,6 +113,19 @@ public final class AppTools {
 	/** As above, with the assistant's settings (on/off, model, the key) kept in {@code assistantSettings}. */
 	public static void register(McpServer s, Context ctx, Path assistantSettings) {
 		Assistant assistant = new Assistant(s, ctx, assistantSettings);
+		// What the interface remembers between launches, next to the assistant's settings (~/.rocketmaxxing).
+		UiPrefs prefs = new UiPrefs(assistantSettings.resolveSibling("ui-prefs.json"));
+		Path updateCache = assistantSettings.resolveSibling("update-check.json");
+		add(s, new ToolDef("app_update_check", "App: check for a newer version",
+				"Whether a newer RocketMaxxing is on the Releases page: the latest version, its page and the installer for "
+						+ "this computer. Asks GitHub at most once a day unless force is true; offline it says so.",
+				Schema.object().bool("force", "Ask GitHub now rather than use today's answer (default false).", false).build(), true,
+				a -> Updates.check(App.VERSION, updateCache, a.bool("force", false))));
+		add(s, new ToolDef("app_prefs", "App: interface preferences",
+				"What the interface remembers between launches (recent designs, colour scheme, units, panels, tours seen): "
+						+ "returns them all; with set, changes some first (null removes one).",
+				Schema.object().obj("set", "Preference name -> new value (string) or null.", false).build(), false,
+				a -> Map.of("prefs", a.has("set") ? prefs.set(a.get("set").getAsJsonObject()) : prefs.all())));
 		// The assistant's own tools are read-only as far as undo goes: the tools Claude calls record their own edits.
 		add(s, new ToolDef("app_assistant", "App: assistant settings", "Whether the assistant is on, its model and whether a key is set.",
 				Schema.object().build(), true, a -> assistant.settings()));
@@ -308,20 +321,35 @@ public final class AppTools {
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)
 						.str("types", "File extensions to show, e.g. \"csv,txt\" (default: designs).", false).build(),
 				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rkt"))));
-		add(s, new ToolDef("app_reveal", "App: show a file", "Open a file the engine wrote, or its folder, in the system's file manager.",
-				Schema.object().str("path", "File or folder.", true).build(), true, a -> {
+		add(s, new ToolDef("app_download_path", "App: where to save a download",
+				"A path for a file the user takes away (the flight video): in the Downloads folder (else the Desktop, else the "
+						+ "designs folder), numbered so it replaces nothing.",
+				Schema.object().str("name", "File name, e.g. \"Maple 10K flight.mp4\".", true).build(), true, a -> {
+					Path folder = Downloads.folder(Path.of(System.getProperty("user.home")), ctx.workspace());
+					Path p = Downloads.freePath(folder, a.str("name"));
+					return Map.of("path", p.toString(), "folder", folder.toString(), "folderName", folder.getFileName().toString());
+				}));
+		add(s, new ToolDef("app_reveal", "App: show a file",
+				"Show a file the engine wrote, or its folder, in the system's file manager; open: true opens the file itself in "
+						+ "its own program (videos, pictures, documents only).",
+				Schema.object().str("path", "File or folder.", true).bool("open", "Open the file itself (default false).", false).build(),
+				true, a -> {
 					Path p = ctx.path(a.str("path")).toAbsolutePath().normalize();
 					if (!Files.exists(p)) {
 						throw new ToolException("Not found: " + p);
 					}
-					Path open = Files.isDirectory(p) ? p : p.getParent();
+					boolean file = a.bool("open", false) && Files.isRegularFile(p);
+					if (file && !Downloads.openable(p)) {
+						throw new ToolException("Only videos, pictures and documents open from here; the file is at " + p);
+					}
+					Path open = file || Files.isDirectory(p) ? p : p.getParent();
 					try {
 						if (java.awt.GraphicsEnvironment.isHeadless() || !java.awt.Desktop.isDesktopSupported()) {
 							throw new ToolException("No file manager here. The file is at " + p);
 						}
 						java.awt.Desktop.getDesktop().open(open.toFile());
 					} catch (java.io.IOException | UnsupportedOperationException | LinkageError e) {
-						throw new ToolException("Could not open the folder. The file is at " + p);
+						throw new ToolException("Could not open " + (file ? "the file" : "the folder") + ". The file is at " + p);
 					}
 					return Map.of("opened", open.toString());
 				}));
@@ -373,6 +401,8 @@ public final class AppTools {
 		out.put("version", App.VERSION);
 		out.put("engineVersion", Main.VERSION);
 		out.put("macOS", List.copyOf(MacDesktop.ACTIVE)); // Dock, Finder and menu handlers in place (empty elsewhere)
+		out.put("notices", App.notices()); // the third-party licences shipped with the app (Help > About), or null
+		out.put("window", App.windowKind()); // "app" once the app's own window is open, else "none" (the installers' check)
 		out.put("examples", List.of(Designs.EXAMPLES));
 		List<Map<String, Object>> open = new ArrayList<>();
 		for (Designs.Design d : ctx.designs.all()) {

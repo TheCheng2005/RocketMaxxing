@@ -2,11 +2,12 @@ name: RocketMaxxing installers
 
 # Installers with Java included, one per platform (jpackage builds only for the machine it runs on). Each packaged
 # app is started and used before its installer is built; the installers are kept as the run's artifacts.
+# A version tag runs it through release.yml, which publishes the installers as a GitHub Release.
 on:
   workflow_dispatch:
+  workflow_call:
   push:
-    branches: [main, 'claude/**']
-    tags: ['rocketmaxxing-v*']
+    branches: [main, 'claude/**', 'kiro/**']
     paths:
       - app/**
       - src/main/**
@@ -29,19 +30,29 @@ jobs:
             type: deb
             name: linux-x64-deb
             launcher: build/installers/RocketMaxxing/bin/RocketMaxxing
+            app: build/installers/RocketMaxxing/bin/RocketMaxxing
+            screen: xvfb-run -a  # the runner has no screen: a virtual one for the window
           - os: windows-latest
             type: msi
             name: windows-x64-msi
             # The Windows launcher is a windowed program (no console to print the address to): run its Java directly.
             launcher: build/installers/RocketMaxxing/runtime/bin/java.exe -Xss4m -cp 'build/installers/RocketMaxxing/app/*' io.github.openrocketmcp.app.App
+            # The window check reads the app's address from its file instead, so it runs the real launcher.
+            app: build/installers/RocketMaxxing/RocketMaxxing.exe
           - os: macos-latest
             type: dmg
             name: macos-apple-silicon-dmg
             launcher: build/installers/RocketMaxxing.app/Contents/MacOS/RocketMaxxing
+            app: build/installers/RocketMaxxing.app/Contents/MacOS/RocketMaxxing
           - os: macos-15-intel
             type: dmg
             name: macos-intel-dmg
             launcher: build/installers/RocketMaxxing.app/Contents/MacOS/RocketMaxxing
+            app: build/installers/RocketMaxxing.app/Contents/MacOS/RocketMaxxing
+            # These runners are virtual Macs with no Metal GPU: Chromium's GPU process cannot start there, and the
+            # page never comes up. Real Intel Macs have one; the window is checked here with software drawing.
+            java: '"-Drocketmaxxing.chromium.args=--disable-gpu --remote-debugging-port=9333"'
+            devtools: 9333
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -56,9 +67,9 @@ jobs:
         with:
           python-version: '3.12'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Packaging tools (fakeroot for .deb)
+      - name: Packaging tools (fakeroot for .deb, Xvfb for the window)
         if: runner.os == 'Linux'
-        run: sudo apt-get update -q && sudo apt-get install -y -q fakeroot
+        run: sudo apt-get update -q && sudo apt-get install -y -q fakeroot xvfb
       - name: Packaging tools (WiX 3 for .msi)
         if: runner.os == 'Windows'
         # The runner image usually has WiX 3 already; install it only when missing, and put it on PATH for jpackage.
@@ -75,6 +86,13 @@ jobs:
       - name: Start the packaged app and use it
         shell: bash
         run: python scripts/test_rocketmaxxing.py ${{ matrix.launcher }}
+      - name: Open Maple in the packaged app's own window
+        shell: bash
+        timeout-minutes: 10
+        env:
+          JAVA_TOOL_OPTIONS: ${{ matrix.java }}
+          DEVTOOLS_PORT: ${{ matrix.devtools }}
+        run: ${{ matrix.screen }} python scripts/test_rocketmaxxing.py --window ${{ matrix.app }}
       - name: Build the installer
         run: ./gradlew rocketmaxxingInstaller -PinstallerType=${{ matrix.type }}
       - uses: actions/upload-artifact@v4

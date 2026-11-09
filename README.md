@@ -122,8 +122,7 @@ the video from there, and read every plot with one time cursor. Outside Claude D
   margin through Mach and at its own top speed, beside your RASAero run of it.
 - "Animate the flight" — a short 3-D video of the simulated flight. It shows the flame and smoke, both parachutes
   opening, and a live readout of time, altitude, speed, Mach and distance from the pad. Captions call out burnout,
-  apogee and each deployment. You get a GIF for chat and slides, an MP4 when ffmpeg is installed, and stills of the key
-  moments.
+  apogee and each deployment. You get an MP4 for slides and sharing, a GIF for chat, and stills of the key moments.
 - Two-stage rockets, end to end:
   - staging is simulated: booster burnout, separation and sustainer ignition;
   - the air-start rules are checked: tilt and altitude at ignition, and thrust-to-weight per stage;
@@ -300,7 +299,9 @@ subscription. It reads and writes the same `.ork` files as OpenRocket.
 - An optional assistant: Claude or ChatGPT (through Claude Code or Codex) or an API key, working inside the app with
   the same tools.
 
-Installers with Java included are built on every push (Actions › RocketMaxxing installers). To build it yourself:
+Download it from the [Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases) (Windows, Mac and Linux
+installers with Java included; the latest build of every push is also under Actions › RocketMaxxing installers). To
+build it yourself:
 `./gradlew rocketmaxxing`, then `build/install/openrocket-mcp/bin/rocketmaxxing`. The full guide is
 [docs/ROCKETMAXXING.md](docs/ROCKETMAXXING.md).
 

@@ -9,7 +9,9 @@ three main tabs (design, motors and configuration, simulations) on the engine an
 team's targets, flight data, the missing editors, installers and an optional assistant; see
 [ROCKETMAXXING.md](ROCKETMAXXING.md). The project's team uses it, and it is planned to go to other teams by the end
 of 2026 once their feedback is in. Decided: the name is **RocketMaxxing** (the repository is
-`TheCheng2005/RocketMaxxing`) and the front-end is **Svelte with three.js**. Next: the validation work and Phase 4.
+`TheCheng2005/RocketMaxxing`) and the front-end is **Svelte with three.js**. The app runs in its own window
+(Chromium through JCEF) on all three systems, and the validation work has its first real flight
+([WORKED_EXAMPLE.md](WORKED_EXAMPLE.md)). Next: internal testing by the team, then Phase 4.
 Decisions still open are marked **Decide**.
 
 ## Why, and why not a rewrite
@@ -91,11 +93,15 @@ Where OpenRocket stays ahead at the start, and what we do about it:
 - **Native file dialogs** come from the Java side (AWT `FileDialog`; `java.desktop` is already in our runtime). A
   browser page cannot see real file paths.
 - **Packaging.** `./gradlew mcpb` already builds a trimmed Java runtime with `jlink`. The app adds `jpackage` for a
-  Windows `.msi`, a macOS `.dmg` and a Linux `.deb`/AppImage, at roughly 80 to 120 MB each. Every platform needs its
+  Windows `.msi`, a macOS `.dmg` and a Linux `.deb`/AppImage, at roughly 80 to 120 MB each (240 to 300 MB once the
+  window's Chromium went in). Every platform needs its
   own build, which CI can do on Windows, macOS and Linux runners.
 - **Window.** First version: the app starts the engine and opens the UI in the system browser in app mode (Chrome
   or Edge `--app`, else a normal tab). No native code. Later: a webview shell (Tauri or wry) for a real window and
   menus. **Decide** at the end of Phase 2. JavaFX WebView is out: its WebGL support is too weak for the 3-D view.
+  **Decided:** Chromium embedded in a Swing window through JCEF (jcefmaven), in the Java process, with the app's own
+  menus. It is the same browser engine on every platform and needs no second toolchain (Tauri or wry would need
+  Rust), at the cost of about 150 MB per installer. The browser window is gone.
 - **Offline.** Everything is local except three features, which degrade cleanly:
   - Weather forecast: winds can always be typed in (`wind_profile`), and the last forecast is cached.
   - Product links (`add_from_link`): pasted page text works offline.
@@ -174,7 +180,7 @@ spreadsheets.
 ### Phase 2: full engineering suite
 - Full component tree editing: add, remove, reorder, catalog parts.
 - Propulsion and staging, Aero with RASAero import, all of Recovery, Structures, Avionics and Studies.
-- **Decide** the window shell (browser app mode or a webview).
+- **Decide** the window shell (browser app mode or a webview). Decided: Chromium through JCEF (see Window above).
 
 Done when: the team stops opening OpenRocket for day-to-day work.
 
@@ -246,6 +252,8 @@ Teams trust a tool for its track record, not its features. From Phase 1 on:
   apogee, maximum speed and descent rates.
 - The existing physics tests and benchmark run on every change.
 - Agreement checks against RASAero for supersonic cases, and against hand calculations for recovery and structures.
+- Started: [WORKED_EXAMPLE.md](WORKED_EXAMPLE.md), the Notre Dame Rocket Team's 2020 L1395 flight against its
+  altimeter and accelerometer log (stock OpenRocket 9% high on apogee; the motor, not drag, was the cause).
 
 ## Team and process
 

@@ -111,6 +111,45 @@ class FlightAnimationTest {
 		assertTrue(Files.size(gif) > 1000);
 	}
 
+	@Test
+	void writesAnMp4WithoutFfmpeg(@TempDir Path tmp) throws Exception {
+		FlightAnimation a = anim(10, 4, 480);
+		Path mp4 = tmp.resolve("f.mp4");
+		String before = System.getProperty("openrocketmcp.ffmpeg");
+		System.setProperty("openrocketmcp.ffmpeg", "none");
+		Video.Written v;
+		try {
+			v = Video.write(a, null, 320, mp4);
+		} finally {
+			if (before == null) {
+				System.clearProperty("openrocketmcp.ffmpeg");
+			} else {
+				System.setProperty("openrocketmcp.ffmpeg", before);
+			}
+		}
+		assertEquals(mp4, v.mp4(), "the MP4 is made in Java: " + v.mp4Note());
+		assertEquals(null, v.gif(), "MP4 alone");
+		assertEquals(Files.size(mp4), v.mp4Bytes());
+		// It plays: every frame decodes, at the animation's size, in the rendered colours.
+		int frames = 0;
+		BufferedImage middle = null;
+		// Closed before the test ends: Windows cannot delete a file that is still open.
+		try (org.jcodec.common.io.SeekableByteChannel in = org.jcodec.common.io.NIOUtils.readableChannel(mp4.toFile())) {
+			org.jcodec.api.FrameGrab grab = org.jcodec.api.FrameGrab.createFrameGrab(in);
+			org.jcodec.common.model.Picture pic;
+			while ((pic = grab.getNativeFrame()) != null) {
+				if (frames == a.frames / 2) {
+					middle = org.jcodec.scale.AWTUtil.toBufferedImage(pic);
+				}
+				frames++;
+			}
+		}
+		assertEquals(a.frames, frames);
+		assertEquals(480, middle.getWidth());
+		assertEquals(270, middle.getHeight());
+		assertTrue(meanColourError(middle, a.frame(a.frames / 2)) < 12, "H.264 keeps the picture");
+	}
+
 	/** A two-stage flight: each stage's events are named, the booster's own recovery is captioned, stills differ. */
 	@Test
 	void twoStageFlightIsToldStageByStage() throws Exception {

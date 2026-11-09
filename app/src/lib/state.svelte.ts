@@ -141,6 +141,8 @@ export interface Session {
   dims: Record<string, any>;
   materials: Record<string, { name: string; density: number }[]>;
   creatable: string[];
+  /** THIRD-PARTY-NOTICES.txt of the installed app (null when run from source without it). */
+  notices?: string | null;
 }
 
 export type Page = "home" | "design" | "motors" | "flights" | "flightdata" | "targets" | "standards" | "analysis";

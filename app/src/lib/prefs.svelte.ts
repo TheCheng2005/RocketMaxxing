@@ -1,5 +1,5 @@
 // Appearance: light or dark (or the system's), and a colour scheme for the navigation rail, the top bar, the accent
-// and the selection, after the way Slack lets people pick a theme. Kept in this browser profile.
+// and the selection, after the way Slack lets people pick a theme. Kept between launches by the engine (storedPrefs.ts).
 
 export type Theme = "system" | "light" | "dark";
 

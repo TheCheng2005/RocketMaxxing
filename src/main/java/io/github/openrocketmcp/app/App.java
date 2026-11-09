@@ -1,17 +1,24 @@
 package io.github.openrocketmcp.app;
 
-import java.awt.Desktop;
+import java.awt.Component;
+import java.awt.GraphicsEnvironment;
 import java.io.File;
 import java.net.InetSocketAddress;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+
+import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import io.github.openrocketmcp.Main;
 import io.github.openrocketmcp.mcp.Log;
@@ -25,7 +32,7 @@ import io.github.openrocketmcp.tools.DesignLocks;
 
 /**
  * RocketMaxxing, the desktop app: the same engine and tools as the MCP server, with its own interface, offline. Starts
- * the local server and opens the interface in a browser window; stops when that window has been closed for a while.
+ * the local server and opens the interface in the app's window (Chromium, {@link AppWindow}), which quits the app.
  */
 public final class App {
 	public static final String NAME = "RocketMaxxing";
@@ -36,15 +43,18 @@ public final class App {
 			  --workspace DIR   folder for designs (default: ~/RocketMaxxing)
 			  --port N          local port (default: any free one)
 			  --ui DIR          folder of the built interface (default: next to the program)
-			  --no-browser      do not open a window; print the address instead
+			  --no-browser      do not open the window; print the address instead (to open it in a browser)
 			  --dev URL         also accept calls from a development server, e.g. http://localhost:5173
 			  FILE.ork ...      designs to open (a running RocketMaxxing for the same folder opens them instead)
 			""";
 
-	/** The page's address once the server is up; files that arrive before that wait in {@code pending}. */
+	/** The page's address once the window is open; files that arrive before that wait in {@code pending}. */
 	private static String baseUrl;
-	private static boolean windows;
 	private static final List<String> pending = new ArrayList<>();
+	/** RocketMaxxing's window (Chromium), once open; null before, and with no window (--no-browser, --dev, no screen). */
+	private static AppWindow window;
+	/** Chromium starting up for the window while the engine starts. */
+	private static CompletableFuture<AppWindow> chromium;
 
 	private App() {
 	}
@@ -60,6 +70,11 @@ public final class App {
 			boolean linux = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("linux");
 			boolean screen = !linux || notBlank(System.getenv("DISPLAY")) || notBlank(System.getenv("WAYLAND_DISPLAY"));
 			System.setProperty("java.awt.headless", screen ? "false" : "true");
+		}
+		if (MacDesktop.isMac()) {
+			System.setProperty("apple.awt.application.name", NAME); // the menu bar's name, also when run from a terminal
+			System.setProperty("apple.laf.useScreenMenuBar", "true"); // the window's menus in the Mac menu bar
+			System.setProperty("apple.awt.application.appearance", "system"); // the title bar follows dark mode
 		}
 		Path ws = Path.of(opt(a, "--workspace", System.getProperty("user.home") + File.separator + NAME)).toAbsolutePath().normalize();
 		Files.createDirectories(ws);
@@ -82,9 +97,20 @@ public final class App {
 			instance = null;
 		}
 
+		// The app's window, unless asked not to or there is no screen (a server, a container): then it prints the address.
+		boolean windowed = !noBrowser && devUrl == null && !GraphicsEnvironment.isHeadless();
+		Path bundle = windowed ? chromiumBundle() : null;
+
 		// macOS: the Dock and Finder talk to the app from the start (a design double-clicked to launch it arrives now).
 		AtomicReference<Context> ctxRef = new AtomicReference<>();
-		boolean dock = devUrl == null && MacDesktop.install(() -> show(List.of()), App::show, () -> unsaved(ctxRef.get()));
+		if (devUrl == null) {
+			MacDesktop.install(() -> show(List.of()), App::show, () -> unsaved(ctxRef.get()));
+		}
+		if (bundle != null) {
+			// Two Chromiums cannot share a folder: one per designs folder, as there is one app per designs folder.
+			String key = Instance.key(ws) + (instance == null ? "-" + ProcessHandle.current().pid() : "");
+			chromium = startChromium(bundle, Instance.dir().resolve("chromium").resolve(key), () -> unsaved(ctxRef.get()));
+		}
 
 		OrRuntime.init(); // before any request: OpenRocket's databases fail for good if touched before it starts
 		Context ctx = new Context(Standards.discover(ws), ws, false);
@@ -125,53 +151,127 @@ public final class App {
 		}
 		Log.info(NAME + " " + VERSION + " (engine " + Main.VERSION + ") on http://127.0.0.1:" + bound.getPort() + " ; workspace " + ws
 				+ (MacDesktop.ACTIVE.isEmpty() ? "" : " ; macOS: " + String.join(", ", MacDesktop.ACTIVE)));
-		boolean window = !noBrowser && devUrl == null && ready(url, files);
-		if (!window) {
+		if (windowed) {
+			ready(url, files, ws);
+		} else {
 			System.out.println("Open " + withFiles(url, files));
 			if (devUrl != null) {
 				System.out.println("Development: open " + devUrl + "/#token=" + app.token() + "&port=" + bound.getPort());
 			}
-			new CountDownLatch(1).await();
+		}
+		// The window quits the app (on the Mac, Quit does: a closed window waits in the Dock, as Mac apps do).
+		new CountDownLatch(1).await();
+	}
+
+	/** The Chromium for the app's window, its library loaded (before AWT starts). Without one, says so and stops. */
+	private static Path chromiumBundle() {
+		try {
+			Path bundle = Chromium.find();
+			Chromium.preload(bundle);
+			return bundle;
+		} catch (IllegalStateException | LinkageError e) { // none, or the JCEF classes or library are missing or broken
+			noWindow(e);
+			return null;
+		}
+	}
+
+	/**
+	 * The window cannot open: says why, in a dialog too (an installed app has no terminal to read), and stops. With
+	 * --no-browser the app still works from a browser.
+	 */
+	private static void noWindow(Throwable e) {
+		String why = e.getMessage() != null ? e.getMessage() : e.toString();
+		Log.info(NAME + "'s window cannot open: " + why);
+		try {
+			SwingUtilities.invokeAndWait(() -> JOptionPane.showMessageDialog(null, NAME + " cannot open its window.\n" + why
+					+ "\n\nInstall " + NAME + " again, or start it with --no-browser and open the address it prints in a browser.",
+					NAME, JOptionPane.ERROR_MESSAGE));
+		} catch (Exception | LinkageError ignored) {
+			// no dialog either: the log says why
+		}
+		System.exit(1);
+	}
+
+	/** Starts Chromium for the app's window in the background. */
+	private static CompletableFuture<AppWindow> startChromium(Path bundle, Path cache, Supplier<List<String>> unsaved) {
+		CompletableFuture<AppWindow> started = new CompletableFuture<>();
+		Thread t = new Thread(() -> {
+			try {
+				started.complete(AppWindow.start(bundle, cache, unsaved));
+			} catch (Throwable e) {
+				started.completeExceptionally(e);
+			}
+		}, "chromium-start");
+		t.setDaemon(true);
+		t.start();
+		return started;
+	}
+
+	/**
+	 * Opens the window, with the files given at launch and any that arrived while starting. Waits for Chromium without
+	 * holding the lock, so a design double-clicked meanwhile (handled on the event thread, which Chromium needs too)
+	 * only queues up.
+	 */
+	private static void ready(String url, List<String> files, Path ws) {
+		AppWindow w;
+		try {
+			w = chromium.get(2, TimeUnit.MINUTES);
+			w.open(withFiles(url, files), ws);
+		} catch (ExecutionException e) {
+			noWindow(e.getCause());
+			return;
+		} catch (Exception | LinkageError e) {
+			noWindow(e);
 			return;
 		}
-		if (dock) {
-			// macOS: the app stays in the Dock with no window, as Mac apps do, until it is quit.
-			new CountDownLatch(1).await();
-		}
-		// Desktop use: stop once the window has been gone for two minutes (the page checks in every 20 s).
-		while (true) {
-			Thread.sleep(15_000);
-			long seen = app.lastSeen();
-			if (seen > 0 && System.currentTimeMillis() - seen > 120_000) {
-				Log.info("Window closed; stopping.");
-				app.stop();
-				System.exit(0);
+		synchronized (App.class) {
+			baseUrl = url;
+			window = w;
+			if (!pending.isEmpty()) {
+				w.show(withFiles(url, pending));
+				pending.clear();
 			}
 		}
 	}
 
-	/** Opens the first window, with the files given at launch and any that arrived while starting. */
-	private static synchronized boolean ready(String url, List<String> files) {
-		List<String> first = new ArrayList<>(files);
-		first.addAll(pending);
-		pending.clear();
-		windows = open(withFiles(url, first));
-		baseUrl = url;
-		return windows;
+	/** The window in front, with these designs open: the Dock, a second launch and Finder all land there. */
+	static synchronized void show(List<String> files) {
+		if (window == null) {
+			pending.addAll(files); // the window is still opening
+			return;
+		}
+		window.show(files.isEmpty() ? null : withFiles(baseUrl, files));
 	}
 
 	/**
-	 * A window with these designs open. The page keeps one window: a new one replaces the one before (a browser
-	 * window cannot be brought to the front from here), so the Dock, a second launch and Finder all land in front.
+	 * THIRD-PARTY-NOTICES.txt shipped with the app: next to the jars (installers) or one folder up (the app folder the
+	 * build makes); null when there is none (run from source).
 	 */
-	static synchronized void show(List<String> files) {
-		if (baseUrl == null) {
-			pending.addAll(files);
-			return;
+	static String notices() {
+		try {
+			Path jar = Path.of(App.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+			for (Path dir : List.of(jar.getParent(), jar.getParent().getParent())) {
+				Path f = dir.resolve("THIRD-PARTY-NOTICES.txt");
+				if (Files.isRegularFile(f)) {
+					return f.toString();
+				}
+			}
+		} catch (Exception | LinkageError e) {
+			// unknown location: no notices to show
 		}
-		if (windows) {
-			open(withFiles(baseUrl, files));
-		}
+		return null;
+	}
+
+	/** The interface's window: "app" once it is open, else "none" (not yet, or no window: --no-browser, no screen). */
+	static synchronized String windowKind() {
+		return window != null ? "app" : "none";
+	}
+
+	/** Asks first when designs have unsaved changes; true to go on and quit. */
+	static boolean mayQuit(Component parent, List<String> open) {
+		return open.isEmpty() || JOptionPane.showConfirmDialog(parent,
+				"Unsaved changes in " + String.join(", ", open) + ".\nQuit anyway and lose them?",
+				"Quit " + NAME, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
 	}
 
 	static String withFiles(String url, List<String> files) {
@@ -241,46 +341,5 @@ public final class App {
 			// not run from an installation
 		}
 		return null;
-	}
-
-	/** Opens the page in its own window when Chrome or Edge is installed (app mode), else in the default browser. */
-	static boolean open(String url) {
-		for (String browser : browsers()) {
-			if (new File(browser).canExecute()) {
-				try {
-					new ProcessBuilder(browser, "--app=" + url, "--new-window").inheritIO().start();
-					return true;
-				} catch (Exception ignored) {
-					// try the next
-				}
-			}
-		}
-		try {
-			if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-				Desktop.getDesktop().browse(URI.create(url));
-				return true;
-			}
-		} catch (Exception e) {
-			Log.info("Could not open a browser: " + e.getMessage());
-		}
-		return false;
-	}
-
-	static List<String> browsers() {
-		String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-		if (os.contains("win")) {
-			String pf = System.getenv().getOrDefault("ProgramFiles", "C:\\Program Files");
-			String pf86 = System.getenv().getOrDefault("ProgramFiles(x86)", "C:\\Program Files (x86)");
-			String local = System.getenv().getOrDefault("LOCALAPPDATA", "");
-			return List.of(pf86 + "\\Microsoft\\Edge\\Application\\msedge.exe", pf + "\\Microsoft\\Edge\\Application\\msedge.exe",
-					pf + "\\Google\\Chrome\\Application\\chrome.exe", pf86 + "\\Google\\Chrome\\Application\\chrome.exe",
-					local + "\\Google\\Chrome\\Application\\chrome.exe");
-		}
-		if (os.contains("mac")) {
-			return List.of("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-					"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
-					"/Applications/Chromium.app/Contents/MacOS/Chromium");
-		}
-		return List.of("/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/chromium-browser", "/usr/bin/microsoft-edge");
 	}
 }

@@ -155,7 +155,7 @@ export function entries(): Entry[] {
     { kind: "action", title: "Cut-away view", sub: "The airframe cut open in 3-D to show the inside", keys: "cutaway section inside internal open", off: noDesign, run: view("cutaway") },
     { kind: "action", title: "Fit the rocket in the view", sub: "Zoom to show the whole rocket", keys: "zoom reset center centre frame", off: noDesign, run: view("fit") },
     { kind: "action", title: "Picture or drawing", sub: "Exploded or cut-away 3-D image with a parts list, or the side drawing (SVG)", keys: "image render png svg export screenshot exploded parts list drawing", off: noDesign, run: view("picture") },
-    { kind: "action", title: "Flight video", sub: "The selected simulation as an animation (GIF or MP4)", keys: "animation movie gif mp4 animate", off: noDesign, run: () => (go("flights"), request("video")) },
+    { kind: "action", title: "Flight video", sub: "The selected simulation as an MP4 in your Downloads folder", keys: "animation movie gif mp4 animate", off: noDesign, run: () => (go("flights"), request("video")) },
     { kind: "action", title: "Import a motor file", sub: "A .eng, .rse or zipped motor file into the motor list", keys: "eng rse thrustcurve rasp motor file load", off: noDesign, run: () => (go("motors"), request("motor", "import")) },
     { kind: "action", title: "Your own motor", sub: "A motor from static-fire data or an average thrust", keys: "custom motor static fire test thrust curve homemade research", off: noDesign, run: () => (go("motors"), request("motor", "custom")) },
     { kind: "action", title: "New flight configuration", sub: "Another motor and deployment set", keys: "configuration add create motor set", off: noDesign, run: async () => {

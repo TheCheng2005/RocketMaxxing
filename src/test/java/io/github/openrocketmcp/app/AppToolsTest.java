@@ -286,7 +286,6 @@ class AppToolsTest {
 			HttpResponse<String> escape = http.send(HttpRequest.newBuilder(URI.create(base + "/../build.gradle")).build(),
 					HttpResponse.BodyHandlers.ofString());
 			assertNotEquals(200, escape.statusCode());
-			assertTrue(app.lastSeen() > 0);
 		} finally {
 			app.stop();
 		}
@@ -459,6 +458,37 @@ class AppToolsTest {
 		assertTrue(painted, "the 3-D model shows the paint");
 		call("app_appearance", tubeArgs + ", \"color\": \"\"}");
 		assertFalse(call("app_component", tubeArgs + "}").has("paint"), "back to the default look");
+	}
+
+	@Test
+	void interfacePreferencesOutliveTheLaunch(@TempDir Path ws) throws Exception {
+		java.util.function.Function<McpServer, java.util.function.Function<String, JsonObject>> client = app -> args -> {
+			JsonObject r = app.handleLine("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"app_prefs\","
+					+ "\"arguments\":" + args + "}}").getAsJsonObject("result");
+			JsonObject o = new JsonObject();
+			o.addProperty("isError", r.get("isError").getAsBoolean());
+			String text = r.getAsJsonArray("content").get(0).getAsJsonObject().get("text").getAsString();
+			if (!r.get("isError").getAsBoolean()) {
+				o.add("out", JsonParser.parseString(text));
+			}
+			return o;
+		};
+		Context c = new Context(Standards.defaults(), ws, false);
+		var first = client.apply(Main.build(c, s -> AppTools.register(s, c, ws.resolve("assistant.json")), false));
+		assertEquals("{}", first.apply("{}").getAsJsonObject("out").getAsJsonObject("prefs").toString(), "nothing stored yet");
+		first.apply("{\"set\": {\"rocketmaxxing.scheme\": \"slate\", \"rocketmaxxing.recent\": \"[\\\"a.ork\\\"]\"}}");
+		first.apply("{\"set\": {\"rocketmaxxing.recent\": null}}");
+		// The next launch (a new engine, a new port) reads them back.
+		var next = client.apply(Main.build(c, s -> AppTools.register(s, c, ws.resolve("assistant.json")), false));
+		JsonObject prefs = next.apply("{}").getAsJsonObject("out").getAsJsonObject("prefs");
+		assertEquals("slate", prefs.get("rocketmaxxing.scheme").getAsString());
+		assertFalse(prefs.has("rocketmaxxing.recent"), "null removed it");
+		assertTrue(Files.exists(ws.resolve("ui-prefs.json")), "kept next to the assistant's settings");
+		assertTrue(next.apply("{\"set\": {\"other.key\": \"x\"}}").get("isError").getAsBoolean(), "only the interface's keys");
+		assertTrue(next.apply("{\"set\": {\"rocketmaxxing.big\": \"" + "x".repeat(UiPrefs.MAX_VALUE + 1) + "\"}}")
+				.get("isError").getAsBoolean(), "values stay small");
+		Files.writeString(ws.resolve("ui-prefs.json"), "not json");
+		assertEquals("{}", next.apply("{}").getAsJsonObject("out").getAsJsonObject("prefs").toString(), "a broken file starts afresh");
 	}
 
 	@Test

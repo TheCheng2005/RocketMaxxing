@@ -63,16 +63,18 @@ public final class ViewTools {
 						+ "apogee, each deployment and touchdown; a 3-D trajectory inset, an altitude trace, an event timeline, "
 						+ "and a flight summary at the end. Playback is real time through the burn and around apogee and "
 						+ "deployments; the coast and descent are sped up to fit the length asked for (the rate is shown). "
-						+ "Writes a looping GIF (plays in chat, slides, Discord, GitHub), an MP4 when ffmpeg is installed, and a "
-						+ "sheet of stills at the key moments, which is also shown in the chat. Overrides apply to this run only.",
+						+ "Writes a looping GIF (plays in chat, slides, Discord, GitHub), an H.264 MP4 (through ffmpeg when it is "
+						+ "installed, else encoded in Java) and a sheet of stills at the key moments, which is also shown in the "
+						+ "chat. A path ending in .mp4 writes the MP4 alone (gif: true adds the GIF). Overrides apply to this run only.",
 				SimTools.overrides(SimTools.simSelect(Schema.object()))
-						.str("path", "Output .gif path (default \"<design>-flight.gif\"); the MP4 and stills go beside it.", false)
+						.str("path", "Output .gif or .mp4 path (default \"<design>-flight.gif\"); the other files go beside it.", false)
 						.num("duration", "Target length in seconds (default 25, 10 to 120).", false)
 						.num("fps", "Frames per second (default 15, 5 to 30).", false)
 						.integer("width", "MP4 frame width in pixels (default 1280, 480 to 1920; 16:9).", false)
 						.integer("gifWidth", "GIF width in pixels (default 720; larger GIFs grow quickly, about 15 MB at 1280).",
 								false)
-						.bool("mp4", "Also write an MP4 when ffmpeg is available (default true).", false)
+						.bool("mp4", "Also write an MP4 (default true; with a .mp4 path, always).", false)
+						.bool("gif", "Also write the GIF (default true; false with a .mp4 path).", false)
 						.bool("stills", "Also write the key-moment stills sheet (default true).", false).build(),
 				false, a -> animate(ctx, a)));
 	}
@@ -122,19 +124,27 @@ public final class ViewTools {
 				+ "  ·  OpenRocket simulation";
 		FlightAnimation anim = new FlightAnimation(flight, fc, sim.getOptions().getLaunchRodLength(),
 				new FlightAnimation.Options(width, fps, duration, d.name(), sub));
-		Path gif = ctx.path(a.str("path", Geometry.safe(d.name()) + "-flight.gif")).toAbsolutePath();
-		if (!gif.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".gif")) {
-			throw new ToolException("path must end in .gif (the MP4 and stills are written beside it).");
+		Path target = ctx.path(a.str("path", Geometry.safe(d.name()) + "-flight.gif")).toAbsolutePath();
+		String fileName = target.getFileName().toString().toLowerCase(Locale.ROOT);
+		boolean mp4Path = fileName.endsWith(".mp4");
+		if (!mp4Path && !fileName.endsWith(".gif")) {
+			throw new ToolException("path must end in .gif or .mp4 (the other files are written beside it).");
 		}
-		if (gif.getParent() != null) {
-			Files.createDirectories(gif.getParent());
+		if (target.getParent() != null) {
+			Files.createDirectories(target.getParent());
 		}
-		String stem = gif.getFileName().toString().replaceAll("(?i)\\.gif$", "");
-		Path mp4 = a.bool("mp4", true) ? gif.resolveSibling(stem + ".mp4") : null;
+		String stem = target.getFileName().toString().replaceAll("(?i)\\.(gif|mp4)$", "");
+		Path gif = a.bool("gif", !mp4Path) ? target.resolveSibling(stem + ".gif") : null;
+		Path mp4 = mp4Path || a.bool("mp4", true) ? target.resolveSibling(stem + ".mp4") : null;
+		if (gif == null && mp4 == null) {
+			throw new ToolException("Nothing to write: give gif or mp4 true.");
+		}
 		int gifWidth = Math.max(320, Math.min(width, a.integer("gifWidth", 720)));
 		Video.Written v = Video.write(anim, gif, gifWidth, mp4);
 		Map<String, Object> out = new LinkedHashMap<>();
-		out.put("gif", gif + String.format(Locale.ROOT, " (%.1f MB)", v.gifBytes() / 1e6));
+		if (gif != null) {
+			out.put("gif", gif + String.format(Locale.ROOT, " (%.1f MB)", v.gifBytes() / 1e6));
+		}
 		if (v.mp4() != null) {
 			out.put("mp4", v.mp4() + String.format(Locale.ROOT, " (%.1f MB)", v.mp4Bytes() / 1e6));
 		} else if (v.mp4Note() != null) {
@@ -143,7 +153,7 @@ public final class ViewTools {
 		out.put("length", String.format(Locale.ROOT, "%.1f s, %d frames at %.0f fps, %d x %d", v.seconds(), v.frames(), fps, anim.w,
 				anim.h));
 		if (a.bool("stills", true)) {
-			Path sheet = gif.resolveSibling(stem + "-keyframes.png");
+			Path sheet = target.resolveSibling(stem + "-keyframes.png");
 			BufferedImage img = anim.contactSheet(1500);
 			ImageIO.write(img, "png", sheet.toFile());
 			out.put("stills", sheet.toString());
