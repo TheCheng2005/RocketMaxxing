@@ -243,6 +243,25 @@ public final class App {
 		window.show(files.isEmpty() ? null : withFiles(baseUrl, files));
 	}
 
+	/**
+	 * THIRD-PARTY-NOTICES.txt shipped with the app: next to the jars (installers) or one folder up (the app folder the
+	 * build makes); null when there is none (run from source).
+	 */
+	static String notices() {
+		try {
+			Path jar = Path.of(App.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+			for (Path dir : List.of(jar.getParent(), jar.getParent().getParent())) {
+				Path f = dir.resolve("THIRD-PARTY-NOTICES.txt");
+				if (Files.isRegularFile(f)) {
+					return f.toString();
+				}
+			}
+		} catch (Exception | LinkageError e) {
+			// unknown location: no notices to show
+		}
+		return null;
+	}
+
 	/** The interface's window: "app" once it is open, else "none" (not yet, or no window: --no-browser, no screen). */
 	static synchronized String windowKind() {
 		return window != null ? "app" : "none";

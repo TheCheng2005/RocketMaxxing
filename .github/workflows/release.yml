@@ -1,0 +1,78 @@
+name: RocketMaxxing release
+
+# Push a tag named after the app's version (App.VERSION), e.g. rocketmaxxing-v0.2.0: the installers are built and
+# checked on every platform (installers.yml), then published as a GitHub Release with the changes since the last one.
+# Versions 0.x are marked as pre-releases.
+on:
+  push:
+    tags: ['rocketmaxxing-v*']
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: The tag matches the app's version
+        id: v
+        run: |
+          v=$(sed -n 's/.*String VERSION = "\([^"]*\)".*/\1/p' src/main/java/io/github/openrocketmcp/app/App.java | head -1)
+          tag="${GITHUB_REF_NAME#rocketmaxxing-v}"
+          if [ "$v" != "$tag" ]; then
+            echo "::error::The tag says $tag but App.VERSION is $v: change one so they match."
+            exit 1
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  installers:
+    needs: version
+    uses: ./.github/workflows/installers.yml
+
+  release:
+    needs: [version, installers]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rocketmaxxing-*
+          path: artifacts
+      - name: Name each installer after its platform
+        run: |
+          mkdir dist
+          for dir in artifacts/rocketmaxxing-*; do
+            platform="${dir#artifacts/rocketmaxxing-}"   # e.g. macos-apple-silicon-dmg
+            for f in "$dir"/*; do
+              ext="${f##*.}"
+              cp "$f" "dist/RocketMaxxing-${{ needs.version.outputs.version }}-${platform%-$ext}.$ext"
+            done
+          done
+          ls -la dist
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ needs.version.outputs.version }}"
+          cat > notes.md <<NOTES
+          ## Download
+
+          | Computer | File |
+          |---|---|
+          | Windows | \`RocketMaxxing-$v-windows-x64.msi\` |
+          | Mac with Apple Silicon (M1 and later) | \`RocketMaxxing-$v-macos-apple-silicon.dmg\` |
+          | Mac with Intel | \`RocketMaxxing-$v-macos-intel.dmg\` |
+          | Linux (Debian, Ubuntu) | \`RocketMaxxing-$v-linux-x64.deb\` |
+
+          Each includes Java and everything else it needs. The installers are not signed yet: on a Mac, the first time,
+          open **System Settings > Privacy & Security** and click **Open Anyway**; on Windows, click **More info** then
+          **Run anyway**. See [the install guide](https://github.com/${{ github.repository }}/blob/main/docs/ROCKETMAXXING.md#install-and-run).
+          Third-party licences: THIRD-PARTY-NOTICES.txt in the app (Help > About).
+
+          NOTES
+          pre=""
+          case "$v" in 0.*) pre="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/* --title "RocketMaxxing $v" --notes-file notes.md --generate-notes $pre

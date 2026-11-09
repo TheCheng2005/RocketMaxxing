@@ -299,7 +299,9 @@ subscription. It reads and writes the same `.ork` files as OpenRocket.
 - An optional assistant: Claude or ChatGPT (through Claude Code or Codex) or an API key, working inside the app with
   the same tools.
 
-Installers with Java included are built on every push (Actions › RocketMaxxing installers). To build it yourself:
+Download it from the [Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases) (Windows, Mac and Linux
+installers with Java included; the latest build of every push is also under Actions › RocketMaxxing installers). To
+build it yourself:
 `./gradlew rocketmaxxing`, then `build/install/openrocket-mcp/bin/rocketmaxxing`. The full guide is
 [docs/ROCKETMAXXING.md](docs/ROCKETMAXXING.md).
 

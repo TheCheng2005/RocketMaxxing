@@ -307,7 +307,11 @@ Linux (needs `fakeroot`) in `build/installers/`; `-PinstallerType=app-image` mak
 installing. The *RocketMaxxing installers* workflow builds all four (two for the Mac) on every push to `main` and to
 the working branches, after starting each packaged app, using it and opening a design in its window; the installers
 are the run's artifacts. Each is about 240 to 300 MB: it carries its own Java and the Chromium the window runs on, so
-nothing else needs installing.
+nothing else needs installing. Released versions are on the
+[Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases), one installer per computer, named after it
+(`RocketMaxxing-0.1.0-macos-apple-silicon.dmg` and so on). Help › About lists the third-party software inside and
+its licences (`THIRD-PARTY-NOTICES.txt`, next to the program). There is no automatic update yet: install the new
+version over the old one; designs, settings and the team standards stay where they are.
 
 ### On a Mac
 

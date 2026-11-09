@@ -2,11 +2,12 @@ name: RocketMaxxing installers
 
 # Installers with Java included, one per platform (jpackage builds only for the machine it runs on). Each packaged
 # app is started and used before its installer is built; the installers are kept as the run's artifacts.
+# A version tag runs it through release.yml, which publishes the installers as a GitHub Release.
 on:
   workflow_dispatch:
+  workflow_call:
   push:
     branches: [main, 'claude/**', 'kiro/**']
-    tags: ['rocketmaxxing-v*']
     paths:
       - app/**
       - src/main/**

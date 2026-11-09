@@ -106,6 +106,7 @@ tasks.register('mcpb', Zip) {
     destinationDirectory = layout.buildDirectory.dir('distributions')
     from(mcpbDir.map { it.file('manifest.json') })
     from('LICENSE')
+    from(tasks.named('thirdPartyNotices'))
     from('src/main/resources/openrocketmcp/icon.png')
     into('lib') {
         from layout.buildDirectory.dir('install/openrocket-mcp/lib')
@@ -172,6 +173,112 @@ tasks.register('rocketmaxxingChromium', JavaExec) {
     outputs.dir(chromiumDir)
 }
 
+// ------------------------------------------------------------------------------------------------------------------
+// Third-party licence notices, shipped with the desktop app, its installers and the Claude Desktop extension: every
+// Java library in the runtime (licence from its POM, and the LICENSE / NOTICE files inside the jar), the interface's
+// JavaScript packages (from the npm lockfile, with their LICENSE files), Chromium's (CEF) licences, and where the
+// Java runtime keeps its own.
+def noticesFile = layout.buildDirectory.file('notices/THIRD-PARTY-NOTICES.txt')
+tasks.register('thirdPartyNotices') {
+    group = 'build'
+    description = 'Writes build/notices/THIRD-PARTY-NOTICES.txt.'
+    def runtime = configurations.runtimeClasspath
+    inputs.files(runtime)
+    inputs.file('app/package-lock.json').optional()
+    outputs.file(noticesFile)
+    doLast {
+        def out = new StringBuilder()
+        def rule = '=' * 100 + '\n'
+        out << "RocketMaxxing and the OpenRocket MCP server\n"
+        out << "Copyright the RocketMaxxing contributors. GNU General Public License v3.0 or later (LICENSE).\n"
+        out << "Source code: https://github.com/TheCheng2005/RocketMaxxing\n\n"
+        out << "This program includes the third-party software listed below, under the licences shown.\n\n"
+
+        // Licences from a POM, following its parents (many projects declare the licence in a parent POM).
+        def pomLicences
+        pomLicences = { String g, String n, String v, int depth ->
+            def cfg = configurations.detachedConfiguration(dependencies.create("${g}:${n}:${v}@pom"))
+            cfg.transitive = false
+            def files = cfg.resolvedConfiguration.lenientConfiguration.files
+            if (files.isEmpty()) return []
+            def pom = new groovy.xml.XmlSlurper(false, false).parse(files.first())
+            def list = pom.licenses.license.collect { l -> "${l.name.text().trim()}${l.url.text().trim() ? ' <' + l.url.text().trim() + '>' : ''}" }
+            if (list.isEmpty() && depth < 5 && pom.parent.artifactId.text()) {
+                return pomLicences(pom.parent.groupId.text(), pom.parent.artifactId.text(), pom.parent.version.text(), depth + 1)
+            }
+            return list
+        }
+        def texts = new LinkedHashMap<String, String>() // licence and notice texts, each once
+        out << rule << "JAVA LIBRARIES\n" << rule
+        runtime.resolvedConfiguration.resolvedArtifacts.sort { it.moduleVersion.id.toString() }.each { a ->
+            def id = a.moduleVersion.id
+            def lic = []
+            try {
+                lic = pomLicences(id.group, id.name, id.version, 0)
+            } catch (Exception e) {
+                lic = []
+            }
+            out << "\n${id.group}:${id.name}:${id.version}\n  Licence: ${lic ? lic.join('; ') : 'see the project (no licence in its POM)'}\n"
+            if (a.file.name.endsWith('.jar')) {
+                new java.util.zip.ZipFile(a.file).withCloseable { z ->
+                    z.entries().findAll { e -> !e.directory && e.name ==~ /(?i)META-INF\/[^\/]*(LICEN[CS]E|NOTICE)[^\/]*/ }.each { e ->
+                        def text = z.getInputStream(e).getText('UTF-8').trim()
+                        if (text) {
+                            def key = text.md5()
+                            if (!texts.containsKey(key)) {
+                                texts[key] = "--- ${id.group}:${id.name} ${e.name}\n\n${text}\n"
+                            }
+                            out << "  Text: ${e.name} (below)\n"
+                        }
+                    }
+                }
+            }
+        }
+
+        out << "\n" << rule << "INTERFACE (JAVASCRIPT) PACKAGES\n" << rule
+        def lock = file('app/package-lock.json')
+        if (lock.isFile()) {
+            def packages = new groovy.json.JsonSlurper().parse(lock).packages
+            packages.findAll { k, v -> k && !v.dev }.sort { it.key }.each { path, v ->
+                def name = path.substring(path.lastIndexOf('node_modules/') + 'node_modules/'.length())
+                out << "\n${name} ${v.version ?: ''}\n  Licence: ${v.license ?: 'see the package'}\n"
+                def dir = file("app/${path}")
+                def licenceFile = dir.isDirectory() ? dir.listFiles().find { it.isFile() && it.name ==~ /(?i)(LICEN[CS]E|COPYING|NOTICE)(\..*)?/ } : null
+                if (licenceFile) {
+                    def text = licenceFile.getText('UTF-8').trim()
+                    def key = text.md5()
+                    if (!texts.containsKey(key)) {
+                        texts[key] = "--- ${name} ${licenceFile.name}\n\n${text}\n"
+                    }
+                    out << "  Text: ${licenceFile.name} (below)\n"
+                }
+            }
+        }
+
+        out << "\n" << rule << "CHROMIUM (THE DESKTOP APP'S WINDOW)\n" << rule
+        out << "\nChromium Embedded Framework (CEF) and JCEF, through jcefmaven: BSD licence (below, from the bundle).\n"
+        out << "Chromium itself is made of many open-source components; their licences are built into Chromium and\n"
+        out << "listed at https://source.chromium.org/chromium/chromium/src/+/main:LICENSE and in each release's credits.\n"
+        def chromium = layout.buildDirectory.dir('chromium').get().asFile
+        if (chromium.isDirectory()) {
+            chromium.listFiles().findAll { it.name ==~ /(?i).*LICEN[CS]E.*\.txt/ }.sort { it.name }.each { f ->
+                texts[f.text.md5()] = "--- Chromium bundle: ${f.name}\n\n${f.getText('UTF-8').trim()}\n"
+            }
+        }
+
+        out << "\n" << rule << "JAVA RUNTIME\n" << rule
+        out << "\nThe installers include a Java runtime (OpenJDK, GPL v2 with the Classpath Exception). Its own licence\n"
+        out << "and third-party notices are in the runtime's legal/ folder.\n"
+
+        out << "\n" << rule << "LICENCE AND NOTICE TEXTS\n" << rule << "\n"
+        texts.values().each { out << it << "\n" }
+        def f = noticesFile.get().asFile
+        f.parentFile.mkdirs()
+        f.setText(out.toString(), 'UTF-8')
+        logger.lifecycle("Third-party notices: ${f} (${runtime.resolvedConfiguration.resolvedArtifacts.size()} Java libraries)")
+    }
+}
+
 // jcefmaven's window code reaches into the macOS toolkit (it says so in its README).
 def rocketmaxxingJvmOpts = ['-Xss4m', '-XX:+UseParallelGC'] + (hostOs.isMacOsX()
         ? ['sun.awt', 'sun.lwawt', 'sun.lwawt.macosx'].collect { "--add-opens=java.desktop/${it}=ALL-UNNAMED".toString() }
@@ -190,6 +297,7 @@ distributions {
         contents {
             from(rocketmaxxingScripts) { into 'bin' }
             from(appUiDir) { into 'ui' }
+            from(tasks.named('thirdPartyNotices'))
             // Only there once the desktop app has been built (like ui): the MCP server never needs it.
             from(chromiumDir) { into 'chromium' }
         }
@@ -216,6 +324,7 @@ def packagingDir = layout.buildDirectory.dir('jpackage')
 tasks.register('rocketmaxxingPackageInput', Sync) {
     dependsOn 'rocketmaxxing'
     from(layout.buildDirectory.dir('install/openrocket-mcp/lib'))
+    from(tasks.named('thirdPartyNotices'))
     // jpackage puts the input next to the jars; the app looks for its interface and its Chromium there.
     into('ui') { from appUiDir }
     into('chromium') { from chromiumDir }

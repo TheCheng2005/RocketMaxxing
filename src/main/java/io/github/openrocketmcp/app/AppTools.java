@@ -395,6 +395,7 @@ public final class AppTools {
 		out.put("version", App.VERSION);
 		out.put("engineVersion", Main.VERSION);
 		out.put("macOS", List.copyOf(MacDesktop.ACTIVE)); // Dock, Finder and menu handlers in place (empty elsewhere)
+		out.put("notices", App.notices()); // the third-party licences shipped with the app (Help > About), or null
 		out.put("window", App.windowKind()); // "app" once the app's own window is open, else "none" (the installers' check)
 		out.put("examples", List.of(Designs.EXAMPLES));
 		List<Map<String, Object>> open = new ArrayList<>();
