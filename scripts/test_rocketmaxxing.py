@@ -48,7 +48,14 @@ def window(cmd):
         chromium = os.path.join(os.path.expanduser("~"), ".rocketmaxxing", "chromium", key, "chromium.log")
         if os.path.exists(chromium):
             with open(chromium, errors="replace") as f:
-                out += "\n--- chromium.log:\n" + f.read()[-3000:]
+                out += "\n--- chromium.log:\n" + f.read()[-2000:]
+        # The page's address, when the app was started with --remote-debugging-port=$DEVTOOLS_PORT (CI diagnostics).
+        if os.environ.get("DEVTOOLS_PORT"):
+            try:
+                pages = json.loads(urllib.request.urlopen(f"http://127.0.0.1:{os.environ['DEVTOOLS_PORT']}/json", timeout=5).read())
+                out = "pages: " + ", ".join(p.get("url", "")[:300] for p in pages) + "\n" + out
+            except (OSError, ValueError) as e:
+                out = f"pages: none ({e})\n" + out
         return out
 
     def wait_for(test, what):

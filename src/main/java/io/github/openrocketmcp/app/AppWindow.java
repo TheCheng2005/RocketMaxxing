@@ -41,6 +41,7 @@ import org.cef.callback.CefMenuModel;
 import org.cef.callback.CefMenuModel.MenuId;
 import org.cef.callback.CefMenuModel.MenuItemType;
 import org.cef.handler.CefContextMenuHandlerAdapter;
+import org.cef.handler.CefDisplayHandlerAdapter;
 import org.cef.handler.CefDownloadHandlerAdapter;
 import org.cef.handler.CefFocusHandler.FocusSource;
 import org.cef.handler.CefFocusHandlerAdapter;
@@ -176,6 +177,16 @@ final class AppWindow {
 					return true;
 				}
 			});
+			client.addDisplayHandler(new CefDisplayHandlerAdapter() {
+				@Override
+				public boolean onConsoleMessage(CefBrowser b, CefSettings.LogSeverity level, String message, String source, int line) {
+					// The page's errors, in the app's log too (the window has no developer tools to see them in).
+					if (level == CefSettings.LogSeverity.LOGSEVERITY_ERROR || level == CefSettings.LogSeverity.LOGSEVERITY_FATAL) {
+						Log.info("Window page: " + message + (source == null || source.isEmpty() ? "" : " (" + source + ":" + line + ")"));
+					}
+					return false;
+				}
+			});
 			client.addContextMenuHandler(new CefContextMenuHandlerAdapter() {
 				@Override
 				public void onBeforeContextMenu(CefBrowser b, CefFrame f, CefContextMenuParams p, CefMenuModel m) {
@@ -241,6 +252,7 @@ final class AppWindow {
 	void show(String url) {
 		SwingUtilities.invokeLater(() -> {
 			if (url != null) {
+				Log.info("Opening handed-over designs in the window.");
 				browser.loadURL(url);
 			}
 			frame.setVisible(true);

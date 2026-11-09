@@ -50,7 +50,8 @@ jobs:
             app: build/installers/RocketMaxxing.app/Contents/MacOS/RocketMaxxing
             # These runners are virtual Macs with no Metal GPU: Chromium's GPU process cannot start there, and the
             # page never comes up. Real Intel Macs have one; the window is checked here with software drawing.
-            java: -Drocketmaxxing.chromium.args=--disable-gpu
+            java: '"-Drocketmaxxing.chromium.args=--disable-gpu --remote-debugging-port=9333"'
+            devtools: 9333
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -89,6 +90,7 @@ jobs:
         timeout-minutes: 10
         env:
           JAVA_TOOL_OPTIONS: ${{ matrix.java }}
+          DEVTOOLS_PORT: ${{ matrix.devtools }}
         run: ${{ matrix.screen }} python scripts/test_rocketmaxxing.py --window ${{ matrix.app }}
       - name: Build the installer
         run: ./gradlew rocketmaxxingInstaller -PinstallerType=${{ matrix.type }}
