@@ -113,6 +113,13 @@ public final class AppTools {
 	/** As above, with the assistant's settings (on/off, model, the key) kept in {@code assistantSettings}. */
 	public static void register(McpServer s, Context ctx, Path assistantSettings) {
 		Assistant assistant = new Assistant(s, ctx, assistantSettings);
+		// What the interface remembers between launches, next to the assistant's settings (~/.rocketmaxxing).
+		UiPrefs prefs = new UiPrefs(assistantSettings.resolveSibling("ui-prefs.json"));
+		add(s, new ToolDef("app_prefs", "App: interface preferences",
+				"What the interface remembers between launches (recent designs, colour scheme, units, panels, tours seen): "
+						+ "returns them all; with set, changes some first (null removes one).",
+				Schema.object().obj("set", "Preference name -> new value (string) or null.", false).build(), false,
+				a -> Map.of("prefs", a.has("set") ? prefs.set(a.get("set").getAsJsonObject()) : prefs.all())));
 		// The assistant's own tools are read-only as far as undo goes: the tools Claude calls record their own edits.
 		add(s, new ToolDef("app_assistant", "App: assistant settings", "Whether the assistant is on, its model and whether a key is set.",
 				Schema.object().build(), true, a -> assistant.settings()));
@@ -373,7 +380,7 @@ public final class AppTools {
 		out.put("version", App.VERSION);
 		out.put("engineVersion", Main.VERSION);
 		out.put("macOS", List.copyOf(MacDesktop.ACTIVE)); // Dock, Finder and menu handlers in place (empty elsewhere)
-		out.put("window", App.windowKind()); // the app's own window, a browser's, or none (the installers' check)
+		out.put("window", App.windowKind()); // "app" once the app's own window is open, else "none" (the installers' check)
 		out.put("examples", List.of(Designs.EXAMPLES));
 		List<Map<String, Object>> open = new ArrayList<>();
 		for (Designs.Design d : ctx.designs.all()) {

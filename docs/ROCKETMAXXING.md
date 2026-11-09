@@ -305,7 +305,9 @@ RocketMaxxing runs on macOS (Apple Silicon and Intel), Windows and Linux. Instal
 platform: `./gradlew rocketmaxxingInstaller` makes a `.msi` on Windows (needs WiX 3), a `.dmg` on macOS and a `.deb` on
 Linux (needs `fakeroot`) in `build/installers/`; `-PinstallerType=app-image` makes a folder that runs without
 installing. The *RocketMaxxing installers* workflow builds all four (two for the Mac) on every push to `main` and to
-the working branches, after starting each packaged app and using it; the installers are the run's artifacts.
+the working branches, after starting each packaged app, using it and opening a design in its window; the installers
+are the run's artifacts. Each is about 240 to 300 MB: it carries its own Java and the Chromium the window runs on, so
+nothing else needs installing.
 
 ### On a Mac
 
@@ -334,6 +336,10 @@ On every system there is one RocketMaxxing per designs folder. Starting it again
 runs, hands over to the running app instead of starting a second one: its window comes to the front and opens the
 design, and everything open stays open. On Windows and Linux the installers also register `.ork` and `.rkt`, and
 closing the window quits the app (it asks first when a design has unsaved changes).
+
+What the interface remembers (recent designs, colour scheme, units, folded panels, the tours you have seen, the 3-D
+view's mode) is kept between launches in `~/.rocketmaxxing/ui-prefs.json`, for every designs folder; delete the file
+to start afresh.
 
 Optional extras are found where Homebrew, MacPorts or conda put them, even though an app started from the Dock does
 not see the Terminal's PATH: `brew install ffmpeg` for MP4 videos (the app's own window plays the GIF, as its Chromium
