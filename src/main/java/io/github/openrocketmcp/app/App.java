@@ -253,6 +253,11 @@ public final class App {
 		}
 	}
 
+	/** The interface's window: "app" (the app's own, Chromium), "browser", or "none" (none opened, or not yet). */
+	static synchronized String windowKind() {
+		return window != null ? "app" : windows ? "browser" : "none";
+	}
+
 	/** Asks first when designs have unsaved changes; true to go on and quit. */
 	static boolean mayQuit(Component parent, List<String> open) {
 		return open.isEmpty() || JOptionPane.showConfirmDialog(parent,

@@ -319,22 +319,21 @@ the working branches, after starting each packaged app and using it; the install
    once, then in **System Settings > Privacy & Security** click **Open Anyway** next to "RocketMaxxing was blocked",
    and confirm. Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/RocketMaxxing.app`. After that it opens
    like any other app.
-4. It opens in Chrome or Edge in app mode if one is installed, otherwise in Safari. Designs go in `~/RocketMaxxing`.
+4. It opens in its own window. Designs go in `~/RocketMaxxing`.
 
-On the Mac, RocketMaxxing lives in the Dock; its window is a browser's, so the menu bar at the top shows the browser's
-menus while you work in it. Clicking the Dock icon brings the window back (closing the window keeps the app running,
-as Mac apps do), and the Dock icon's menu and RocketMaxxing's own menu bar (shown when you click the Dock icon) have
-Show RocketMaxxing Window and Open Design (⌘O). About and Quit are in the RocketMaxxing menu; Quit asks first when a
-design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing (or use
-Open With). Shortcuts are shown as ⌘ and work with Cmd: ⌘S, ⇧⌘S, ⌘O, ⌘Z, ⇧⌘Z.
+On the Mac, the menu bar shows RocketMaxxing's menus while you work in its window: File (Open Design ⌘O, Save ⌘S, Save
+As ⇧⌘S, Close Window ⌘W), Edit (Undo, Redo, Cut, Copy, Paste, Select All) and Window (Minimize ⌘M). Closing the
+window keeps the app running in the Dock, as Mac apps do; clicking the Dock icon brings the window back, and the Dock
+icon's menu has Show RocketMaxxing Window and Open Design. About and Quit are in the RocketMaxxing menu; Quit asks
+first when a design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing
+(or use Open With). Shortcuts are shown as ⌘ and work with Cmd: ⌘S, ⇧⌘S, ⌘O, ⌘Z, ⇧⌘Z.
 
 ### One app, one window
 
 On every system there is one RocketMaxxing per designs folder. Starting it again, or double-clicking a design while it
-runs, hands over to the running app instead of starting a second one, and a new window opens with the design; the
-older window steps aside (it closes, or says to use the new one), since a browser window cannot be brought to the
-front from outside. Everything open stays open, and the new window returns to the page you were on. On Windows and
-Linux the installers also register `.ork` and `.rkt`, and the app stops two minutes after its window is closed.
+runs, hands over to the running app instead of starting a second one: its window comes to the front and opens the
+design, and everything open stays open. On Windows and Linux the installers also register `.ork` and `.rkt`, and
+closing the window quits the app (it asks first when a design has unsaved changes).
 
 Optional extras are found where Homebrew, MacPorts or conda put them, even though an app started from the Dock does
 not see the Terminal's PATH: `brew install ffmpeg` for MP4 videos (the app's own window plays the GIF, as its Chromium
@@ -351,11 +350,11 @@ build/install/openrocket-mcp/bin/rocketmaxxing        # Windows: build\install\o
 ```
 
 The app opens in its own window: the interface runs in Chromium, which `./gradlew rocketmaxxing` downloads once
-(about 150 MB, from Maven Central) and unpacks into the build, so nothing is downloaded when the app runs. A design
+(about 150 MB, from Maven Central) and unpacks into the build, and which the installers include, so nothing is
+downloaded when the app runs. A design
 double-clicked or handed over while it runs opens in that window, which comes to the front. On the Mac the window has
 RocketMaxxing's own menus (File, Edit, Window), closing it keeps the app in the Dock, and Quit asks first when a design
-has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. The installers
-still open the interface in a browser until Chromium is bundled with them. With `--browser`, or when its Chromium
+has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. With `--browser`, or when its Chromium
 cannot start, the app opens Chrome or Edge in app mode if installed (otherwise your default browser) and quits two
 minutes after that window is closed. The file dialogs start in `~/RocketMaxxing`.
 

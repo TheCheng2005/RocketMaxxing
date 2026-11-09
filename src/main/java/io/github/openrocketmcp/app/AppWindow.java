@@ -97,6 +97,13 @@ final class AppWindow {
 		s.root_cache_path = cache.toString(); // cache_path stays empty: the page's own storage is kept in memory
 		s.log_file = cache.resolve("chromium.log").toString();
 		s.log_severity = CefSettings.LogSeverity.LOGSEVERITY_WARNING;
+		// Chromium's own services reach Google's servers by themselves (component and list updates, the network time,
+		// account checks, search warm-up) and fill the cache folder with downloads. The window shows only the engine's
+		// pages, on 127.0.0.1, and RocketMaxxing works offline: no name resolves, so none of that leaves the computer
+		// (links open in the system's browser).
+		b.addJcefArgs("--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1", "--disable-background-networking",
+				"--disable-component-update", "--disable-domain-reliability", "--disable-sync", "--no-pings",
+				"--no-first-run", "--disable-breakpad");
 		if (MAC) {
 			b.addJcefArgs("--use-mock-keychain"); // no Keychain prompt for a password store the window does not use
 		}

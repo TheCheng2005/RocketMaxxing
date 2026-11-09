@@ -210,8 +210,9 @@ def packagingDir = layout.buildDirectory.dir('jpackage')
 tasks.register('rocketmaxxingPackageInput', Sync) {
     dependsOn 'rocketmaxxing'
     from(layout.buildDirectory.dir('install/openrocket-mcp/lib'))
-    // jpackage puts the input next to the jars; the app looks for its interface there.
+    // jpackage puts the input next to the jars; the app looks for its interface and its Chromium there.
     into('ui') { from appUiDir }
+    into('chromium') { from chromiumDir }
     into packagingDir.map { it.dir('input') }
 }
 
@@ -260,7 +261,7 @@ tasks.register('rocketmaxxingInstaller', Exec) {
                '--main-jar', tasks.named('jar').get().archiveFileName.get(),
                '--main-class', 'io.github.openrocketmcp.app.App',
                '--runtime-image', mcpbDir.get().dir('runtime').asFile.path,
-               '--java-options', '-Xss4m -XX:+UseParallelGC', '--icon', icon.path, '--dest', out.get().asFile.path]
+               '--java-options', rocketmaxxingJvmOpts.join(' '), '--icon', icon.path, '--dest', out.get().asFile.path]
     if (type != 'app-image') {
         // Double-clicking an OpenRocket or RockSim design opens it in RocketMaxxing.
         cmd += ['--license-file', 'LICENSE',

@@ -373,6 +373,7 @@ public final class AppTools {
 		out.put("version", App.VERSION);
 		out.put("engineVersion", Main.VERSION);
 		out.put("macOS", List.copyOf(MacDesktop.ACTIVE)); // Dock, Finder and menu handlers in place (empty elsewhere)
+		out.put("window", App.windowKind()); // the app's own window, a browser's, or none (the installers' check)
 		out.put("examples", List.of(Designs.EXAMPLES));
 		List<Map<String, Object>> open = new ArrayList<>();
 		for (Designs.Design d : ctx.designs.all()) {

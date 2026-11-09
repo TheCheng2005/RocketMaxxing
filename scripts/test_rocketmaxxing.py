@@ -3,7 +3,10 @@
     ./gradlew rocketmaxxing && python3 scripts/test_rocketmaxxing.py
     python3 scripts/test_rocketmaxxing.py LAUNCHER [ARGS...]   # a packaged app instead, e.g.
         build/installers/RocketMaxxing.app/Contents/MacOS/RocketMaxxing
+    python3 scripts/test_rocketmaxxing.py --window [LAUNCHER...]   # the app's own window (needs a screen): it opens
+        Maple as a double-clicked design, then a second one handed over by another launch
 """
+import hashlib
 import json
 import os
 import re
@@ -18,7 +21,70 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIN = os.path.join(ROOT, "build", "install", "openrocket-mcp", "bin", "rocketmaxxing" + (".bat" if os.name == "nt" else ""))
 
 
+def tool(url, token, name, args=None):
+    body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                       "params": {"name": name, "arguments": args or {}}}).encode()
+    req = urllib.request.Request(url + "/rpc", body, {"Authorization": "Bearer " + token, "Origin": url})
+    r = json.loads(urllib.request.urlopen(req, timeout=60).read())["result"]
+    text = r["content"][0]["text"]
+    assert not r["isError"], name + ": " + text
+    return json.loads(text)
+
+
+def window(cmd):
+    """The app's own window opens Maple, double-clicked to start it: its page, in the app's Chromium, did that."""
+    workspace = tempfile.mkdtemp()
+    maple = os.path.join(ROOT, "docs", "examples", "maple-10k.ork")
+    # Where the running app leaves its address (Instance.java: the designs folder's SHA-256, 6 bytes).
+    key = hashlib.sha256(workspace.encode()).hexdigest()[:12]
+    address = os.path.join(os.path.expanduser("~"), ".rocketmaxxing", f"instance-{key}.json")
+    log = tempfile.TemporaryFile(mode="w+")
+    p = subprocess.Popen(cmd + ["--workspace", workspace, maple], stdout=log, stderr=subprocess.STDOUT, text=True)
+
+    def tail():
+        log.seek(0)
+        return log.read()[-3000:]
+
+    def wait_for(test, what):
+        deadline = time.time() + 180
+        while time.time() < deadline:
+            assert p.poll() is None, f"the app stopped ({p.returncode}) before {what}:\n{tail()}"
+            try:
+                with open(address) as f:
+                    a = json.load(f)
+                url, token = f"http://127.0.0.1:{a['port']}", a["token"]
+                session = tool(url, token, "app_session")
+                if test(session):
+                    return url, token, session
+            except (OSError, ValueError, KeyError, urllib.error.URLError):
+                pass  # still starting
+            time.sleep(1)
+        raise AssertionError(f"no {what} after 3 minutes:\n{tail()}")
+
+    try:
+        url, token, session = wait_for(lambda s: s["window"] != "none", "window")
+        assert session["window"] == "app", f"a {session['window']} window opened instead of the app's own:\n{tail()}"
+        names = lambda s: [d["name"] for d in s["designs"]]
+        url, token, session = wait_for(lambda s: "Maple 10K" in names(s), "Maple in the window")
+        # Another launch with a design: the open window opens it too.
+        second = subprocess.run(cmd + ["--workspace", workspace, os.path.join(ROOT, "docs", "examples", "maple-10k-pdr.ork")],
+                                capture_output=True, text=True, timeout=120)
+        assert second.returncode == 0, second.stdout[-1000:] + second.stderr[-2000:]
+        wait_for(lambda s: len(s["designs"]) == 2, "the handed-over design in the window")
+        p.terminate()  # as Ctrl+C or a logout does
+        p.wait(timeout=30)
+        if os.name != "nt":  # Windows has no signal to stop it gently: the shutdown hooks do not run there
+            assert not os.path.exists(address), "the app left its address behind (shutdown hooks did not run)"
+        print(f"RocketMaxxing window OK: opened {names(session)} in its own window, and a handed-over design")
+    finally:
+        if p.poll() is None:
+            p.kill()
+
+
 def main():
+    if sys.argv[1:2] == ["--window"]:
+        window(sys.argv[2:] or [BIN])
+        return
     cmd = sys.argv[1:] or [BIN]
     workspace = tempfile.mkdtemp()
     p = subprocess.Popen(cmd + ["--no-browser", "--port", "0", "--workspace", workspace],
@@ -36,14 +102,8 @@ def main():
         page = urllib.request.urlopen(url + "/").read().decode()
         assert "<title>RocketMaxxing</title>" in page, "the interface is not served (was it built?)"
 
-        def call(tool, args=None):
-            body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-                               "params": {"name": tool, "arguments": args or {}}}).encode()
-            req = urllib.request.Request(url + "/rpc", body, {"Authorization": "Bearer " + token, "Origin": url})
-            r = json.loads(urllib.request.urlopen(req).read())["result"]
-            text = r["content"][0]["text"]
-            assert not r["isError"], tool + ": " + text
-            return json.loads(text)
+        def call(name, args=None):
+            return tool(url, token, name, args)
 
         session = call("app_session")
         assert len(session["examples"]) >= 10 and session["materials"]["BULK"], session
