@@ -310,8 +310,11 @@ are the run's artifacts. Each is about 240 to 300 MB: it carries its own Java an
 nothing else needs installing. Released versions are on the
 [Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases), one installer per computer, named after it
 (`RocketMaxxing-0.1.0-macos-apple-silicon.dmg` and so on). Help › About lists the third-party software inside and
-its licences (`THIRD-PARTY-NOTICES.txt`, next to the program). There is no automatic update yet: install the new
-version over the old one; designs, settings and the team standards stay where they are.
+its licences (`THIRD-PARTY-NOTICES.txt`, next to the program). When it starts, RocketMaxxing asks GitHub once a
+day whether a newer version is out and, if so, shows a card with the installer for this computer (Help › Check for
+updates asks now; Settings › Files turns the daily check off). It downloads nothing by itself: install the new version
+over the old one; designs, settings and the team standards stay where they are. The check sends only the request
+itself (no designs, no identifiers), and 0.x versions are offered pre-releases too.
 
 ### On a Mac
 

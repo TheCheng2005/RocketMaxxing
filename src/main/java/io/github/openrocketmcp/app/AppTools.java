@@ -115,6 +115,12 @@ public final class AppTools {
 		Assistant assistant = new Assistant(s, ctx, assistantSettings);
 		// What the interface remembers between launches, next to the assistant's settings (~/.rocketmaxxing).
 		UiPrefs prefs = new UiPrefs(assistantSettings.resolveSibling("ui-prefs.json"));
+		Path updateCache = assistantSettings.resolveSibling("update-check.json");
+		add(s, new ToolDef("app_update_check", "App: check for a newer version",
+				"Whether a newer RocketMaxxing is on the Releases page: the latest version, its page and the installer for "
+						+ "this computer. Asks GitHub at most once a day unless force is true; offline it says so.",
+				Schema.object().bool("force", "Ask GitHub now rather than use today's answer (default false).", false).build(), true,
+				a -> Updates.check(App.VERSION, updateCache, a.bool("force", false))));
 		add(s, new ToolDef("app_prefs", "App: interface preferences",
 				"What the interface remembers between launches (recent designs, colour scheme, units, panels, tours seen): "
 						+ "returns them all; with set, changes some first (null removes one).",

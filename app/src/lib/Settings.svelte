@@ -6,6 +6,7 @@
   import { prefs, setTheme, setScheme, SCHEMES, type Theme, type Scheme } from "./prefs.svelte";
   import { assistant, configure } from "./assistant/assistant.svelte";
   import AssistantSetup from "./assistant/AssistantSetup.svelte";
+  import { updates, checkNow, checkEnabled, setCheckEnabled } from "./updates.svelte";
 
   let { close, section = "" }: { close: () => void; section?: string } = $props();
   let content = $state<HTMLDivElement>();
@@ -155,7 +156,15 @@
         {#if opened("Files")}
         <div class="sb">
       <div class="row"><span>Designs folder</span><code>{app.session?.workspace}</code></div>
-      <p class="note">RocketMaxxing {app.session?.version}, engine {app.session?.engineVersion}, OpenRocket 24.12</p>
+      <label class="row check">
+        <span>Check for a newer version when RocketMaxxing starts</span>
+        <input type="checkbox" checked={checkEnabled()} onchange={(e) => setCheckEnabled((e.target as HTMLInputElement).checked)} />
+      </label>
+      <p class="note">
+        RocketMaxxing {app.session?.version}, engine {app.session?.engineVersion}, OpenRocket 24.12.
+        <button class="link" disabled={updates.checking} onclick={checkNow}>{updates.checking ? "Checking…" : "Check now"}</button>
+        (asks GitHub's Releases page, at most once a day; nothing about you or your designs is sent)
+      </p>
         </div>
         {/if}
       </section>
@@ -336,5 +345,18 @@
   code {
     font-size: 12px;
     overflow-wrap: anywhere;
+  }
+  .link {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: var(--select);
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .link:disabled {
+    color: var(--ink-3);
+    cursor: default;
   }
 </style>

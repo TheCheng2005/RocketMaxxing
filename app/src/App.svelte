@@ -16,6 +16,8 @@
   import { tour } from "./lib/tour/session.svelte";
   import Tour from "./lib/tour/Tour.svelte";
   import ContextMenu from "./lib/menu/ContextMenu.svelte";
+  import UpdateCard from "./lib/UpdateCard.svelte";
+  import { checkAtStart } from "./lib/updates.svelte";
   import { openMenu, nativeHere, currentPageItems } from "./lib/menu/menu.svelte";
   import { openIssues } from "./lib/issues/issues.svelte";
   import { keys, MAC } from "./lib/keys";
@@ -64,6 +66,7 @@
       .finally(() => {
         ready = true;
         setTimeout(prefetch, 300);
+        checkAtStart();
       });
     loadSettings();
   });
@@ -188,6 +191,7 @@
   {#if ui.guide !== null}{#await load(guideCode) then m}<m.default />{/await}{/if}
   {#if tour.name}<Tour />{/if}
   <ContextMenu />
+  <UpdateCard />
 {/if}
 
 <style>

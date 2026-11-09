@@ -52,7 +52,10 @@ git tag rocketmaxxing-v0.2.0 && git push origin rocketmaxxing-v0.2.0
 The *RocketMaxxing release* workflow checks the tag matches `App.VERSION`, builds and checks the installers on every
 platform, and publishes them on the Releases page with the changes since the last release (0.x versions as
 pre-releases). `./gradlew thirdPartyNotices` writes the licence notices the installers carry
-(`build/notices/THIRD-PARTY-NOTICES.txt`); the build includes them by itself.
+(`build/notices/THIRD-PARTY-NOTICES.txt`); the build includes them by itself. Installed copies find the new release by
+themselves (`app/Updates.java` reads the Releases page once a day and picks the asset whose name ends in the platform
+suffix `release.yml` gives it, so keep those names); `-Drocketmaxxing.updates.url=...` points the check elsewhere for
+testing.
 
 ## How the code is organised
 

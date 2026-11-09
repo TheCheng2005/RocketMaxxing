@@ -2,6 +2,7 @@
   import { House, Rocket, Flame, ChartSpline, FileChartLine, Target, BookOpenCheck, ClipboardCheck, LifeBuoy } from "@lucide/svelte";
   import { app, toast, type Page } from "./state.svelte";
   import { call } from "./api";
+  import { updates, checkNow } from "./updates.svelte";
   import { ui } from "./search/ui.svelte";
   import { openMenu } from "./menu/menu.svelte";
   import { designTour } from "./tour/tours";
@@ -21,6 +22,7 @@
       "-",
       { label: "Search for anything", shortcut: keys("K"), run: () => (ui.search = true) },
       "-",
+      { label: "Check for updates…", off: updates.checking && "Checking", run: () => checkNow() },
       {
         label: `About RocketMaxxing ${app.session?.version ?? ""}: licences`,
         off: !app.session?.notices && "Only in the built app",
