@@ -315,20 +315,35 @@ public final class AppTools {
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)
 						.str("types", "File extensions to show, e.g. \"csv,txt\" (default: designs).", false).build(),
 				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rkt"))));
-		add(s, new ToolDef("app_reveal", "App: show a file", "Open a file the engine wrote, or its folder, in the system's file manager.",
-				Schema.object().str("path", "File or folder.", true).build(), true, a -> {
+		add(s, new ToolDef("app_download_path", "App: where to save a download",
+				"A path for a file the user takes away (the flight video): in the Downloads folder (else the Desktop, else the "
+						+ "designs folder), numbered so it replaces nothing.",
+				Schema.object().str("name", "File name, e.g. \"Maple 10K flight.mp4\".", true).build(), true, a -> {
+					Path folder = Downloads.folder(Path.of(System.getProperty("user.home")), ctx.workspace());
+					Path p = Downloads.freePath(folder, a.str("name"));
+					return Map.of("path", p.toString(), "folder", folder.toString(), "folderName", folder.getFileName().toString());
+				}));
+		add(s, new ToolDef("app_reveal", "App: show a file",
+				"Show a file the engine wrote, or its folder, in the system's file manager; open: true opens the file itself in "
+						+ "its own program (videos, pictures, documents only).",
+				Schema.object().str("path", "File or folder.", true).bool("open", "Open the file itself (default false).", false).build(),
+				true, a -> {
 					Path p = ctx.path(a.str("path")).toAbsolutePath().normalize();
 					if (!Files.exists(p)) {
 						throw new ToolException("Not found: " + p);
 					}
-					Path open = Files.isDirectory(p) ? p : p.getParent();
+					boolean file = a.bool("open", false) && Files.isRegularFile(p);
+					if (file && !Downloads.openable(p)) {
+						throw new ToolException("Only videos, pictures and documents open from here; the file is at " + p);
+					}
+					Path open = file || Files.isDirectory(p) ? p : p.getParent();
 					try {
 						if (java.awt.GraphicsEnvironment.isHeadless() || !java.awt.Desktop.isDesktopSupported()) {
 							throw new ToolException("No file manager here. The file is at " + p);
 						}
 						java.awt.Desktop.getDesktop().open(open.toFile());
 					} catch (java.io.IOException | UnsupportedOperationException | LinkageError e) {
-						throw new ToolException("Could not open the folder. The file is at " + p);
+						throw new ToolException("Could not open " + (file ? "the file" : "the folder") + ". The file is at " + p);
 					}
 					return Map.of("opened", open.toString());
 				}));

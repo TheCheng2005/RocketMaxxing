@@ -16,9 +16,10 @@ import java.util.concurrent.TimeUnit;
 import io.github.openrocketmcp.mcp.CallContext;
 
 /**
- * Writes a {@link FlightAnimation} as a looping GIF (plays everywhere: chat, slides, Discord, GitHub) and, when ffmpeg is
- * installed, as an H.264 MP4 for presentations and video editors. Frames render in parallel batches and stream to the
- * encoders, so memory stays flat however long the animation is.
+ * Writes a {@link FlightAnimation} as a looping GIF (plays everywhere: chat, slides, Discord, GitHub) and as an H.264
+ * MP4 for presentations, video players and editors: through ffmpeg when it is installed (smaller files), else with
+ * JCodec in Java, so every computer gets one. Frames render in parallel batches and stream to the encoders, so memory
+ * stays flat however long the animation is.
  */
 public final class Video {
 	private Video() {
@@ -27,11 +28,44 @@ public final class Video {
 	public record Written(Path gif, Path mp4, int frames, double seconds, long gifBytes, long mp4Bytes, String mp4Note) {
 	}
 
+	/** The MP4 encoder in Java, for computers without ffmpeg: H.264 through JCodec, even frame sizes. */
+	static final class JavaMp4 implements AutoCloseable {
+		private final org.jcodec.common.io.SeekableByteChannel out;
+		private final org.jcodec.api.awt.AWTSequenceEncoder enc;
+		private boolean open = true;
+
+		JavaMp4(Path file, double fps) throws IOException {
+			out = org.jcodec.common.io.NIOUtils.writableChannel(file.toFile());
+			enc = new org.jcodec.api.awt.AWTSequenceEncoder(out, org.jcodec.common.model.Rational.R((int) Math.round(fps * 1000), 1000));
+		}
+
+		void add(BufferedImage img) throws IOException {
+			int w = img.getWidth() & ~1, h = img.getHeight() & ~1;
+			enc.encodeImage(w == img.getWidth() && h == img.getHeight() ? img : img.getSubimage(0, 0, w, h));
+		}
+
+		/** Writes the file's index; without it the file does not play. */
+		void finish() throws IOException {
+			enc.finish();
+		}
+
+		@Override
+		public void close() throws IOException {
+			if (open) {
+				open = false;
+				out.close();
+			}
+		}
+	}
+
 	/**
 	 * The ffmpeg executable: $OPENROCKET_MCP_FFMPEG or $FFMPEG if set, else ffmpeg on the PATH or where package
 	 * managers put it (an app started from the Dock does not get the terminal's PATH); null when there is none.
 	 */
 	public static String ffmpeg() {
+		if ("none".equals(System.getProperty("openrocketmcp.ffmpeg"))) {
+			return null; // tests of the Java encoder on a computer that has ffmpeg
+		}
 		for (String env : new String[] { "OPENROCKET_MCP_FFMPEG", "FFMPEG" }) {
 			String v = System.getenv(env);
 			if (v != null && !v.isBlank() && Files.isExecutable(Path.of(v))) {
@@ -43,27 +77,31 @@ public final class Video {
 	}
 
 	/**
+	 * @param gif      where to write the GIF, or null for none
 	 * @param gifWidth the GIF's width (frames are scaled down to it; GIFs get large fast)
 	 * @param mp4      where to write the MP4 at the animation's full size, or null for none
 	 */
 	public static Written write(FlightAnimation a, Path gif, int gifWidth, Path mp4) throws IOException, InterruptedException {
+		if (gif == null && mp4 == null) {
+			throw new IllegalArgumentException("Nothing to write: neither a GIF nor an MP4.");
+		}
 		CallContext ctx = CallContext.current();
 		int n = a.frames;
 		// Palette from frames spread over the flight, including the key moments.
 		List<BufferedImage> samples = new ArrayList<>();
-		for (int i = 0; i < 8; i++) {
-			samples.add(scale(a.frame((int) ((long) i * (n - 1) / 7)), gifWidth));
-		}
-		for (double[] km : a.keyMoments()) {
-			samples.add(scale(a.render(km[0], 0), gifWidth));
+		if (gif != null) {
+			for (int i = 0; i < 8; i++) {
+				samples.add(scale(a.frame((int) ((long) i * (n - 1) / 7)), gifWidth));
+			}
+			for (double[] km : a.keyMoments()) {
+				samples.add(scale(a.render(km[0], 0), gifWidth));
+			}
 		}
 		Process ff = null;
 		OutputStream ffIn = null;
+		JavaMp4 java = null;
 		String note = null;
 		String exe = mp4 == null ? null : ffmpeg();
-		if (mp4 != null && exe == null) {
-			note = "ffmpeg not found: install it (or set OPENROCKET_MCP_FFMPEG) for an MP4; the GIF is written.";
-		}
 		Path ffLog = null;
 		boolean done = false;
 		long mp4Bytes = 0;
@@ -76,15 +114,22 @@ public final class Video {
 				pb.redirectErrorStream(true).redirectOutput(ffLog.toFile());
 				ff = pb.start();
 				ffIn = ff.getOutputStream();
+			} else if (mp4 != null) {
+				java = new JavaMp4(mp4, a.fps());
 			}
 			ctx.expect(n, "frames");
 			int batch = a.parallelism();
 			byte[] rgb = new byte[a.w * a.h * 3];
-			try (Gif g = new Gif(gif, a.fps(), samples)) {
+			try (Gif g = gif == null ? null : new Gif(gif, a.fps(), samples)) {
 				for (int from = 0; from < n; from += batch) {
 					ctx.checkCancelled();
 					for (BufferedImage img : a.frames(from, Math.min(n, from + batch))) {
-						g.add(scale(img, gifWidth));
+						if (g != null) {
+							g.add(scale(img, gifWidth));
+						}
+						if (java != null) {
+							java.add(img);
+						}
 						if (ffIn != null) {
 							int[] px = ((DataBufferInt) img.getRaster().getDataBuffer()).getData();
 							for (int i = 0; i < px.length; i++) {
@@ -102,6 +147,11 @@ public final class Video {
 					}
 				}
 			}
+			if (java != null) {
+				java.finish();
+				java.close();
+				mp4Bytes = Files.size(mp4);
+			}
 			if (ff != null) {
 				try {
 					if (ffIn != null) {
@@ -116,11 +166,14 @@ public final class Video {
 				} else {
 					String log = Files.readString(ffLog, StandardCharsets.UTF_8).strip();
 					note = (exited ? "ffmpeg failed" : "ffmpeg did not finish") + (log.isEmpty() ? "" : ": "
-							+ log.lines().reduce((x, y) -> y).orElse("")) + "; the GIF is written.";
+							+ log.lines().reduce((x, y) -> y).orElse("")) + (gif != null ? "; the GIF is written." : ".");
 				}
 			}
 			done = true;
 		} finally {
+			if (java != null) {
+				java.close();
+			}
 			if (ff != null && ff.isAlive()) {
 				ff.destroyForcibly();
 			}
@@ -128,13 +181,15 @@ public final class Video {
 				Files.deleteIfExists(ffLog);
 			}
 			if (!done) { // cancelled or failed: no half-written files
-				Files.deleteIfExists(gif);
-				if (mp4 != null && ff != null) {
+				if (gif != null) {
+					Files.deleteIfExists(gif);
+				}
+				if (mp4 != null) {
 					Files.deleteIfExists(mp4);
 				}
 			}
 		}
-		return new Written(gif, mp4Bytes > 0 ? mp4 : null, n, a.seconds(), Files.size(gif), mp4Bytes, note);
+		return new Written(gif, mp4Bytes > 0 ? mp4 : null, n, a.seconds(), gif == null ? 0 : Files.size(gif), mp4Bytes, note);
 	}
 
 	static BufferedImage scale(BufferedImage img, int width) {

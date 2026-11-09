@@ -122,8 +122,7 @@ the video from there, and read every plot with one time cursor. Outside Claude D
   margin through Mach and at its own top speed, beside your RASAero run of it.
 - "Animate the flight" — a short 3-D video of the simulated flight. It shows the flame and smoke, both parachutes
   opening, and a live readout of time, altitude, speed, Mach and distance from the pad. Captions call out burnout,
-  apogee and each deployment. You get a GIF for chat and slides, an MP4 when ffmpeg is installed, and stills of the key
-  moments.
+  apogee and each deployment. You get an MP4 for slides and sharing, a GIF for chat, and stills of the key moments.
 - Two-stage rockets, end to end:
   - staging is simulated: booster burnout, separation and sustainer ignition;
   - the air-start rules are checked: tilt and altitude at ignition, and thrust-to-weight per stage;

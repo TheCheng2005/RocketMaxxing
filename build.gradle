@@ -19,6 +19,9 @@ dependencies {
     // SVG -> PNG for images shown in the chat (our plots and drawings).
     implementation 'org.apache.xmlgraphics:batik-transcoder:1.19'
     implementation 'org.apache.xmlgraphics:batik-codec:1.19'
+    // MP4 videos of the flight without ffmpeg (pure Java H.264; BSD licence). ffmpeg, when installed, still makes them.
+    implementation 'org.jcodec:jcodec:0.2.5'
+    implementation 'org.jcodec:jcodec-javase:0.2.5'
     // RocketMaxxing's optional assistant (the team's own API key; off by default).
     implementation 'com.anthropic:anthropic-java:3.2.0'
     // RocketMaxxing's window: Chromium embedded through JCEF. This is the Java part (about 2 MB); Chromium itself

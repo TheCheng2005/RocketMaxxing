@@ -126,8 +126,9 @@ from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Flight animation
 
-- `animate_flight`: a **3-D animation of the simulated flight**, written as a looping GIF, an MP4 (when ffmpeg is
-  installed) and a sheet of stills at the key moments, which is shown in the chat.
+- `animate_flight`: a **3-D animation of the simulated flight**, written as a looping GIF, an H.264 MP4 and a sheet of
+  stills at the key moments, which is shown in the chat. A `path` ending in `.mp4` writes the MP4 alone (`gif: true`
+  adds the GIF).
   - **Camera:** a chase camera follows the rocket, built from the design's geometry and rolling as simulated. While
     the motor burns there is an exhaust flame, and a smoke trail stays in the sky.
   - **Recovery:** at each deployment the airframe comes apart at its separation joints and hangs under the canopy as
@@ -669,7 +670,8 @@ RSO.
   answered straight away. On the team server, calls on the same design take turns and different designs run in
   parallel.
 - **Video:** `animate_flight` writes the GIF at `gifWidth` (720 px by default; GIFs grow quickly with size). The MP4 is
-  H.264 at `width` (1280 px by default), made by ffmpeg when it is on the PATH (or set `OPENROCKET_MCP_FFMPEG`). Frames
+  H.264 at `width` (1280 px by default), made by ffmpeg when it is on the PATH (or set `OPENROCKET_MCP_FFMPEG`), else
+  encoded in Java with JCodec (larger files, about 0.6 MB per second of video at 1280 px, and a little slower). Frames
   render in parallel and stream to both encoders; a 25 s animation takes about half a minute.
 - **Google Earth:** `monte_carlo` `kmlPath` writes the pad, every landing and each stage's 2-sigma ellipse, placed at
   the team's launch site (`launchSite.latitude` / `longitude`) or at `siteLatitude` / `siteLongitude`.

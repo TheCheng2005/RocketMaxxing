@@ -1,35 +1,38 @@
 <script lang="ts">
-  import { Clapperboard, FolderOpen } from "@lucide/svelte";
-  import { call, fileUrl } from "../api";
-  import { app, run } from "../state.svelte";
+  import { Clapperboard, FolderOpen, Play, CircleCheck } from "@lucide/svelte";
+  import { call } from "../api";
+  import { app, run, toast } from "../state.svelte";
   import Modal from "../Modal.svelte";
   import RocketLoader from "../RocketLoader.svelte";
-  import { exportPath, pathOf, sizeOf } from "./media";
+  import { pathOf, sizeOf } from "./media";
 
   // The simulated flight as a video: a chase camera on the rocket, the separations and canopies, the numbers on screen.
-  // Written to the designs folder (GIF, MP4 when ffmpeg is installed, and a sheet of key-moment stills).
+  // Saved as an MP4 in the Downloads folder (else the Desktop), to play, share or put in slides; nothing plays in here.
   let { simulation, name, close }: { simulation: number; name: string; close: () => void } = $props();
 
   let duration = $state(25);
-  let gifWidth = $state(720);
-  let mp4 = $state(true);
   let stills = $state(true);
+  let gif = $state(false);
   let busy = $state(false);
   let result = $state<any>(null);
+  let folder = $state("");
 
   async function make() {
     busy = true;
     result = null;
     try {
+      const where = await call<{ path: string; folderName: string }>("app_download_path", {
+        name: `${app.design?.name ?? "Rocket"} flight.mp4`,
+      });
+      folder = where.folderName;
       result = await run(() =>
         call("animate_flight", {
           designId: app.design!.designId,
           simulation: String(simulation),
           duration,
-          gifWidth,
-          mp4,
           stills,
-          path: exportPath("flight.gif"),
+          gif,
+          path: where.path,
         }),
       );
     } finally {
@@ -37,48 +40,49 @@
     }
   }
 
-  let gif = $derived(pathOf(result?.gif));
-  // "mp4" is the file and its size, or (without ffmpeg) a note saying why there is none.
+  // "mp4" is the file and its size, or a note saying why there is none.
   let video = $derived(/\.mp4\s*\(/.test(result?.mp4 ?? "") ? pathOf(result.mp4) : null);
-  // RocketMaxxing's window (Chromium without the H.264 licence) cannot play the MP4: it shows the GIF instead.
-  const playsMp4 = document.createElement("video").canPlayType('video/mp4; codecs="avc1.640028"') !== "";
-  let mp4Note = $derived(result?.mp4 && !video ? String(result.mp4) : "");
+  let gifFile = $derived(pathOf(result?.gif));
   let sheet = $derived(pathOf(result?.stills));
+  const fileName = (p: string) => p.split(/[\\/]/).pop() ?? p;
+
+  function reveal(path: string, open = false) {
+    call("app_reveal", { path, open }).catch((e) => toast(String(e?.message ?? e)));
+  }
 </script>
 
-<Modal title="Flight video: {name}" {close} width={900}>
+<Modal title="Flight video: {name}" {close} width={720}>
   <div class="form">
     <label><span>Length (s)</span><input class="input" type="number" min="10" max="120" bind:value={duration} /></label>
-    <label>
-      <span>GIF size</span>
-      <select class="select" bind:value={gifWidth}>
-        <option value={480}>Small (480 px)</option>
-        <option value={720}>Medium (720 px)</option>
-        <option value={960}>Large (960 px)</option>
-      </select>
-    </label>
-    <label class="check"><input type="checkbox" bind:checked={mp4} /> MP4 too (needs ffmpeg)</label>
-    <label class="check"><input type="checkbox" bind:checked={stills} /> Key-moment stills</label>
+    <label class="check"><input type="checkbox" bind:checked={stills} /> Key-moment stills (PNG)</label>
+    <label class="check"><input type="checkbox" bind:checked={gif} /> Also a GIF (for chat)</label>
     <button class="btn primary" disabled={busy} onclick={make}><Clapperboard size={15} /> {busy ? "Making the video…" : "Make video"}</button>
   </div>
-  <p class="muted note">The flight is played in real time through the burn, apogee and each deployment; the coast and the descent are sped up to fit the length.</p>
+  <p class="muted note">
+    Saved as an MP4 in your Downloads folder. The flight plays in real time through the burn, apogee and each deployment;
+    the coast and the descent are sped up to fit the length.
+  </p>
 
-  {#if busy}<RocketLoader text="Simulating the flight and drawing every frame: about a minute for a long video." />{/if}
+  {#if busy}<RocketLoader text="Simulating the flight and drawing every frame: about a minute for a 25 s video." />{/if}
   {#if result}
-    {#if video && (playsMp4 || !gif)}
-      <!-- svelte-ignore a11y_media_has_caption -->
-      <video src={fileUrl(video)} controls autoplay loop muted></video>
-    {:else if gif}
-      <img src={fileUrl(gif)} alt="Flight video" />
+    {#if video}
+      <div class="saved">
+        <CircleCheck size={20} />
+        <div class="what">
+          <b>Saved to {folder}</b>
+          <span>{fileName(video)} <span class="muted">· {sizeOf(result.mp4)} · {result.length}</span></span>
+        </div>
+        <button class="btn primary" onclick={() => reveal(video!, true)}><Play size={14} /> Open video</button>
+        <button class="btn" onclick={() => reveal(video!)}><FolderOpen size={14} /> Show in folder</button>
+      </div>
+      {#if gifFile || sheet}
+        <p class="muted note">
+          Beside it: {[gifFile && `${fileName(gifFile)} (${sizeOf(result.gif)})`, sheet && fileName(sheet)].filter(Boolean).join(", ")}.
+        </p>
+      {/if}
+    {:else}
+      <p class="note warn">No MP4 was made: {result.mp4 ?? "the engine gave no reason"}</p>
     {/if}
-    <div class="files">
-      {#if gif}<span>GIF {sizeOf(result.gif)}</span>{/if}
-      {#if video}<span>MP4 {sizeOf(result.mp4)}</span>{/if}
-      <span class="muted">{result.length}</span>
-      {#if gif}<button class="btn" onclick={() => call("app_reveal", { path: gif }).catch(() => {})}><FolderOpen size={14} /> Show in folder</button>{/if}
-    </div>
-    {#if mp4Note}<p class="muted note">{mp4Note}</p>{/if}
-    {#if sheet}<img class="sheet" src={fileUrl(sheet)} alt="Key moments" />{/if}
     {#if result.timeline?.length}
       <table class="grid">
         <thead><tr><th>Event</th><th class="n">Flight time</th><th class="n">In the video</th><th></th></tr></thead>
@@ -119,24 +123,34 @@
     font-size: 12px;
     margin: 8px 0;
   }
-  video,
-  img {
-    display: block;
-    width: 100%;
-    border-radius: var(--radius);
-    background: #000;
-    margin-top: 8px;
+  .warn {
+    color: var(--warn);
   }
-  img.sheet {
-    background: transparent;
-    border: 1px solid var(--line);
-  }
-  .files {
+  .saved {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin: 8px 0;
-    font-size: 12.5px;
+    margin: 12px 0;
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: var(--good-soft);
+  }
+  .saved :global(svg:first-child) {
+    flex: none;
+    color: var(--good);
+  }
+  .what {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+    font-size: 13px;
+  }
+  .what > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .n {
     text-align: right;
