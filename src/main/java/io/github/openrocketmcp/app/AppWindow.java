@@ -16,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import javax.swing.JFrame;
@@ -137,6 +139,7 @@ final class AppWindow {
 		URI u = URI.create(url);
 		this.origin = u.getScheme() + "://" + u.getRawAuthority();
 		this.workspace = workspace;
+		CountDownLatch created = new CountDownLatch(1);
 		SwingUtilities.invokeAndWait(() -> {
 			CefClient client = cef.createClient();
 			javaSignals();
@@ -149,7 +152,10 @@ final class AppWindow {
 
 				@Override
 				public void onAfterCreated(CefBrowser b) {
-					Log.info("Window page " + b.getIdentifier() + " created" + (b == browser ? "" : " (not the window's own)"));
+					if (created.getCount() == 0) {
+						Log.info("Chromium created a second page for the window (" + b.getIdentifier() + ")");
+					}
+					created.countDown();
 				}
 			});
 			client.addRequestHandler(new CefRequestHandlerAdapter() {
@@ -212,6 +218,10 @@ final class AppWindow {
 				}
 			});
 			browser = client.createBrowser(url, false, false);
+			// Left to itself, JCEF creates the page from a timer once the window shows, every 100 ms until Chromium
+			// has started on it: on a slow computer that makes several pages, each opening the designs again. Created
+			// now, it goes into the window below once it exists.
+			browser.createImmediately();
 			// On the Mac, Chromium leaves ⌘C, ⌘V, ⌘Z and the rest to the app's menu: they are done here, before the page.
 			client.addKeyboardHandler(new CefKeyboardHandlerAdapter() {
 				@Override
@@ -230,6 +240,11 @@ final class AppWindow {
 					return false;
 				}
 			});
+		});
+		if (!created.await(1, TimeUnit.MINUTES)) {
+			throw new IllegalStateException("Chromium did not create the window's page");
+		}
+		SwingUtilities.invokeAndWait(() -> {
 			frame = new JFrame(App.NAME);
 			frame.setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
 			frame.addWindowListener(new WindowAdapter() {

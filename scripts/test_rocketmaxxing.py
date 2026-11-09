@@ -84,7 +84,12 @@ def window(cmd):
         second = subprocess.run(cmd + ["--workspace", workspace, os.path.join(ROOT, "docs", "examples", "maple-10k-pdr.ork")],
                                 capture_output=True, text=True, timeout=120)
         assert second.returncode == 0, second.stdout[-1000:] + second.stderr[-2000:]
-        wait_for(lambda s: len(s["designs"]) == 2, "the handed-over design in the window")
+        try:
+            wait_for(lambda s: len(s["designs"]) == 2, "the handed-over design in the window")
+        except AssertionError as e:
+            designs = [(d["name"], os.path.basename(d["path"])) for d in tool(url, token, "app_session")["designs"]]
+            raise AssertionError(f"open designs: {designs}\n{e}")
+        assert "second page" not in tail(), "the window made more than one page:\n" + tail()
         p.terminate()  # as Ctrl+C or a logout does
         p.wait(timeout=30)
         if os.name != "nt":  # Windows has no signal to stop it gently: the shutdown hooks do not run there
