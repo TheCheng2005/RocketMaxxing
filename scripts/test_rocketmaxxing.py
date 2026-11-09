@@ -76,8 +76,7 @@ def window(cmd):
         raise AssertionError(f"no {what} after 3 minutes:\n{tail()}")
 
     try:
-        url, token, session = wait_for(lambda s: s["window"] != "none", "window")
-        assert session["window"] == "app", f"a {session['window']} window opened instead of the app's own:\n{tail()}"
+        url, token, session = wait_for(lambda s: s["window"] == "app", "window")
         names = lambda s: [d["name"] for d in s["designs"]]
         url, token, session = wait_for(lambda s: "Maple 10K" in names(s), "Maple in the window")
         # Another launch with a design: the open window opens it too.

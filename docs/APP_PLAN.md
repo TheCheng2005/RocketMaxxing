@@ -96,6 +96,9 @@ Where OpenRocket stays ahead at the start, and what we do about it:
 - **Window.** First version: the app starts the engine and opens the UI in the system browser in app mode (Chrome
   or Edge `--app`, else a normal tab). No native code. Later: a webview shell (Tauri or wry) for a real window and
   menus. **Decide** at the end of Phase 2. JavaFX WebView is out: its WebGL support is too weak for the 3-D view.
+  **Decided:** Chromium embedded in a Swing window through JCEF (jcefmaven), in the Java process, with the app's own
+  menus. It is the same browser engine on every platform and needs no second toolchain (Tauri or wry would need
+  Rust), at the cost of about 150 MB per installer. The browser window is gone.
 - **Offline.** Everything is local except three features, which degrade cleanly:
   - Weather forecast: winds can always be typed in (`wind_profile`), and the last forecast is cached.
   - Product links (`add_from_link`): pasted page text works offline.
@@ -174,7 +177,7 @@ spreadsheets.
 ### Phase 2: full engineering suite
 - Full component tree editing: add, remove, reorder, catalog parts.
 - Propulsion and staging, Aero with RASAero import, all of Recovery, Structures, Avionics and Studies.
-- **Decide** the window shell (browser app mode or a webview).
+- **Decide** the window shell (browser app mode or a webview). Decided: Chromium through JCEF (see Window above).
 
 Done when: the team stops opening OpenRocket for day-to-day work.
 

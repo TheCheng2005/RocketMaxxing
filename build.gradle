@@ -51,6 +51,9 @@ tasks.withType(JavaCompile).configureEach {
 test {
     useJUnitPlatform()
     jvmArgs '-Djava.awt.headless=true'
+    // KnownPluginsTest has OpenRocket scan every class on the classpath, beside the other tests: Gradle's default
+    // 512 MB was not always enough once the window's JCEF jars were added.
+    maxHeapSize = '1g'
     systemProperty 'mcp.verbose', System.getProperty('mcp.verbose', 'false')
     systemProperty 'bench', System.getProperty('bench', 'false')
     if (System.getProperty('openrocketmcp.threads')) systemProperty 'openrocketmcp.threads', System.getProperty('openrocketmcp.threads')

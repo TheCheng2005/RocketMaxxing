@@ -174,11 +174,4 @@ export async function callFull(
   return { data, images, issues: issuesOf(result) };
 }
 
-/** Tells the launcher the window is still open (it stops the engine once the window has been closed a while). */
-export function keepAlive(): void {
-  const beat = () => rpc("ping", {}).catch(() => {});
-  beat();
-  setInterval(beat, 20_000);
-}
-
 export const connected = token !== "";

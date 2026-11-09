@@ -354,16 +354,15 @@ The app opens in its own window: the interface runs in Chromium, which `./gradle
 downloaded when the app runs. A design
 double-clicked or handed over while it runs opens in that window, which comes to the front. On the Mac the window has
 RocketMaxxing's own menus (File, Edit, Window), closing it keeps the app in the Dock, and Quit asks first when a design
-has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. With `--browser`, or when its Chromium
-cannot start, the app opens Chrome or Edge in app mode if installed (otherwise your default browser) and quits two
-minutes after that window is closed. The file dialogs start in `~/RocketMaxxing`.
+has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. If the window
+cannot open (no Chromium in the build, for example), the app says why and stops; with `--no-browser` it still runs,
+and the address it prints opens the interface in a browser. The file dialogs start in `~/RocketMaxxing`.
 
 | Option | |
 |---|---|
 | `--workspace DIR` | Designs folder (default `~/RocketMaxxing`) |
 | `--port N` | Local port (default: any free one) |
-| `--no-browser` | Print the address instead of opening a window |
-| `--browser` | Open the interface in a browser instead of the app's own window |
+| `--no-browser` | Print the address instead of opening the window (to open it in a browser) |
 | `--dev URL` | Also accept calls from a development server |
 | `FILE.ork ...` | Designs to open (a running RocketMaxxing for the same folder opens them) |
 

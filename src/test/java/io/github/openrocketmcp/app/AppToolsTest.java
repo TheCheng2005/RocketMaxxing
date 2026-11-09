@@ -286,7 +286,6 @@ class AppToolsTest {
 			HttpResponse<String> escape = http.send(HttpRequest.newBuilder(URI.create(base + "/../build.gradle")).build(),
 					HttpResponse.BodyHandlers.ofString());
 			assertNotEquals(200, escape.statusCode());
-			assertTrue(app.lastSeen() > 0);
 		} finally {
 			app.stop();
 		}

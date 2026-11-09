@@ -28,9 +28,9 @@ import io.github.openrocketmcp.Main;
 import io.github.openrocketmcp.mcp.Log;
 
 /**
- * The app's place in macOS: the window is a browser's, so RocketMaxxing itself lives in the Dock. Clicking the Dock
- * icon brings a window back, a design double-clicked in Finder opens in it, Quit warns about unsaved designs, and the
- * Dock icon's menu and the menu bar (shown while RocketMaxxing is the active app) have Show window and Open design.
+ * The app's place in macOS: RocketMaxxing lives in the Dock, also with its window closed. Clicking the Dock icon brings
+ * the window back, a design double-clicked in Finder opens in it, Quit warns about unsaved designs, and the Dock icon's
+ * menu and the menu bar with no window open have Show window and Open design.
  */
 final class MacDesktop {
 	private MacDesktop() {
@@ -43,13 +43,10 @@ final class MacDesktop {
 	/** What is set up, for app_session (and the CI check on the Mac runners). */
 	static final List<String> ACTIVE = new ArrayList<>();
 
-	/**
-	 * Installs the handlers; true when the Dock can bring the window back (then the app stays running with no window,
-	 * as Mac apps do, until it is quit). Call early: files double-clicked to start the app arrive straight away.
-	 */
-	static boolean install(Runnable showWindow, Consumer<List<String>> openFiles, Supplier<List<String>> unsaved) {
+	/** Installs the handlers. Call early: files double-clicked to start the app arrive straight away. */
+	static void install(Runnable showWindow, Consumer<List<String>> openFiles, Supplier<List<String>> unsaved) {
 		if (!isMac() || GraphicsEnvironment.isHeadless() || !Desktop.isDesktopSupported()) {
-			return false;
+			return;
 		}
 		try {
 			Desktop d = Desktop.getDesktop();
@@ -57,10 +54,8 @@ final class MacDesktop {
 				d.setOpenFileHandler(e -> openFiles.accept(e.getFiles().stream().map(File::getAbsolutePath).toList()));
 				ACTIVE.add("openFile");
 			}
-			boolean reopen = false;
 			if (d.isSupported(Desktop.Action.APP_EVENT_REOPENED)) {
 				d.addAppEventListener((AppReopenedListener) e -> showWindow.run());
-				reopen = true;
 				ACTIVE.add("reopen");
 			}
 			if (d.isSupported(Desktop.Action.APP_ABOUT)) {
@@ -116,10 +111,8 @@ final class MacDesktop {
 				d.setDefaultMenuBar(bar);
 				ACTIVE.add("menuBar");
 			}
-			return reopen;
 		} catch (RuntimeException | LinkageError e) {
 			Log.info("macOS integration unavailable: " + e);
-			return false;
 		}
 	}
 }
