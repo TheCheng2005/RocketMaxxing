@@ -53,6 +53,17 @@ final class Chromium {
 		return null;
 	}
 
+	/**
+	 * macOS: loads JCEF's library now, before the app's first event. Loading it adds a mouse-event watcher before its
+	 * own data is set up, so a mouse event in between (while the library loads beside a running app) crashed the app.
+	 * Call it before anything starts AWT.
+	 */
+	static void preload(Path dir) {
+		if (MacDesktop.isMac()) {
+			System.load(dir.resolve("libjcef.dylib").toString());
+		}
+	}
+
 	/** {@code dir} if it holds a complete Chromium for this platform and this program's JCEF; else null. */
 	static Path check(Path dir) {
 		try {

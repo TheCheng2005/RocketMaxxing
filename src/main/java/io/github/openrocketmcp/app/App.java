@@ -101,13 +101,15 @@ public final class App {
 			instance = null;
 		}
 
+		Path bundle = !noBrowser && !inBrowser && devUrl == null && !GraphicsEnvironment.isHeadless() ? chromiumBundle() : null;
+
 		// macOS: the Dock and Finder talk to the app from the start (a design double-clicked to launch it arrives now).
 		AtomicReference<Context> ctxRef = new AtomicReference<>();
 		boolean dock = devUrl == null && MacDesktop.install(() -> show(List.of()), App::show, () -> unsaved(ctxRef.get()));
-		if (!noBrowser && !inBrowser && devUrl == null && !GraphicsEnvironment.isHeadless()) {
+		if (bundle != null) {
 			// Two Chromiums cannot share a folder: one per designs folder, as there is one app per designs folder.
 			String key = Instance.key(ws) + (instance == null ? "-" + ProcessHandle.current().pid() : "");
-			chromium = startChromium(Instance.dir().resolve("chromium").resolve(key), () -> unsaved(ctxRef.get()));
+			chromium = startChromium(bundle, Instance.dir().resolve("chromium").resolve(key), () -> unsaved(ctxRef.get()));
 		}
 
 		OrRuntime.init(); // before any request: OpenRocket's databases fail for good if touched before it starts
@@ -175,18 +177,22 @@ public final class App {
 		}
 	}
 
-	/** Starts Chromium for the app's window in the background; null when this installation has none. */
-	private static CompletableFuture<AppWindow> startChromium(Path cache, Supplier<List<String>> unsaved) {
-		Path bundle;
+	/** The Chromium for the app's window, its library loaded (before AWT starts); null when this installation has none. */
+	private static Path chromiumBundle() {
 		try {
-			bundle = Chromium.find();
-		} catch (LinkageError e) { // the JCEF classes are missing
+			Path bundle = Chromium.find();
+			if (bundle != null) {
+				Chromium.preload(bundle);
+			}
+			return bundle;
+		} catch (LinkageError e) { // the JCEF classes or library are missing or broken
 			Log.info("No JCEF in this build: " + e);
 			return null;
 		}
-		if (bundle == null) {
-			return null;
-		}
+	}
+
+	/** Starts Chromium for the app's window in the background. */
+	private static CompletableFuture<AppWindow> startChromium(Path bundle, Path cache, Supplier<List<String>> unsaved) {
 		CompletableFuture<AppWindow> started = new CompletableFuture<>();
 		Thread t = new Thread(() -> {
 			try {
