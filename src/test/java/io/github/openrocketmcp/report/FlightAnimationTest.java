@@ -150,7 +150,40 @@ class FlightAnimationTest {
 		assertTrue(meanColourError(middle, a.frame(a.frames / 2)) < 12, "H.264 keeps the picture");
 	}
 
-	/** A two-stage flight: each stage's events are named, the booster's own recovery is captioned, stills differ. */
+	/** Encoding the groups of frames side by side gives the very file one encoder gives working through them in order. */
+	@Test
+	void parallelMp4IsTheSameFileAsTheSequentialOne(@TempDir Path tmp) throws Exception {
+		FlightAnimation a = anim(10, 8, 320);
+		int n = Math.min(a.frames, 2 * Video.JavaMp4.GROUP + 7); // two whole groups and a part
+		assertTrue(n > 2 * Video.JavaMp4.GROUP, "enough frames for three groups: " + a.frames);
+		Path ours = tmp.resolve("ours.mp4"), theirs = tmp.resolve("theirs.mp4");
+		try (Video.JavaMp4 m = new Video.JavaMp4(ours, a.fps())) {
+			for (int i = 0; i < n; i++) {
+				m.add(a.frame(i));
+			}
+			m.finish();
+		}
+		try (org.jcodec.common.io.SeekableByteChannel out = org.jcodec.common.io.NIOUtils.writableChannel(theirs.toFile())) {
+			var enc = new org.jcodec.api.awt.AWTSequenceEncoder(out, org.jcodec.common.model.Rational.R((int) Math.round(a.fps() * 1000), 1000));
+			for (int i = 0; i < n; i++) {
+				enc.encodeImage(a.frame(i));
+			}
+			enc.finish();
+		}
+		byte[] x = Files.readAllBytes(ours), y = Files.readAllBytes(theirs);
+		assertEquals(y.length, x.length);
+		// The index at the end ("moov") carries the time each file was written; everything before it is the video.
+		int moov = new String(x, java.nio.charset.StandardCharsets.ISO_8859_1).lastIndexOf("moov");
+		assertTrue(moov > x.length / 2, "the index is at the end");
+		assertTrue(java.util.Arrays.equals(java.util.Arrays.copyOf(x, moov), java.util.Arrays.copyOf(y, moov)), "the same video data");
+		int differ = 0;
+		for (int i = moov; i < x.length; i++) {
+			differ += x[i] != y[i] ? 1 : 0;
+		}
+		assertTrue(differ <= 12, "the index differs only in its creation and modification times: " + differ + " bytes");
+	}
+
+
 	@Test
 	void twoStageFlightIsToldStageByStage() throws Exception {
 		Designs.Design d = new Designs().openExample("Two stage high power");
