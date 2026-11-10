@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'io.github.openrocketmcp'
-version = '0.28.0'
+// version (the engine's) and appVersion (RocketMaxxing's) are set in gradle.properties.
 
 
 repositories {
@@ -12,27 +12,28 @@ repositories {
 }
 
 dependencies {
-    implementation 'info.openrocket:core:24.12'
-    implementation 'com.google.code.gson:gson:2.13.2'
+    // Versions: gradle/libs.versions.toml.
+    implementation libs.openrocket.core
+    implementation libs.gson
     // OpenRocket publishes Guice as a runtime dependency; we use the injector directly.
-    implementation 'com.google.inject:guice:7.0.0'
+    implementation libs.guice
     // SVG -> PNG for images shown in the chat (our plots and drawings).
-    implementation 'org.apache.xmlgraphics:batik-transcoder:1.19'
-    implementation 'org.apache.xmlgraphics:batik-codec:1.19'
+    implementation libs.batik.transcoder
+    implementation libs.batik.codec
     // MP4 videos of the flight without ffmpeg (pure Java H.264; BSD licence). ffmpeg, when installed, still makes them.
-    implementation 'org.jcodec:jcodec:0.2.5'
-    implementation 'org.jcodec:jcodec-javase:0.2.5'
+    implementation libs.jcodec
+    implementation libs.jcodec.javase
     // RocketMaxxing's optional assistant (the team's own API key; off by default).
-    implementation 'com.anthropic:anthropic-java:3.2.0'
+    implementation libs.anthropic
     // RocketMaxxing's window: Chromium embedded through JCEF. This is the Java part (about 2 MB); Chromium itself
     // (about 150 MB) is unpacked for the desktop app only (rocketmaxxingChromium below). JOGL draws off-screen
     // browsers only; the window is a real one (only JCEF's CefBrowserOsr and CefRenderer use JOGL).
-    implementation('me.friwi:jcefmaven:152.0.6') {
+    implementation(libs.jcefmaven) {
         exclude group: 'me.friwi', module: 'jogl-all'
         exclude group: 'me.friwi', module: 'gluegen-rt'
     }
 
-    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation platform(libs.junit.bom)
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
@@ -43,6 +44,15 @@ application {
     // The parallel collector: Monte Carlo and motor ranking ran about 20 % faster than with G1 (short pauses at this
     // heap size; nothing here is latency-critical).
     applicationDefaultJvmArgs = ['-Djava.awt.headless=true', '-Xss4m', '-XX:+UseParallelGC']
+}
+
+// The versions from gradle.properties, for Versions.java.
+processResources {
+    def versions = [engineVersion: project.version.toString(), appVersion: providers.gradleProperty('appVersion').get()]
+    inputs.properties(versions)
+    filesMatching('openrocketmcp/version.properties') {
+        expand(versions)
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -157,7 +167,7 @@ configurations {
     chromium { transitive = false }
 }
 dependencies {
-    chromium "me.friwi:jcef-natives-${chromiumPlatform}:jcef-17e805a+cef-152.0.6+g708dc14+chromium-152.0.7977.83"
+    chromium "me.friwi:jcef-natives-${chromiumPlatform}:${libs.versions.jcefNatives.get()}"
 }
 
 // Unpacked when the app is built, with jcefmaven's own installer, so the app never downloads or unpacks it itself.
@@ -318,7 +328,7 @@ tasks.register('rocketmaxxing') {
 // RocketMaxxing installers with Java included (jpackage over the trimmed runtime above). Each platform builds its own:
 //   ./gradlew rocketmaxxingInstaller   ->   build/installers/  (.msi on Windows (needs WiX), .dmg on macOS, .deb on Linux)
 //   ./gradlew rocketmaxxingInstaller -PinstallerType=app-image   ->   a folder that runs without installing
-def appVersion = (file('src/main/java/io/github/openrocketmcp/app/App.java').text =~ /VERSION = "([^"]+)"/)[0][1]
+def appVersion = providers.gradleProperty('appVersion').get()
 def packagingDir = layout.buildDirectory.dir('jpackage')
 
 tasks.register('rocketmaxxingPackageInput', Sync) {
