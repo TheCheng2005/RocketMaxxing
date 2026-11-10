@@ -10,8 +10,8 @@ body:
   - type: textarea
     id: ask
     attributes:
-      label: What you asked
-      description: The prompt, or the tool and its arguments if you know them (e.g. `recovery_analysis` with pinType "4-40 nylon").
+      label: What you ran or asked
+      description: The analysis and what you filled in (in the app), or the prompt, or the tool and its arguments if you know them (e.g. `recovery_analysis` with pinType "4-40 nylon").
     validations:
       required: true
   - type: textarea

@@ -1,12 +1,12 @@
 name: Idea or request
-description: Something you would like Claude to be able to do with your rocket.
+description: Something you would like RocketMaxxing (or the assistant) to be able to do with your rocket.
 labels: ["enhancement"]
 body:
   - type: textarea
     id: ask
     attributes:
-      label: What would you like to ask Claude?
-      description: Write it the way you would type it, e.g. "Size our avionics bay vent holes for the altimeter".
+      label: What would you like it to do?
+      description: In your own words, e.g. "Size our avionics bay vent holes for the altimeter".
     validations:
       required: true
   - type: textarea

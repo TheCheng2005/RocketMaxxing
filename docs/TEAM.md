@@ -11,7 +11,7 @@ record of the design over time (`progress_log`).
 
 ## Set-up (about 30 minutes)
 
-1. **Run the team server** where everyone can reach it, and add it to Claude as a custom connector (see the README,
+1. **Run the team server** where everyone can reach it, and add it to Claude as a custom connector (see [MCP.md](MCP.md#getting-started),
    *The whole team*). Keep the team's `.ork` files and `openrocket-mcp.json` in its workspace.
 2. **Connect Slack and Notion** (and Google Drive if your notes live there) in Claude's settings, under Connectors. On a
    Team or Enterprise plan an owner can enable them for everyone. Each person still signs in to their own account, so

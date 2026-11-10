@@ -1,8 +1,10 @@
-# OpenRocket MCP — technical reference
+# Technical reference
 
-For teams and developers who want the details: every tool, the settings in the team standards file, the methods
-behind the numbers and their limits, and how to build and test the server. The [README](../README.md) is the
-plain-language overview.
+For teams and developers who want the details: every tool of the engine (the analyses on RocketMaxxing's Analysis
+page, and the tools an AI assistant calls through the MCP server), the settings in the team standards file, the
+methods behind the numbers and their limits, and how to build and test the server. The [README](../README.md) is the
+plain-language overview of the app, [ROCKETMAXXING.md](ROCKETMAXXING.md) its guide, and [MCP.md](MCP.md) the guide
+for AI assistants.
 
 ## Tools
 

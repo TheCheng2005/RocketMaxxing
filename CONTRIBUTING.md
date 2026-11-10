@@ -85,7 +85,8 @@ testing.
    fails for a tool that is in neither the catalog nor its list of plumbing tools.
 5. Test it: calculations in `src/test/java/.../calc`, OpenRocket-backed behaviour in `.../or`, and a scenario in
    `scripts/benchmark.py` if a team would use it in a workflow.
-6. Document it: a bullet under its area in `docs/REFERENCE.md`, and a line in the README's "What you can ask" if users will notice it.
+6. Document it: a bullet under its area in `docs/REFERENCE.md`, and, if users will notice it, a line in the README's
+   "What it does" (for the app's Analysis page) and in `docs/MCP.md`'s "What you can ask".
 
 The interactive view talks MCP Apps (`ui/*` messages over `postMessage`) and must work with no network: no CDN, no
 external fonts. Insert names and other text with `textContent`, never as HTML. After changing it, run

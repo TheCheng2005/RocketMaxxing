@@ -48,7 +48,7 @@ two seconds. Zoom into it in editing if your editor can.
 
 ## Afterwards
 
-- Upload (YouTube unlisted/public, or attach the MP4 to the GitHub release) and add the link to the top of the
-  README, under "See it in action".
+- Upload (YouTube unlisted/public, or attach the MP4 to the GitHub release) and add the link to
+  [MCP.md](MCP.md), under "Seeing the rocket in the chat".
 - Keep the numbers honest: if an answer differs from EXAMPLES.md (Claude's wording varies, the physics does not), keep
   what the app actually said.

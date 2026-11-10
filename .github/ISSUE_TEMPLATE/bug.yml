@@ -14,6 +14,7 @@ body:
     attributes:
       label: Where you use it
       options:
+        - RocketMaxxing (the desktop app)
         - Claude Desktop (extension)
         - Claude Desktop (manual config)
         - claude.ai (team server)
