@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import * as THREE from "three";
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-  import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
+  import { borrow, release, type ViewRenderer } from "./viewRenderer";
   import { geometry, kept, trim, finPieces, disposeBuilt, type Built } from "./meshes";
   import { Maximize, Scissors, Expand } from "@lucide/svelte";
   import { app, select, findNode, parentOf, editField, type Part, type TreeNode } from "../state.svelte";
@@ -871,25 +871,20 @@
   });
 
   function setup(): (() => void) | undefined {
+    // The renderer is shared between visits to this page (viewRenderer.ts): only the scene is made anew.
+    let view: ViewRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true });
+      view = borrow();
     } catch {
       webgl = false;
       return;
     }
+    renderer = view.renderer;
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.localClippingEnabled = true;
-    // Colours as painted (a neutral curve keeps them), lit by a soft studio room as well as two lamps.
-    renderer.toneMapping = THREE.NeutralToneMapping;
-    renderer.toneMappingExposure = 1.05;
     canvasHost.appendChild(renderer.domElement);
     scene = new THREE.Scene();
-    const pmrem = new THREE.PMREMGenerator(renderer);
-    const room = new RoomEnvironment();
-    scene.environment = pmrem.fromScene(room, 0.04).texture;
+    scene.environment = view.environment;
     scene.environmentIntensity = 0.55;
-    room.dispose();
-    pmrem.dispose();
     scene.add(new THREE.HemisphereLight(0xffffff, 0x8a94a6, 0.9));
     const sun = new THREE.DirectionalLight(0xffffff, 1.5);
     sun.position.set(0.4, 1, 0.8);
@@ -901,6 +896,9 @@
     persp = new THREE.PerspectiveCamera(35, 1, 0.01, 1000);
     camera = ortho;
     const el = renderer.domElement;
+    // The canvas outlives this visit: its listeners are taken off together when the page is left.
+    const leaving = new AbortController();
+    const on = { signal: leaving.signal };
     el.addEventListener("pointerdown", (e) => {
       if (e.button === 2) {
         rightDown = { x: e.clientX, y: e.clientY };
@@ -908,21 +906,21 @@
       }
       down = { x: e.clientX, y: e.clientY };
       startDrag(e);
-    });
+    }, on);
     el.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       e.stopPropagation();
-    });
+    }, on);
     el.addEventListener("pointerup", (e) => {
       if (e.button !== 2 || !rightDown) return;
       const still = Math.hypot(e.clientX - rightDown.x, e.clientY - rightDown.y) < 5;
       rightDown = null;
       if (still) rightClick(e);
-    });
-    el.addEventListener("pointermove", (e) => (drag ? dragMove(e) : hover(e)));
-    el.addEventListener("pointerup", (e) => (drag ? endDrag(e) : pick(e)));
-    el.addEventListener("pointercancel", (e) => drag && endDrag(e));
-    el.addEventListener("pointerleave", unhover);
+    }, on);
+    el.addEventListener("pointermove", (e) => (drag ? dragMove(e) : hover(e)), on);
+    el.addEventListener("pointerup", (e) => (drag ? endDrag(e) : pick(e)), on);
+    el.addEventListener("pointercancel", (e) => drag && endDrag(e), on);
+    el.addEventListener("pointerleave", unhover, on);
     const explodeAsked = () => (mode === "back" ? (setMode("side"), explodeTo(1)) : explodeTo(1));
     addEventListener("rocketmaxxing:explode", explodeAsked);
     const ro = new ResizeObserver(resize);
@@ -949,8 +947,23 @@
       theme.disconnect();
       mq.removeEventListener("change", style);
       controls?.dispose();
-      scene.environment?.dispose();
-      renderer.dispose();
+      leaving.abort();
+      // What this visit put on the graphics card goes; part shapes kept for the next build (meshes.ts) stay.
+      const keptShapes = new Set<THREE.BufferGeometry>();
+      for (const m of meshes) {
+        keptShapes.add(m.mesh.geometry).add(m.edges.geometry);
+        if (m.owned && !kept(m.part.meshId)) disposeBuilt(m.owned);
+      }
+      scene.traverse((o) => {
+        const drawn = o as Partial<THREE.Mesh>;
+        if (drawn.geometry && !keptShapes.has(drawn.geometry)) drawn.geometry.dispose();
+        for (const mat of drawn.material ? [drawn.material].flat() : []) {
+          (mat as THREE.MeshBasicMaterial).map?.dispose();
+          mat.dispose();
+        }
+      });
+      meshes = [];
+      release(view);
     };
   }
 

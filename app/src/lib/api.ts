@@ -97,11 +97,12 @@ function parse(text: string): unknown {
   }
 }
 
-async function rpc(method: string, params: unknown): Promise<any> {
+async function rpc(method: string, params: unknown, keepalive = false): Promise<any> {
   let res: Response;
   try {
     res = await fetch("rpc", {
       method: "POST",
+      keepalive,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ jsonrpc: "2.0", id: nextId++, method, params }),
     });
@@ -134,6 +135,11 @@ export async function call<T = any>(name: string, args: Record<string, unknown> 
   } catch {
     return text as unknown as T;
   }
+}
+
+/** A last call as the window closes: the browser finishes sending it after the page is gone. Nothing comes back. */
+export function callOnExit(name: string, args: Record<string, unknown>): void {
+  rpc("tools/call", { name, arguments: args }, true).catch(() => {});
 }
 
 export interface ToolInfo {
