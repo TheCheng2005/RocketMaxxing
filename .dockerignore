@@ -2,3 +2,4 @@ build
 .gradle
 .git
 **/__pycache__
+app/node_modules
