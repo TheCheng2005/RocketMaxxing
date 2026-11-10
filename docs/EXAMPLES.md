@@ -7,6 +7,9 @@ Units follow the team setting (here metric with imperial in brackets). In Claude
 appear right in the chat, and long runs (optimizers, Monte Carlo) show their progress and can be stopped. Not sure what
 to ask? Ask Claude what it can do: it also offers related things as you work.
 
+Using [RocketMaxxing](ROCKETMAXXING.md), the desktop app? Every step below is an analysis on its Analysis page too:
+open the same design and run them there, no assistant needed.
+
 The Maple 10K is a made-up rocket. For a real one, checked against the log of its flight, see the
 [worked example](WORKED_EXAMPLE.md).
 

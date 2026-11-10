@@ -1,8 +1,10 @@
-# OpenRocket MCP — technical reference
+# Technical reference
 
-For teams and developers who want the details: every tool, the settings in the team standards file, the methods
-behind the numbers and their limits, and how to build and test the server. The [README](../README.md) is the
-plain-language overview.
+For teams and developers who want the details: every tool of the engine (the analyses on RocketMaxxing's Analysis
+page, and the tools an AI assistant calls through the MCP server), the settings in the team standards file, the
+methods behind the numbers and their limits, and how to build and test the server. The app's guide is
+[ROCKETMAXXING.md](ROCKETMAXXING.md), the guide for AI assistants [MCP.md](MCP.md), and the [README](../README.md)
+points to everything.
 
 ## Tools
 
@@ -705,7 +707,7 @@ engineering expectations. It runs in CI. The scenarios:
 - an avionics bay; pictures in the chat, progress and cancel, status, undo and redo, the mass budget and the KML map.
 
 The server speaks MCP over stdio (JSON-RPC 2.0, newline-delimited); stdout is reserved for the protocol, logs go to
-stderr. See [`SPEC.md`](SPEC.md) for the design and roadmap.
+stderr. See [`dev/SPEC.md`](dev/SPEC.md) for the design and roadmap.
 
 ## Team server (HTTP)
 

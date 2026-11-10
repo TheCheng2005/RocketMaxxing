@@ -93,7 +93,7 @@
   "warnings": [
    "Recovery device deployment at high speed (29.2 m/s):  \"Main\""
   ],
-  "plot": "/home/user/OpenRocket_MCP/docs/examples/ndrt-2020/flight-profile.svg"
+  "plot": "flight-profile.svg"
  },
  "compare": {
   "comparison": [
@@ -158,9 +158,9 @@
    "Match the simulation to the day: wind, launch angle, site altitude and temperature (run with overrides), and the as-flown mass (edit or override masses) before reading the drag factor.",
    "Barometric altimeters read low near Mach 1 and lag at apogee; the drogue and main bands are fitted slopes, time to apogee counts from lift-off (the log's 10 m crossing less the simulated time to climb 10 m) to the top of a parabola through the samples around apogee."
   ],
-  "plot": "/home/user/OpenRocket_MCP/docs/examples/ndrt-2020/flight-vs-log.svg",
-  "accelPlot": "/home/user/OpenRocket_MCP/docs/examples/ndrt-2020/flight-vs-log-accel.svg",
-  "climbPlot": "/home/user/OpenRocket_MCP/docs/examples/ndrt-2020/flight-vs-log-climb.svg",
+  "plot": "flight-vs-log.svg",
+  "accelPlot": "flight-vs-log-accel.svg",
+  "climbPlot": "flight-vs-log-climb.svg",
   "youCouldAlsoAsk": [
    "Search our past rockets and flight logs (and how good our predictions were). (design_library)"
   ]

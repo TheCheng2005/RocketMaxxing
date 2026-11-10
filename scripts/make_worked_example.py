@@ -703,9 +703,13 @@ def main():
 
     with open(os.path.join(DOCS, "WORKED_EXAMPLE.md"), "w", encoding="utf-8") as fh:
         fh.write("\n".join(md).rstrip() + "\n")
+    run = json.dumps({"simulation": sim, "compare": cmp, "monteCarlo": {k: mc[k] for k in ("apogee", "landing", "drivers")},
+                      "weighIn": {"payload": m1, "hardware": m2}}, indent=1)
+    # File paths relative to the folder, so the committed file does not carry this computer's folders.
+    for prefix in (OUT + os.sep, OUT + "/"):
+        run = run.replace(json.dumps(prefix)[1:-1], "")
     with open(os.path.join(OUT, "run.json"), "w", encoding="utf-8") as fh:
-        json.dump({"simulation": sim, "compare": cmp, "monteCarlo": {k: mc[k] for k in ("apogee", "landing", "drivers")},
-                   "weighIn": {"payload": m1, "hardware": m2}}, fh, indent=1)
+        fh.write(run)
     print("wrote docs/WORKED_EXAMPLE.md and", OUT)
 
 

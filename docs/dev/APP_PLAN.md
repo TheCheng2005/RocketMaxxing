@@ -7,11 +7,11 @@ dispersion, flight data and design history, behind a modern interface.
 Status: built through tier 3 of the new functions below, plus a round on ease of use. The app redoes OpenRocket's
 three main tabs (design, motors and configuration, simulations) on the engine and adds the engine's analyses, the
 team's targets, flight data, the missing editors, installers and an optional assistant; see
-[ROCKETMAXXING.md](ROCKETMAXXING.md). The project's team uses it, and it is planned to go to other teams by the end
+[ROCKETMAXXING.md](../ROCKETMAXXING.md). The project's team uses it, and it is planned to go to other teams by the end
 of 2026 once their feedback is in. Decided: the name is **RocketMaxxing** (the repository is
 `TheCheng2005/RocketMaxxing`) and the front-end is **Svelte with three.js**. The app runs in its own window
 (Chromium through JCEF) on all three systems, and the validation work has its first real flight
-([WORKED_EXAMPLE.md](WORKED_EXAMPLE.md)). Next: internal testing by the team, then Phase 4.
+([WORKED_EXAMPLE.md](../WORKED_EXAMPLE.md)). Next: internal testing by the team, then Phase 4.
 Decisions still open are marked **Decide**.
 
 ## Why, and why not a rewrite
@@ -252,7 +252,7 @@ Teams trust a tool for its track record, not its features. From Phase 1 on:
   apogee, maximum speed and descent rates.
 - The existing physics tests and benchmark run on every change.
 - Agreement checks against RASAero for supersonic cases, and against hand calculations for recovery and structures.
-- Started: [WORKED_EXAMPLE.md](WORKED_EXAMPLE.md), the Notre Dame Rocket Team's 2020 L1395 flight against its
+- Started: [WORKED_EXAMPLE.md](../WORKED_EXAMPLE.md), the Notre Dame Rocket Team's 2020 L1395 flight against its
   altimeter and accelerometer log (stock OpenRocket 9% high on apogee; the motor, not drag, was the cause).
 
 ## Team and process

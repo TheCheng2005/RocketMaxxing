@@ -1,15 +1,85 @@
 # RocketMaxxing
 
-RocketMaxxing is a desktop app for designing and simulating rockets. It runs offline and needs no AI subscription.
-Under the hood it is the same engine as the OpenRocket MCP server (OpenRocket 24.12 plus this project's tools), and it
-reads and writes ordinary OpenRocket `.ork` files, so a design can go back and forth between the two programs.
+RocketMaxxing is a desktop app for designing, simulating and checking competition rockets, for Mac, Windows and
+Linux. It is free, runs offline and needs no account or AI subscription. It runs OpenRocket 24.12's physics plus this
+project's engineering tools, and it reads and writes ordinary OpenRocket `.ork` files, so a design can go back and
+forth between the two programs. (The same engine also runs on its own for AI assistants: see [MCP.md](MCP.md).)
+
+**Contents:** [Install](#install) · [Getting help in the app](#getting-help-in-the-app) · [Pages](#pages) ·
+[The assistant](#the-assistant-optional) · [Good to know](#good-to-know) · [Running from source](#running-from-source) ·
+[How it works](#how-it-works) · [Development](#development) · [Not in RocketMaxxing yet](#not-in-rocketmaxxing-yet)
 
 Version 0.1.0 covers OpenRocket's three main tabs, and adds the engine's engineering tools, the team's targets with
 live margins, flight data after a launch, and an optional assistant. Parts can be dragged, lined up, copied and
 pulled apart in an exploded view, and right-click, search, a Guide and a tour make it easy to find things. See
-[the plan](APP_PLAN.md) for what comes next.
+[the plan](dev/APP_PLAN.md) for what comes next.
 
 ![Design page](rocketmaxxing/design.png)
+
+## Install
+
+RocketMaxxing runs on macOS (Apple Silicon and Intel), Windows and Linux. Download the installer for your computer
+from the [Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases):
+
+| Computer | File |
+|---|---|
+| Windows | `RocketMaxxing-<version>-windows-x64.msi` |
+| Mac with Apple Silicon (M1 and later; Apple menu > About This Mac says "Apple M...") | `RocketMaxxing-<version>-macos-apple-silicon.dmg` |
+| Mac with Intel | `RocketMaxxing-<version>-macos-intel.dmg` (also runs on Apple Silicon, through Rosetta) |
+| Linux (Debian, Ubuntu) | `RocketMaxxing-<version>-linux-x64.deb` |
+
+Each is about 240 to 300 MB: it carries its own Java and the Chromium its window runs on, so nothing else needs
+installing. The newest build of every change is also on GitHub under **Actions > RocketMaxxing installers** (open the
+latest green run and download the one for your computer; it comes zipped).
+
+**On a Mac**
+
+1. Open the `.dmg` and drag RocketMaxxing into Applications.
+2. The app is not signed with an Apple developer certificate yet, so the first time macOS refuses to open it. Open it
+   once, then in **System Settings > Privacy & Security** click **Open Anyway** next to "RocketMaxxing was blocked",
+   and confirm. Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/RocketMaxxing.app`. After that it opens
+   like any other app.
+3. It opens in its own window. Designs go in `~/RocketMaxxing`.
+
+On the Mac, the menu bar shows RocketMaxxing's menus while you work in its window: File (Open Design ⌘O, Save ⌘S, Save
+As ⇧⌘S, Close Window ⌘W), Edit (Undo, Redo, Cut, Copy, Paste, Select All) and Window (Minimize ⌘M). Closing the
+window keeps the app running in the Dock, as Mac apps do; clicking the Dock icon brings the window back, and the Dock
+icon's menu has Show RocketMaxxing Window and Open Design. About and Quit are in the RocketMaxxing menu; Quit asks
+first when a design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing
+(or use Open With). Shortcuts are shown as ⌘ and work with Cmd: ⌘S, ⇧⌘S, ⌘O, ⌘Z, ⇧⌘Z.
+
+**On Windows**
+
+1. Run the `.msi`. It is not signed yet, so Windows may say it protected your PC: click **More info**, then
+   **Run anyway**.
+2. Start RocketMaxxing from the Start menu. Designs go in `RocketMaxxing` in your user folder, and double-clicking an
+   `.ork` or `.rkt` file opens it in RocketMaxxing.
+
+**On Linux**
+
+1. `sudo apt install ./RocketMaxxing-<version>-linux-x64.deb`
+2. Start RocketMaxxing from the applications menu. Designs go in `~/RocketMaxxing`.
+
+**Updates.** When it starts, RocketMaxxing asks GitHub once a day whether a newer version is out and, if so, shows a
+card with the installer for this computer (Help › Check for updates asks now; Settings › Files turns the daily check
+off). It downloads nothing by itself: install the new version over the old one; designs, settings and the team
+standards stay where they are. The check sends only the request itself (no designs, no identifiers), and 0.x versions
+are offered pre-releases too.
+
+**One app, one window.** On every system there is one RocketMaxxing per designs folder. Starting it again, or
+double-clicking a design while it runs, hands over to the running app instead of starting a second one: its window comes to the front and opens the
+design, and everything open stays open. On Windows and Linux the installers also register `.ork` and `.rkt`, and
+closing the window quits the app (it asks first when a design has unsaved changes).
+
+What the interface remembers (recent designs, colour scheme, units, folded panels, the tours you have seen, the 3-D
+view's mode) is kept between launches in `~/.rocketmaxxing/ui-prefs.json`, for every designs folder; delete the file
+to start afresh.
+
+Optional extras are found where Homebrew, MacPorts or conda put them, even though an app started from the Dock does
+not see the Terminal's PATH: `brew install ffmpeg` for smaller video files (without it the app makes the MP4
+itself), CalculiX (`conda install -c conda-forge calculix`) for the fin FEA, and Claude Code or Codex for the assistant.
+
+Help › About lists the third-party software inside and its licences (`THIRD-PARTY-NOTICES.txt`, next to the program).
 
 ## Getting help in the app
 
@@ -299,61 +369,26 @@ OpenAI (Codex).
 
 Sizes can be typed with a unit, e.g. `3 in` in a millimetre field.
 
-## Install and run
+## Good to know
 
-RocketMaxxing runs on macOS (Apple Silicon and Intel), Windows and Linux. Installers with Java included are built per
-platform: `./gradlew rocketmaxxingInstaller` makes a `.msi` on Windows (needs WiX 3), a `.dmg` on macOS and a `.deb` on
-Linux (needs `fakeroot`) in `build/installers/`; `-PinstallerType=app-image` makes a folder that runs without
-installing. The *RocketMaxxing installers* workflow builds all four (two for the Mac) on every push to `main` and to
-the working branches, after starting each packaged app, using it and opening a design in its window; the installers
-are the run's artifacts. Each is about 240 to 300 MB: it carries its own Java and the Chromium the window runs on, so
-nothing else needs installing. Released versions are on the
-[Releases page](https://github.com/TheCheng2005/RocketMaxxing/releases), one installer per computer, named after it
-(`RocketMaxxing-0.1.0-macos-apple-silicon.dmg` and so on). Help › About lists the third-party software inside and
-its licences (`THIRD-PARTY-NOTICES.txt`, next to the program). When it starts, RocketMaxxing asks GitHub once a
-day whether a newer version is out and, if so, shows a card with the installer for this computer (Help › Check for
-updates asks now; Settings › Files turns the daily check off). It downloads nothing by itself: install the new version
-over the old one; designs, settings and the team standards stay where they are. The check sends only the request
-itself (no designs, no identifiers), and 0.x versions are offered pre-releases too.
+- Every number is an engineering estimate from OpenRocket and standard calculations, and each result says where it
+  comes from. It does **not** replace ground tests, flight tests, your mentors or the range safety officer. How each
+  number is worked out, and its limits: [REFERENCE.md](REFERENCE.md).
+- Nothing is written to your design file until you save, and edits can be undone.
+- The team's numbers (Standards page) are kept in `openrocket-mcp.json` in the designs folder. Commit it next to your
+  designs and everyone on the team gets the same answers; [`openrocket-mcp.example.json`](../openrocket-mcp.example.json)
+  shows what it can hold.
+- Simulations run about three times faster than OpenRocket's own engine (more on rockets with many internal parts),
+  with the same numbers to the last digit: the engine skips work OpenRocket repeats at every step (the airframe's mass,
+  the motor's after burnout, the geometry check). Studies that fly many simulations (optimizers, Monte Carlo, shape
+  trades) finish 4 to 8 times sooner.
+- Inputs are checked: a value no rocket can have (a negative mass, a zero Cd, a 10^30 m/s wind) is refused with the
+  range that is allowed, and a flight that cannot happen (no lift-off, tumbling under thrust, beyond Mach 3) is flagged
+  before its numbers.
 
-### On a Mac
+## Running from source
 
-1. On GitHub, open **Actions**, then **RocketMaxxing installers**, then the latest green run, and download
-   `rocketmaxxing-macos-apple-silicon-dmg` (M1 and later; Apple menu > About This Mac says "Apple M...") or
-   `rocketmaxxing-macos-intel-dmg`. Unzip it to get `RocketMaxxing-0.1.0.dmg`. If a run has no Apple Silicon one
-   (GitHub sometimes has no Apple Silicon machine free to build it), the Intel one also runs on Apple Silicon Macs,
-   through Rosetta.
-2. Open the `.dmg` and drag RocketMaxxing into Applications.
-3. The app is not signed with an Apple developer certificate yet, so the first time macOS refuses to open it. Open it
-   once, then in **System Settings > Privacy & Security** click **Open Anyway** next to "RocketMaxxing was blocked",
-   and confirm. Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/RocketMaxxing.app`. After that it opens
-   like any other app.
-4. It opens in its own window. Designs go in `~/RocketMaxxing`.
-
-On the Mac, the menu bar shows RocketMaxxing's menus while you work in its window: File (Open Design ⌘O, Save ⌘S, Save
-As ⇧⌘S, Close Window ⌘W), Edit (Undo, Redo, Cut, Copy, Paste, Select All) and Window (Minimize ⌘M). Closing the
-window keeps the app running in the Dock, as Mac apps do; clicking the Dock icon brings the window back, and the Dock
-icon's menu has Show RocketMaxxing Window and Open Design. About and Quit are in the RocketMaxxing menu; Quit asks
-first when a design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing
-(or use Open With). Shortcuts are shown as ⌘ and work with Cmd: ⌘S, ⇧⌘S, ⌘O, ⌘Z, ⇧⌘Z.
-
-### One app, one window
-
-On every system there is one RocketMaxxing per designs folder. Starting it again, or double-clicking a design while it
-runs, hands over to the running app instead of starting a second one: its window comes to the front and opens the
-design, and everything open stays open. On Windows and Linux the installers also register `.ork` and `.rkt`, and
-closing the window quits the app (it asks first when a design has unsaved changes).
-
-What the interface remembers (recent designs, colour scheme, units, folded panels, the tours you have seen, the 3-D
-view's mode) is kept between launches in `~/.rocketmaxxing/ui-prefs.json`, for every designs folder; delete the file
-to start afresh.
-
-Optional extras are found where Homebrew, MacPorts or conda put them, even though an app started from the Dock does
-not see the Terminal's PATH: `brew install ffmpeg` for smaller video files (without it the app makes the MP4
-itself), CalculiX (`conda install -c conda-forge calculix`)
-for the fin FEA, and Claude Code or Codex for the assistant.
-
-To run from source: Java 17 or newer. Building the interface the first time also needs Node.js 20 or newer.
+Java 17 or newer. Building the interface the first time also needs Node.js 20 or newer.
 
 ```bash
 git clone https://github.com/TheCheng2005/RocketMaxxing.git
@@ -364,8 +399,7 @@ build/install/openrocket-mcp/bin/rocketmaxxing        # Windows: build\install\o
 
 The app opens in its own window: the interface runs in Chromium, which `./gradlew rocketmaxxing` downloads once
 (about 150 MB, from Maven Central) and unpacks into the build, and which the installers include, so nothing is
-downloaded when the app runs. A design
-double-clicked or handed over while it runs opens in that window, which comes to the front. On the Mac the window has
+downloaded when the app runs. A design double-clicked or handed over while it runs opens in that window, which comes to the front. On the Mac the window has
 RocketMaxxing's own menus (File, Edit, Window), closing it keeps the app in the Dock, and Quit asks first when a design
 has unsaved changes; on Windows and Linux closing the window quits the app, with the same question. If the window
 cannot open (no Chromium in the build, for example), the app says why and stops; with `--no-browser` it still runs,
@@ -378,6 +412,13 @@ and the address it prints opens the interface in a browser. The file dialogs sta
 | `--no-browser` | Print the address instead of opening the window (to open it in a browser) |
 | `--dev URL` | Also accept calls from a development server |
 | `FILE.ork ...` | Designs to open (a running RocketMaxxing for the same folder opens them) |
+
+`./gradlew rocketmaxxingInstaller` makes an installer for this computer in `build/installers/`: a `.msi` on Windows
+(needs WiX 3), a `.dmg` on macOS and a `.deb` on Linux (needs `fakeroot`); `-PinstallerType=app-image` makes a folder
+that runs without installing. The *RocketMaxxing installers* workflow builds all four (two for the Mac) on every push
+to `main` and to the working branches, after starting each packaged app, using it and opening a design in its window;
+the installers are the run's artifacts. Pushing a version tag publishes them on the Releases page (see
+[CONTRIBUTING.md](../CONTRIBUTING.md)).
 
 ## How it works
 
