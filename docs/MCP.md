@@ -47,17 +47,17 @@ server.
 **Claude Code, or building it yourself.** You need **Java 17 or newer** ([Temurin](https://adoptium.net)).
 
 ```sh
-git clone https://github.com/thecheng2005/openrocket_mcp.git
-cd openrocket_mcp
+git clone https://github.com/TheCheng2005/RocketMaxxing.git
+cd RocketMaxxing
 ./gradlew installDist        # Windows: gradlew.bat installDist
 ```
 
 Run `claude` inside the folder and it is ready. To use it from any folder:
 
 ```sh
-claude mcp add openrocket -- /path/to/openrocket_mcp/scripts/openrocket-mcp
+claude mcp add openrocket -- /path/to/RocketMaxxing/scripts/openrocket-mcp
 # Windows:
-claude mcp add openrocket -- C:\path\to\openrocket_mcp\scripts\openrocket-mcp.cmd
+claude mcp add openrocket -- C:\path\to\RocketMaxxing\scripts\openrocket-mcp.cmd
 # Or connect to your team server:
 claude mcp add --transport http openrocket https://your-server/mcp/YOUR-TOKEN
 ```
@@ -68,7 +68,7 @@ claude mcp add --transport http openrocket https://your-server/mcp/YOUR-TOKEN
 
 ```toml
 [mcp_servers.openrocket]
-command = "/path/to/openrocket_mcp/scripts/openrocket-mcp"   # Windows: 'C:\path\to\openrocket_mcp\scripts\openrocket-mcp.cmd'
+command = "/path/to/RocketMaxxing/scripts/openrocket-mcp"   # Windows: 'C:\path\to\RocketMaxxing\scripts\openrocket-mcp.cmd'
 startup_timeout_sec = 60
 tool_timeout_sec = 300        # dispersion and motor ranking can take a few minutes
 

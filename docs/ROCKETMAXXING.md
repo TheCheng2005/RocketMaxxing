@@ -6,13 +6,13 @@ project's engineering tools, and it reads and writes ordinary OpenRocket `.ork` 
 forth between the two programs. (The same engine also runs on its own for AI assistants: see [MCP.md](MCP.md).)
 
 **Contents:** [Install](#install) · [Getting help in the app](#getting-help-in-the-app) · [Pages](#pages) ·
-[The assistant](#the-assistant-optional) · [Running from source](#running-from-source) · [How it works](#how-it-works) ·
-[Development](#development) · [Not in RocketMaxxing yet](#not-in-rocketmaxxing-yet)
+[The assistant](#the-assistant-optional) · [Good to know](#good-to-know) · [Running from source](#running-from-source) ·
+[How it works](#how-it-works) · [Development](#development) · [Not in RocketMaxxing yet](#not-in-rocketmaxxing-yet)
 
 Version 0.1.0 covers OpenRocket's three main tabs, and adds the engine's engineering tools, the team's targets with
 live margins, flight data after a launch, and an optional assistant. Parts can be dragged, lined up, copied and
 pulled apart in an exploded view, and right-click, search, a Guide and a tour make it easy to find things. See
-[the plan](APP_PLAN.md) for what comes next.
+[the plan](dev/APP_PLAN.md) for what comes next.
 
 ![Design page](rocketmaxxing/design.png)
 
@@ -368,6 +368,23 @@ OpenAI (Codex).
 | Right-click | The commands for what is under the pointer |
 
 Sizes can be typed with a unit, e.g. `3 in` in a millimetre field.
+
+## Good to know
+
+- Every number is an engineering estimate from OpenRocket and standard calculations, and each result says where it
+  comes from. It does **not** replace ground tests, flight tests, your mentors or the range safety officer. How each
+  number is worked out, and its limits: [REFERENCE.md](REFERENCE.md).
+- Nothing is written to your design file until you save, and edits can be undone.
+- The team's numbers (Standards page) are kept in `openrocket-mcp.json` in the designs folder. Commit it next to your
+  designs and everyone on the team gets the same answers; [`openrocket-mcp.example.json`](../openrocket-mcp.example.json)
+  shows what it can hold.
+- Simulations run about three times faster than OpenRocket's own engine (more on rockets with many internal parts),
+  with the same numbers to the last digit: the engine skips work OpenRocket repeats at every step (the airframe's mass,
+  the motor's after burnout, the geometry check). Studies that fly many simulations (optimizers, Monte Carlo, shape
+  trades) finish 4 to 8 times sooner.
+- Inputs are checked: a value no rocket can have (a negative mass, a zero Cd, a 10^30 m/s wind) is refused with the
+  range that is allowed, and a flight that cannot happen (no lift-off, tumbling under thrust, beyond Mach 3) is flagged
+  before its numbers.
 
 ## Running from source
 

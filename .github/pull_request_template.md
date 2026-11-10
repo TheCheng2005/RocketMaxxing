@@ -12,5 +12,5 @@
 - [ ] `./gradlew test` passes
 - [ ] `python3 scripts/benchmark.py` passes (for changes to tools)
 - [ ] New or changed physics has a test against an independent reference
-- [ ] `docs/REFERENCE.md` (and the README, if users see it) updated
+- [ ] `docs/REFERENCE.md` (and `docs/ROCKETMAXXING.md`, if users of the app see it) updated
 - [ ] `python3 scripts/make_examples.py` re-run if the change affects the examples page
