@@ -27,7 +27,6 @@ import javax.swing.JMenuItem;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
-import sun.misc.Signal;
 
 import me.friwi.jcefmaven.CefAppBuilder;
 import me.friwi.jcefmaven.MavenCefAppHandlerAdapter;
@@ -142,7 +141,7 @@ final class AppWindow {
 		CountDownLatch created = new CountDownLatch(1);
 		SwingUtilities.invokeAndWait(() -> {
 			CefClient client = cef.createClient();
-			javaSignals();
+			Signals.giveBackToJava();
 			client.addLifeSpanHandler(new CefLifeSpanHandlerAdapter() {
 				@Override
 				public boolean onBeforePopup(CefBrowser b, CefFrame f, String target, String name) {
@@ -404,24 +403,6 @@ final class AppWindow {
 		}, "rocketmaxxing-quit");
 		late.setDaemon(true);
 		late.start();
-	}
-
-	/**
-	 * Chromium, once started, handles SIGTERM, SIGINT and SIGHUP itself (as a Quit, which asks about unsaved designs, or
-	 * on Linux only closes the page). Java gets them back, so stopping the app (Ctrl+C, kill) stops it as it did with a
-	 * browser window: right away, and its shutdown hooks free the designs folder.
-	 */
-	private static void javaSignals() {
-		if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")) {
-			return; // no such handlers there
-		}
-		for (String name : List.of("TERM", "INT", "HUP")) {
-			try {
-				Signal.handle(new Signal(name), s -> System.exit(128 + s.getNumber()));
-			} catch (IllegalArgumentException | UnsupportedOperationException e) {
-				// the JVM keeps this signal (-Xrs)
-			}
-		}
 	}
 
 	private boolean ours(String url) {

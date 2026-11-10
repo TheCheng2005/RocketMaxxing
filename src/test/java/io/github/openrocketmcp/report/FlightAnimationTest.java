@@ -154,10 +154,10 @@ class FlightAnimationTest {
 	@Test
 	void parallelMp4IsTheSameFileAsTheSequentialOne(@TempDir Path tmp) throws Exception {
 		FlightAnimation a = anim(10, 8, 320);
-		int n = Math.min(a.frames, 2 * Video.JavaMp4.GROUP + 7); // two whole groups and a part
-		assertTrue(n > 2 * Video.JavaMp4.GROUP, "enough frames for three groups: " + a.frames);
+		int n = Math.min(a.frames, 2 * Mp4Encoder.GROUP + 7); // two whole groups and a part
+		assertTrue(n > 2 * Mp4Encoder.GROUP, "enough frames for three groups: " + a.frames);
 		Path ours = tmp.resolve("ours.mp4"), theirs = tmp.resolve("theirs.mp4");
-		try (Video.JavaMp4 m = new Video.JavaMp4(ours, a.fps())) {
+		try (Mp4Encoder m = new Mp4Encoder(ours, a.fps())) {
 			for (int i = 0; i < n; i++) {
 				m.add(a.frame(i));
 			}
