@@ -42,20 +42,23 @@ CI runs the tests on Linux, Windows and macOS, and the benchmark, examples, Code
 The *RocketMaxxing installers* workflow builds the desktop app's installers on all three, starting each packaged app
 and using it first.
 
-To release the desktop app: set the new version in `App.VERSION` (`src/main/java/io/github/openrocketmcp/app/App.java`)
-and `app/package.json`, merge to `main`, then push a tag named after it:
+To release the desktop app: set the new version as `appVersion` in `gradle.properties` (and in `app/package.json`; a
+test fails when the two differ), merge to `main`, then push a tag named after it:
 
 ```sh
 git tag rocketmaxxing-v0.2.0 && git push origin rocketmaxxing-v0.2.0
 ```
 
-The *RocketMaxxing release* workflow checks the tag matches `App.VERSION`, builds and checks the installers on every
+The *RocketMaxxing release* workflow checks the tag matches `appVersion`, builds and checks the installers on every
 platform, and publishes them on the Releases page with the changes since the last release (0.x versions as
 pre-releases). `./gradlew thirdPartyNotices` writes the licence notices the installers carry
 (`build/notices/THIRD-PARTY-NOTICES.txt`); the build includes them by itself. Installed copies find the new release by
 themselves (`app/Updates.java` reads the Releases page once a day and picks the asset whose name ends in the platform
 suffix `release.yml` gives it, so keep those names); `-Drocketmaxxing.updates.url=...` points the check elsewhere for
 testing.
+
+Raising a dependency, OpenRocket or the app's version: [docs/dev/UPGRADING.md](docs/dev/UPGRADING.md) says where each
+version lives and what to check.
 
 ## How the code is organised
 

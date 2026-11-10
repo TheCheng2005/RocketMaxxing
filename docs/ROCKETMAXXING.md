@@ -438,7 +438,8 @@ the installers are the run's artifacts. Pushing a version tag publishes them on 
   sent to the window, which keeps the 3-D geometry of the others. Each page's code loads when it is first shown.
 
 Code:
-- `src/main/java/io/github/openrocketmcp/app/`: launcher, local server, app tools, part editors, the assistant.
+- `src/main/java/io/github/openrocketmcp/app/`: launcher, local server, app tools, part editors, the assistant
+  (class by class in [dev/UPGRADING.md](dev/UPGRADING.md#where-the-apps-engine-side-code-is)).
 - `app/`: the interface (Svelte 5, TypeScript, three.js, uPlot).
 
 ## Development
