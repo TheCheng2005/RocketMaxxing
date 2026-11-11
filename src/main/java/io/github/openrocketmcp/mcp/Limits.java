@@ -88,6 +88,23 @@ public final class Limits {
 				"tEnd");
 		nonNegative(Dim.TIME, 3600, "padTime", "restTime"); // logged sensor data: an hour already makes a huge file
 
+		// Engines (simulate_engine).
+		positive(Dim.LENGTH, 10, "throatDiameter", "exitDiameter", "grainOuterDiameter", "grainCoreDiameter", "grainLength",
+				"portDiameter", "injectorHoleDiameter");
+		positive(Dim.MASS, 1e5, "oxidizerMass", "fuelMass", "dryMass");
+		positive(Dim.PRESSURE, 1e9, "chamberPressure", "tankPressure", "tankPressureEnd");
+		positive(Dim.DENSITY, 3e4, "propellantDensity", "fuelDensity", "oxidizerDensity");
+		name(Dim.VELOCITY, 200, false, 5000, "cstar");
+		name(Dim.DIMENSIONLESS, 1.05, false, 1.7, "gamma");
+		name(Dim.DIMENSIONLESS, 1, false, 500, "expansionRatio");
+		name(Dim.DIMENSIONLESS, 0.3, false, 1, "cstarEfficiency", "nozzleEfficiency");
+		positive(Dim.DIMENSIONLESS, 1, "dischargeCoefficient");
+		name(Dim.DIMENSIONLESS, 0.01, false, 0.95, "ullageFraction");
+		name(Dim.DIMENSIONLESS, 1, false, 1.7, "polytropicExponent");
+		positive(Dim.DIMENSIONLESS, 100, "mixtureRatio", "oxidizerFlow", "burnRateCoefficient", "regressionCoefficient");
+		name(Dim.DIMENSIONLESS, 0, false, 0.99, "burnRateExponent");
+		name(Dim.DIMENSIONLESS, 0, false, 1.5, "regressionExponent");
+
 		// Air and flight.
 		positive(Dim.DENSITY, 5, "airDensity");
 		name(Dim.TEMPERATURE, 173.15, false, 373.15, "temperature"); // -100 to +100 C at the launch site

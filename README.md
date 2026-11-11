@@ -1,7 +1,7 @@
 # RocketMaxxing
 
 A desktop app for designing, simulating and checking competition rockets, on [OpenRocket](https://openrocket.info)'s
-own physics. Design the rocket in 3-D, see the competition rules re-checked after every edit, and run 50 engineering
+own physics. Design the rocket in 3-D, see the competition rules re-checked after every edit, and run 51 engineering
 analyses (recovery loads, fin flutter, shear pins, ejection charges, parachute sizing and more) without writing code
 or keeping spreadsheets.
 

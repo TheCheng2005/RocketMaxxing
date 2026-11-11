@@ -36,7 +36,7 @@ import io.github.openrocketmcp.tools.DesignLocks;
  */
 public final class App {
 	public static final String NAME = "RocketMaxxing";
-	public static final String VERSION = "0.1.0";
+	public static final String VERSION = io.github.openrocketmcp.Versions.APP;
 
 	static final String USAGE = """
 			Usage: rocketmaxxing [options]

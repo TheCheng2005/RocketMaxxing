@@ -232,6 +232,21 @@ export const GUIDES: Record<string, Guide> = {
     how: "Many flights with wind speed and direction, launch angle and direction and turbulence varied at random (and optionally mass, drag, thrust and parachute Cd), in parallel.",
     example: "200 runs with wind 20 ± 7 km/h from any direction give the apogee spread (e.g. 3,050 ± 60 m) and the radius that holds 95 % of landings.",
   },
+  simulate_engine: {
+    needs: [
+      "The engine type (*), the nozzle's throat (*) and exit diameters, and c* (and gamma) for your propellants from a thermochemistry code (NASA CEA, RocketCEA, ProPEP) at your chamber pressure. For a hybrid or a liquid, a table of c* against mixture ratio is better than one value.",
+      "Solid (under More options): number of BATES grains, their outer, core and length, propellant density, and the burn rate a and n in r = a Pc^n.",
+      "Hybrid: oxidizer mass; the injector (hole diameter and count, discharge coefficient, oxidizer density, tank pressure at the start and when the liquid runs out) or a known oxidizer flow; the fuel grain (port and outer diameter, length, density) and its regression a and n in r = a Gox^n.",
+      "Liquid: oxidizer and fuel mass, chamber pressure, and for a blowdown feed the tanks' gas fraction at the start.",
+    ],
+    gives: [
+      "Total impulse and class, burn time, thrust at ignition, peak and end, delivered specific impulse, chamber pressure, mass flow and mixture ratio through the burn, what is left unburnt, the nozzle's exit pressure against the outside air, and warnings (flow separation, a port that floods, an injector pressure drop that invites chugging, erosive burning).",
+      "With a name, maker, diameter, length and dry mass: a motor in the motor list, whose mass and centre of gravity follow the burn as modelled. With a design open that has a motor mount, the thrust follows the air pressure along that rocket's own flight.",
+    ],
+    how: "A lumped model: at each moment the chamber pressure is the one at which the throat passes what the propellant feeds in, Pc = flow x c* / throat area, and thrust = Cf x Pc x throat area for an ideal nozzle with an efficiency.",
+    not: "A prediction, not a measurement: ignition, tail-off, erosive burning, throat erosion and the two-phase flow of nitrous oxide are left out. Expect the first firing to differ by several percent, then make the motor from its log (Motors page, Your own motor, raw test-stand log). The design is not changed.",
+    example: "Hybrid: 22 mm throat, 45 mm exit, 6 kg of nitrous oxide at 50 bar through 12 holes of 1.5 mm (Cd 0.4), paraffin grain 30 mm port in 90 mm x 500 mm, r = 0.155 Gox^0.5: about 14,700 N s (N class) over 13 s, 24 bar in the chamber at ignition.",
+  },
   rank_motors: {
     needs: ["A motor mount (*). No motor needed: each candidate is flown."],
     gives: ["Every motor that fits the mount's diameter and length, flown and ranked: apogee, rail exit, thrust-to-weight, minimum stability with that motor's mass, max Mach, best delay, and whether it meets the rules."],

@@ -134,6 +134,7 @@ export interface QuickFlight {
 export interface Session {
   version: string;
   engineVersion: string;
+  openRocketVersion?: string;
   examples: string[];
   designs: { designId: string; name: string; path: string }[];
   workspace: string;

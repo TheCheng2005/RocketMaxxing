@@ -20,7 +20,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Install CalculiX (fin FEA is checked against plate theory)
         if: runner.os == 'Linux'
-        run: sudo apt-get update -q && sudo apt-get install -y -q calculix-ccx
+        # The runner's DNS sometimes fails to resolve the Ubuntu mirrors for a while, so try again before giving up.
+        run: |
+          for attempt in 1 2 3; do
+            if sudo apt-get update -q && sudo apt-get install -y -q calculix-ccx; then exit 0; fi
+            echo "apt-get failed (attempt $attempt of 3)"; sleep 30
+          done
+          exit 1
       - name: Build and test
         run: ./gradlew test installDist
       - name: Stdio smoke test

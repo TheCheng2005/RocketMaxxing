@@ -163,7 +163,21 @@ final class Updates {
 		if (pa.length != pb.length) {
 			return pa.length == 1 ? 1 : -1;
 		}
-		return pa.length == 1 ? 0 : pa[1].compareTo(pb[1]);
+		return pa.length == 1 ? 0 : comparePre(pa[1], pb[1]);
+	}
+
+	/** Pre-release names part by part, numbers as numbers: beta.10 is after beta.2, and rc after beta. */
+	private static int comparePre(String a, String b) {
+		String[] xa = a.split("\\."), xb = b.split("\\.");
+		for (int i = 0; i < Math.min(xa.length, xb.length); i++) {
+			boolean na = xa[i].matches("\\d{1,9}"), nb = xb[i].matches("\\d{1,9}");
+			int c = na && nb ? Integer.compare(Integer.parseInt(xa[i]), Integer.parseInt(xb[i]))
+					: na != nb ? (na ? -1 : 1) : xa[i].compareTo(xb[i]);
+			if (c != 0) {
+				return c;
+			}
+		}
+		return Integer.compare(xa.length, xb.length);
 	}
 
 	static boolean isPre(String v) {

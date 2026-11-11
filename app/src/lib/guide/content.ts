@@ -22,7 +22,7 @@ export const PAGE_HELP: { page: Page; title: string; text: string }[] = [
   { page: "flights", title: "Flights", text: "Saved simulations with their launch conditions (wind, rail, site), and plots of any flight variable." },
   { page: "targets", title: "Targets", text: "Your team's own goals (apogee window, rail exit, stability…) with live margins next to the competition's rules." },
   { page: "standards", title: "Standards", text: "The numbers every check uses: rule set, launch site, recovery factors and pin ratings, material properties, electronics." },
-  { page: "analysis", title: "Analysis", text: "50 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
+  { page: "analysis", title: "Analysis", text: "51 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
   { page: "flightdata", title: "Flight data", text: "Altimeter logs compared with the simulation, and your past rockets with predicted against measured apogee." },
 ];
 
@@ -76,6 +76,7 @@ export const QUESTIONS: { q: string; why: string; tools: [string, string][] }[] 
     q: "Which motor, and can the design do better?",
     why: "Trade studies that fly many versions of the rocket.",
     tools: [
+      ["simulate_engine", "your own engine's thrust from its design, before a firing"],
       ["rank_motors", "every motor that fits, flown and ranked"],
       ["optimize_fins", "the best fin shape within the rules"],
       ["sweep", "vary one thing and see apogee and stability"],

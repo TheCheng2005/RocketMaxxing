@@ -37,6 +37,9 @@ class UpdatesTest {
 		assertTrue(Updates.compare("0.10.0", "0.9.9") > 0, "numbers, not text");
 		assertTrue(Updates.compare("1.0.0", "1.0.0-beta.2") > 0, "a release above its betas");
 		assertTrue(Updates.compare("1.0.0-beta.2", "1.0.0-beta.1") > 0);
+		assertTrue(Updates.compare("1.0.0-beta.10", "1.0.0-beta.2") > 0, "the tenth beta is after the second");
+		assertTrue(Updates.compare("1.0.0-rc.1", "1.0.0-beta.10") > 0);
+		assertTrue(Updates.compare("1.0.0-beta.1", "1.0.0-beta") > 0);
 		assertEquals(0, Updates.compare("1.0", "1.0.0"));
 		assertTrue(Updates.isPre("0.1.0") && Updates.isPre("1.2.0-rc.1") && !Updates.isPre("1.2.0"));
 	}

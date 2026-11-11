@@ -161,7 +161,7 @@
         <input type="checkbox" checked={checkEnabled()} onchange={(e) => setCheckEnabled((e.target as HTMLInputElement).checked)} />
       </label>
       <p class="note">
-        RocketMaxxing {app.session?.version}, engine {app.session?.engineVersion}, OpenRocket 24.12.
+        RocketMaxxing {app.session?.version}, engine {app.session?.engineVersion}, OpenRocket {app.session?.openRocketVersion ?? ""}.
         <button class="link" disabled={updates.checking} onclick={checkNow}>{updates.checking ? "Checking…" : "Check now"}</button>
         (asks GitHub's Releases page, at most once a day; nothing about you or your designs is sent)
       </p>

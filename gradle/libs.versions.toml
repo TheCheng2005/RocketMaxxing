@@ -1,0 +1,27 @@
+# Every dependency's version, in one place (used by build.gradle as libs.<name>). docs/dev/UPGRADING.md says what
+# to check when each one is raised.
+
+[versions]
+openrocket = "24.12"
+gson = "2.13.2"
+guice = "7.0.0"
+batik = "1.19"
+jcodec = "0.2.5"
+anthropic = "3.2.0"
+# The window. jcefNatives is the Chromium build jcefmaven was made with (in jcefmaven's pom): the two move together,
+# and the app checks they match before it starts Chromium.
+jcefmaven = "152.0.6"
+jcefNatives = "jcef-17e805a+cef-152.0.6+g708dc14+chromium-152.0.7977.83"
+junit = "5.13.4"
+
+[libraries]
+openrocket-core = { module = "info.openrocket:core", version.ref = "openrocket" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+guice = { module = "com.google.inject:guice", version.ref = "guice" }
+batik-transcoder = { module = "org.apache.xmlgraphics:batik-transcoder", version.ref = "batik" }
+batik-codec = { module = "org.apache.xmlgraphics:batik-codec", version.ref = "batik" }
+jcodec = { module = "org.jcodec:jcodec", version.ref = "jcodec" }
+jcodec-javase = { module = "org.jcodec:jcodec-javase", version.ref = "jcodec" }
+anthropic = { module = "com.anthropic:anthropic-java", version.ref = "anthropic" }
+jcefmaven = { module = "me.friwi:jcefmaven", version.ref = "jcefmaven" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }

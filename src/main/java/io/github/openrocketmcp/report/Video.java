@@ -28,36 +28,6 @@ public final class Video {
 	public record Written(Path gif, Path mp4, int frames, double seconds, long gifBytes, long mp4Bytes, String mp4Note) {
 	}
 
-	/** The MP4 encoder in Java, for computers without ffmpeg: H.264 through JCodec, even frame sizes. */
-	static final class JavaMp4 implements AutoCloseable {
-		private final org.jcodec.common.io.SeekableByteChannel out;
-		private final org.jcodec.api.awt.AWTSequenceEncoder enc;
-		private boolean open = true;
-
-		JavaMp4(Path file, double fps) throws IOException {
-			out = org.jcodec.common.io.NIOUtils.writableChannel(file.toFile());
-			enc = new org.jcodec.api.awt.AWTSequenceEncoder(out, org.jcodec.common.model.Rational.R((int) Math.round(fps * 1000), 1000));
-		}
-
-		void add(BufferedImage img) throws IOException {
-			int w = img.getWidth() & ~1, h = img.getHeight() & ~1;
-			enc.encodeImage(w == img.getWidth() && h == img.getHeight() ? img : img.getSubimage(0, 0, w, h));
-		}
-
-		/** Writes the file's index; without it the file does not play. */
-		void finish() throws IOException {
-			enc.finish();
-		}
-
-		@Override
-		public void close() throws IOException {
-			if (open) {
-				open = false;
-				out.close();
-			}
-		}
-	}
-
 	/**
 	 * The ffmpeg executable: $OPENROCKET_MCP_FFMPEG or $FFMPEG if set, else ffmpeg on the PATH or where package
 	 * managers put it (an app started from the Dock does not get the terminal's PATH); null when there is none.
@@ -99,7 +69,7 @@ public final class Video {
 		}
 		Process ff = null;
 		OutputStream ffIn = null;
-		JavaMp4 java = null;
+		Mp4Encoder java = null;
 		String note = null;
 		String exe = mp4 == null ? null : ffmpeg();
 		Path ffLog = null;
@@ -115,7 +85,7 @@ public final class Video {
 				ff = pb.start();
 				ffIn = ff.getOutputStream();
 			} else if (mp4 != null) {
-				java = new JavaMp4(mp4, a.fps());
+				java = new Mp4Encoder(mp4, a.fps());
 			}
 			ctx.expect(n, "frames");
 			int batch = a.parallelism();
@@ -167,6 +137,11 @@ public final class Video {
 					String log = Files.readString(ffLog, StandardCharsets.UTF_8).strip();
 					note = (exited ? "ffmpeg failed" : "ffmpeg did not finish") + (log.isEmpty() ? "" : ": "
 							+ log.lines().reduce((x, y) -> y).orElse("")) + (gif != null ? "; the GIF is written." : ".");
+					if (!exited) {
+						ff.destroyForcibly();
+						ff.waitFor(5, TimeUnit.SECONDS);
+					}
+					Files.deleteIfExists(mp4); // no broken file left where the user would find it
 				}
 			}
 			done = true;

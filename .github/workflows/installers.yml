@@ -69,7 +69,13 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Packaging tools (fakeroot for .deb, Xvfb for the window)
         if: runner.os == 'Linux'
-        run: sudo apt-get update -q && sudo apt-get install -y -q fakeroot xvfb
+        # The runner's DNS sometimes fails to resolve the Ubuntu mirrors for a while, so try again before giving up.
+        run: |
+          for attempt in 1 2 3; do
+            if sudo apt-get update -q && sudo apt-get install -y -q fakeroot xvfb; then exit 0; fi
+            echo "apt-get failed (attempt $attempt of 3)"; sleep 30
+          done
+          exit 1
       - name: Packaging tools (WiX 3 for .msi)
         if: runner.os == 'Windows'
         # The runner image usually has WiX 3 already; install it only when missing, and put it on PATH for jpackage.

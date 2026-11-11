@@ -17,6 +17,7 @@ import info.openrocket.core.simulation.FlightData;
 import info.openrocket.core.simulation.FlightDataBranch;
 import info.openrocket.core.simulation.FlightDataType;
 import info.openrocket.core.simulation.FlightEvent;
+import io.github.openrocketmcp.Versions;
 import io.github.openrocketmcp.or.Aero;
 import io.github.openrocketmcp.or.Analysis;
 import io.github.openrocketmcp.or.Designs;
@@ -259,7 +260,7 @@ public final class Reports {
 		md.append("| Simulation | ").append(cell(summary.get("simulation"))).append(" |\n");
 		md.append("| Rule set | ").append(std.rulesName()).append(" |\n");
 		md.append("| Team standards | ").append(std.source() == null ? "built-in defaults" : std.source().getFileName()).append(" |\n");
-		md.append("| Generated | ").append(LocalDate.now()).append(" by openrocket-mcp (OpenRocket 24.12) |\n\n");
+		md.append("| Generated | ").append(LocalDate.now()).append(" by openrocket-mcp (OpenRocket " + Versions.openRocket() + ") |\n\n");
 		for (String p : Sims.problems(sim)) {
 			md.append("> **Not a sound flight:** ").append(p).append("\n");
 		}
@@ -351,7 +352,7 @@ public final class Reports {
 				+ "sensor_data writes simulated sensor logs for testing flight software.\n");
 
 		md.append("\n## 7. Methods and assumptions\n\n");
-		md.append("- Flight: OpenRocket 24.12 six-degree-of-freedom simulation, Barrowman aerodynamics. ");
+		md.append("- Flight: OpenRocket " + Versions.openRocket() + " six-degree-of-freedom simulation, Barrowman aerodynamics. ");
 		md.append("Stability margin = (CP - CG) / maximum body diameter.\n");
 		md.append("- Opening load: Knacke (NWC TP 6575) infinite-mass F = Cx q CdA with Cx = ")
 				.append(Units.num(std.q("recovery.openingForceCoefficient", Dim.DIMENSIONLESS, 1.4)))

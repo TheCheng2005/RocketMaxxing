@@ -24,6 +24,12 @@ public final class DesignLocks implements McpServer.Guard {
 
 	@Override
 	public Lock lockFor(ToolDef tool, Args args) {
+		// A tool that takes no design (preferences, standards, searches, the app's own state) never waits for one: a
+		// long run on the only open design (a video, a Monte Carlo) must not hold up the rest of the app.
+		var schema = tool.inputSchema();
+		if (schema == null || !schema.has("properties") || !schema.getAsJsonObject("properties").has("designId")) {
+			return null;
+		}
 		String id = args.str("designId", null);
 		if (id == null || id.isBlank()) {
 			var open = ctx.designs.all();

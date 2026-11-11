@@ -1,0 +1,31 @@
+# Dependency updates, once a month, as one pull request per area so they can be checked together.
+# docs/dev/UPGRADING.md says what to look at for each. OpenRocket and the window (JCEF) are left out: they are
+# raised by hand, with the steps in that guide.
+version: 2
+updates:
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    ignore:
+      - dependency-name: "info.openrocket:core"
+      - dependency-name: "me.friwi:*"
+    groups:
+      java:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /app
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      interface:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]

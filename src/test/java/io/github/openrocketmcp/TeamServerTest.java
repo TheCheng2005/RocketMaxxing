@@ -241,6 +241,8 @@ class TeamServerTest {
 		var implicit = locks.lockFor(t, args.apply("{}"));
 		assertTrue(implicit != null && implicit == locks.lockFor(t, args.apply("{\"designId\":\"" + d1.id + "\"}")),
 				"the only open design is locked whether or not the call names it");
+		assertEquals(null, locks.lockFor(Main.build(c).tools().get("get_standards"), args.apply("{}")),
+				"a tool that takes no design never waits for the only open one");
 		var d2 = c.designs.openExample("Dual parachute");
 		assertTrue(locks.lockFor(t, args.apply("{\"designId\":\"" + d2.id + "\"}")) != implicit, "other designs run in parallel");
 		assertEquals(null, locks.lockFor(t, args.apply("{\"designId\":\"nope\"}")), "unknown ids are reported by the tool");

@@ -57,6 +57,7 @@ export const ANALYSIS_KEYS: Record<string, string> = {
   power_budget: "battery power e-match current brownout",
   wind_profile: "winds aloft wind shear wind profile power law",
   monte_carlo: "dispersion landing zone ellipse uncertainty statistics random scatter",
+  simulate_engine: "engine hybrid liquid solid thrust curve chamber pressure nozzle c* cstar CEA RocketCEA ProPEP nitrous N2O regression BATES burn rate Isp predict design",
   rank_motors: "motor selection choose motor best motor thrustcurve impulse",
   sweep: "parameter study trade vary what if",
   optimize_fins: "fin design fin optimiser optimizer planform fin size",

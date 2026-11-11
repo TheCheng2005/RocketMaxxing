@@ -1,6 +1,6 @@
 name: RocketMaxxing release
 
-# Push a tag named after the app's version (App.VERSION), e.g. rocketmaxxing-v0.2.0: the installers are built and
+# Push a tag named after the app's version (appVersion in gradle.properties), e.g. rocketmaxxing-v0.2.0: the installers are built and
 # checked on every platform (installers.yml), then published as a GitHub Release with the changes since the last one.
 # Versions 0.x are marked as pre-releases.
 on:
@@ -20,10 +20,10 @@ jobs:
       - name: The tag matches the app's version
         id: v
         run: |
-          v=$(sed -n 's/.*String VERSION = "\([^"]*\)".*/\1/p' src/main/java/io/github/openrocketmcp/app/App.java | head -1)
+          v=$(sed -n 's/^appVersion=//p' gradle.properties | tr -d '[:space:]')
           tag="${GITHUB_REF_NAME#rocketmaxxing-v}"
           if [ "$v" != "$tag" ]; then
-            echo "::error::The tag says $tag but App.VERSION is $v: change one so they match."
+            echo "::error::The tag says $tag but appVersion in gradle.properties is $v: change one so they match."
             exit 1
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"

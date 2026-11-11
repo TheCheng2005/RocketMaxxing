@@ -168,7 +168,9 @@ final class Assistant {
 
 	/** Whether Claude Code and Codex are installed and signed in (their own commands; a few seconds). */
 	static List<Map<String, Object>> connections() {
-		return List.of(AgentCli.status(AgentCli.Kind.CLAUDE_CODE), AgentCli.status(AgentCli.Kind.CODEX));
+		// Each check starts the program twice (version, sign-in): the two programs are asked side by side.
+		var codex = java.util.concurrent.CompletableFuture.supplyAsync(() -> AgentCli.status(AgentCli.Kind.CODEX));
+		return List.of(AgentCli.status(AgentCli.Kind.CLAUDE_CODE), codex.join());
 	}
 
 	synchronized Map<String, Object> configure(Boolean on, String newProvider, String newModel, String newKey, boolean forgetKey,

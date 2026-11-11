@@ -17,7 +17,7 @@ final class Prompts {
 			# Methods used by openrocket-mcp
 
 			## Flight
-			OpenRocket 24.12 six-degree-of-freedom simulation (Barrowman aerodynamics). Stability margin = (CP - CG) / max body
+			OpenRocket {openRocketVersion} six-degree-of-freedom simulation (Barrowman aerodynamics). Stability margin = (CP - CG) / max body
 			diameter. Launch Canada requires RASAero CP/CD overrides when the airframe diameter changes (DTEG R10.3.1).
 			The server caches what OpenRocket recomputes at every step without change (airframe mass and inertia between
 			stagings, motor mass before ignition and after burnout, the geometry check): identical results, about 3x faster.
@@ -108,7 +108,7 @@ final class Prompts {
 		s.resource(new Resource("openrocket://rules", "Competition rule set", "Active rule-set thresholds with references (JSON).",
 				"application/json", () -> ctx.standards().rulesJson()));
 		s.resource(new Resource("openrocket://methods", "Calculation methods", "Equations, constants and sources used by the tools.",
-				"text/markdown", () -> METHODS));
+				"text/markdown", () -> METHODS.replace("{openRocketVersion}", Versions.openRocket())));
 
 		s.prompt(new Prompt("what_can_you_do", "Show what this rocketry assistant can do for our project.",
 				List.of(new PromptArg("design", "Path to the team's .ork file (optional).", false)),

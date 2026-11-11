@@ -18,6 +18,11 @@ export interface Analysis {
   plot?: PlotSpec;
   /** Inputs of which at least one is needed (the engine checks the combination). */
   oneOf?: string[];
+  /**
+   * Inputs that belong to some choices of another input only (an engine's grain for a solid, its tanks for a liquid):
+   * the input they depend on, and for each such input the choices it is shown and sent for.
+   */
+  when?: { key: string; fields: Record<string, string[]> };
   /** Inputs that name a file to read, with the extensions to offer. */
   files?: Record<string, string>;
 }
@@ -26,6 +31,21 @@ export interface Group {
   title: string;
   items: Analysis[];
 }
+
+// simulate_engine: what each engine type is described by, in the order the form asks for it.
+const ENGINE_SOLID = ["grainCount", "grainOuterDiameter", "grainCoreDiameter", "grainLength", "propellantDensity", "burnRateCoefficient", "burnRateExponent", "burnRateUnits", "inhibitedEnds"];
+const ENGINE_HYBRID = ["oxidizerMass", "tankPressure", "tankPressureEnd", "injectorHoleDiameter", "injectorHoleCount", "dischargeCoefficient", "oxidizerDensity", "oxidizerFlow", "portDiameter", "portCount", "grainOuterDiameter", "grainLength", "fuelDensity", "regressionCoefficient", "regressionExponent"];
+const ENGINE_LIQUID = ["fuelMass", "mixtureRatio", "chamberPressure", "feed", "ullageFraction", "polytropicExponent"];
+const ENGINE_WHEN: Record<string, string[]> = {};
+for (const [type, fields] of [["solid", ENGINE_SOLID], ["hybrid", ENGINE_HYBRID], ["liquid", ENGINE_LIQUID]] as const) {
+  for (const f of fields) (ENGINE_WHEN[f] ??= []).push(type);
+}
+// Shared by two types.
+ENGINE_WHEN.grainOuterDiameter = ["solid", "hybrid"];
+ENGINE_WHEN.grainLength = ["solid", "hybrid"];
+ENGINE_WHEN.oxidizerMass = ["hybrid", "liquid"];
+ENGINE_WHEN.cstarTable = ["hybrid", "liquid"];
+ENGINE_WHEN.oxidizerCgFromTop = ["hybrid", "liquid"];
 
 export const CATALOG: Group[] = [
   {
@@ -92,6 +112,7 @@ export const CATALOG: Group[] = [
     title: "Studies",
     items: [
       { tool: "monte_carlo", label: "Monte Carlo dispersion", defaults: (n) => ({ plotPath: `plots/${n}-landing.svg` }), blurb: "Many flights with varied wind, launch angle and more: landing spread and worst cases.", main: ["runs", "windSpeed", "windSpeedSd", "windDirection"] },
+      { tool: "simulate_engine", label: "Engine prediction", blurb: "A solid, hybrid or liquid engine's thrust, chamber pressure and burn time from its design, before it is fired; makes it a motor to fly.", main: [...new Set(["type", "throatDiameter", "exitDiameter", "cstar", "cstarTable", "gamma", ...ENGINE_SOLID, ...ENGINE_HYBRID, ...ENGINE_LIQUID, "designation", "manufacturer", "diameter", "length", "dryMass"])], when: { key: "type", fields: ENGINE_WHEN }, defaults: (n) => ({ type: "hybrid", plotPath: `plots/${n}-engine.svg` }) },
       { tool: "rank_motors", label: "Rank motors", blurb: "Flies each motor that fits the mount and ranks them.", main: ["mount", "objective", "targetApogee", "minClass", "maxClass", "certLevel"] },
       { tool: "sweep", label: "Parameter sweep", plot: { list: "results", left: ["apogee"], right: ["minStability", "maxStability"] }, blurb: "Flies the design with one property set to each value in a list.", main: ["component", "parameter", "values"] },
       { tool: "optimize_fins", label: "Fin planform optimizer", blurb: "Finds the fin shape and thickness that best meet the goal within the rules.", main: ["finSet", "objective", "targetApogee", "thicknesses", "maxSpan", "apply"], defaults: (n) => ({ plotPath: `plots/${n}-fins.svg` }) },
