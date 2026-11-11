@@ -3,16 +3,16 @@
 
 [versions]
 openrocket = "24.12"
-gson = "2.13.2"
+gson = "2.15.0"
 guice = "7.0.0"
-batik = "1.19"
+batik = "1.20"
 jcodec = "0.2.5"
-anthropic = "3.2.0"
+anthropic = "3.6.0"
 # The window. jcefNatives is the Chromium build jcefmaven was made with (in jcefmaven's pom): the two move together,
 # and the app checks they match before it starts Chromium.
 jcefmaven = "152.0.6"
 jcefNatives = "jcef-17e805a+cef-152.0.6+g708dc14+chromium-152.0.7977.83"
-junit = "5.13.4"
+junit = "6.1.3"
 
 [libraries]
 openrocket-core = { module = "info.openrocket:core", version.ref = "openrocket" }
