@@ -1,5 +1,7 @@
 package io.github.openrocketmcp.tools;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -36,6 +38,7 @@ import io.github.openrocketmcp.mcp.ToolException;
 import io.github.openrocketmcp.or.Components;
 import io.github.openrocketmcp.or.Designs;
 import io.github.openrocketmcp.or.Motors;
+import io.github.openrocketmcp.or.StaticFire;
 import io.github.openrocketmcp.or.Requirements;
 import io.github.openrocketmcp.or.Sims;
 import io.github.openrocketmcp.or.Variants;
@@ -190,7 +193,9 @@ public final class MotorTools {
 				}));
 
 		s.tool(new ToolDef("create_custom_motor", "Create a custom engine (liquid, hybrid, research)",
-				"Define an engine from a thrust curve (e.g. static-fire data) and masses, and add it to the motor database. Writes a "
+				"Define an engine from a thrust curve and masses, and add it to the motor database. A static-fire log goes in as the "
+						+ "test stand wrote it (staticFireFile, or its text as staticFireCsv): the load cell's offset is removed, the burn "
+						+ "found (thrust above 5% of peak), noise averaged and the curve reduced with its total impulse kept. Writes a "
 						+ "RockSim .rse file that stores mass AND center of gravity at every point, so the CG shift of propellant tanks "
 						+ "is modeled: for a liquid or hybrid, define the 'motor' as the whole propulsion system (tanks + engine), give "
 						+ "its total and propellant mass, and dryCgFromTop / propellantCgFromTop measured from the top of that system. "
@@ -205,6 +210,13 @@ public final class MotorTools {
 						.qty("totalMass", "Loaded mass (dry + propellant).", true)
 						.qty("propellantMass", "Propellant mass (fuel + oxidizer).", true)
 						.prop("thrustCurve", thrustCurveSchema(), false)
+						.str("staticFireFile", "A static-fire log (CSV or text: a time and a thrust on each line), used as logged.", false)
+						.str("staticFireCsv", "The log's text, instead of a file.", false)
+						.str("timeColumn", "The log's time column: its name or number (1 = first). Default: found from the header.", false)
+						.str("thrustColumn", "The log's thrust column: its name or number. Default: found from the header.", false)
+						.enumStr("timeUnit", "Unit of the log's times (default: what the header says, else s).", false, "s", "ms")
+						.enumStr("thrustUnit", "Unit of the log's thrust (default: what the header says, else N).", false, "N", "kN", "lbf",
+								"kgf", "g")
 						.qty("averageThrust", "With burnTime, builds a flat curve when no thrustCurve is given.", false)
 						.qty("burnTime", "Burn time for a flat curve.", false)
 						.qty("dryCgFromTop", "CG of the empty system from its top (default: half length).", false)
@@ -213,7 +225,8 @@ public final class MotorTools {
 						.str("saveTo", "Where to write the .rse file (default: ./motors/<designation>.rse).", false)
 						.str("comment", "Free-text description.", false).build(),
 				false, a -> {
-					double[][] curve = curve(a);
+					StaticFire.Curve fired = staticFire(ctx, a);
+					double[][] curve = fired != null ? new double[][] { fired.time(), fired.thrust() } : curve(a);
 					double[] delays = null;
 					if (a.has("delays")) {
 						JsonArray arr = a.array("delays");
@@ -231,6 +244,9 @@ public final class MotorTools {
 							a.str("comment", null)), file);
 					Map<String, Object> out = new LinkedHashMap<>();
 					out.put("motor", Motors.describe(m));
+					if (fired != null) {
+						out.put("staticFire", fired.describe(a.qty("propellantMass", Dim.MASS)));
+					}
 					out.put("file", file.toAbsolutePath().normalize().toString());
 					out.put("note", "Available to set_motor in this session. The .rse file lets the OpenRocket app and teammates use the same curve.");
 					return out;
@@ -246,6 +262,32 @@ public final class MotorTools {
 		JsonObject s = Schema.type("array", "Thrust curve as [[time_s, thrust_N], ...], starting near t=0.");
 		s.add("items", point);
 		return s;
+	}
+
+	/** The thrust curve from a static-fire log, when one is given (a file in the workspace, or its text). */
+	private static StaticFire.Curve staticFire(Context ctx, Args a) throws IOException {
+		boolean file = a.has("staticFireFile"), text = a.has("staticFireCsv");
+		if (!file && !text) {
+			return null;
+		}
+		if (a.has("thrustCurve") || (file && text)) {
+			throw new ToolException("Give one of thrustCurve, staticFireFile and staticFireCsv.");
+		}
+		String csv;
+		if (file) {
+			Path p = ctx.path(a.str("staticFireFile"));
+			if (!Files.isRegularFile(p)) {
+				throw new ToolException("File not found: " + p);
+			}
+			if (Files.size(p) > 64L * 1024 * 1024) {
+				throw new ToolException("The log is larger than 64 MB; export the burn alone, or fewer columns.");
+			}
+			csv = Files.readString(p, java.nio.charset.StandardCharsets.ISO_8859_1);
+		} else {
+			csv = a.str("staticFireCsv");
+		}
+		return StaticFire.fromCsv(csv, a.str("timeColumn", null), a.str("thrustColumn", null), a.str("timeUnit", null),
+				a.str("thrustUnit", null), 0);
 	}
 
 	private static double[][] curve(Args a) {
@@ -269,7 +311,7 @@ public final class MotorTools {
 			double ramp = Math.min(0.05, tb * 0.02);
 			return new double[][] { { 0, ramp, tb - ramp, tb }, { 0, f * tb / (tb - ramp), f * tb / (tb - ramp), 0 } };
 		}
-		throw new ToolException("Give thrustCurve, or averageThrust and burnTime.");
+		throw new ToolException("Give thrustCurve, a static-fire log (staticFireFile or staticFireCsv), or averageThrust and burnTime.");
 	}
 
 	/** Metrics of one simulated motor candidate. */

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Upload } from "@lucide/svelte";
   import { call } from "../api";
-  import { run } from "../state.svelte";
+  import { run, toast } from "../state.svelte";
   import { num, pretty, unitOf, toShown } from "../units.svelte";
   import Modal from "../Modal.svelte";
   import Plot from "../Plot.svelte";
@@ -52,6 +52,20 @@
     return { impulse, burn, average: burn > 0 ? impulse / burn : 0, peak: Math.max(...points.map((p) => p[1])), letter };
   });
 
+  // A log straight from the test stand (noise, an offset, time before ignition, other columns) goes to the engine as
+  // it is: it removes the offset, finds the burn and averages the noise. Offered when the data looks like one.
+  let looksRaw = $derived(
+    points.length > 400 || points.some((p) => p[1] < 0) || (points.length >= 2 && points[0][1] > 0.02 * Math.max(...points.map((p) => p[1]))) ||
+      (curveText.trim().length > 0 && points.length < 2),
+  );
+  /** More than two columns: which is thrust is for the engine to find from the header, so nothing is plotted here. */
+  let manyColumns = $derived(curveText.split(/\r?\n/, 40).some((l) => /^\s*[-+\d.]/.test(l) && l.trim().split(/[,;\t ]+/).length > 2));
+  let raw = $state(false);
+  let rawTouched = false;
+  $effect(() => {
+    if (!rawTouched) raw = looksRaw;
+  });
+
   function loadFile(e: Event) {
     const f = (e.target as HTMLInputElement).files?.[0];
     if (!f) return;
@@ -70,7 +84,12 @@
       totalMass: withUnit(totalMass, unitOf("MASS").unit),
       propellantMass: withUnit(propellantMass, unitOf("MASS").unit),
     };
-    if (shape === "curve") args.thrustCurve = points;
+    if (shape === "curve" && raw) {
+      args.staticFireCsv = curveText;
+      // The engine reads the units from the log's header; a unit chosen here (other than the usual) says otherwise.
+      if (timeUnit !== "s") args.timeUnit = timeUnit;
+      if (thrustUnit !== "N") args.thrustUnit = thrustUnit;
+    } else if (shape === "curve") args.thrustCurve = points;
     else {
       args.averageThrust = withUnit(averageThrust, unitOf("FORCE").unit);
       args.burnTime = withUnit(burnTime, "s");
@@ -84,6 +103,9 @@
     try {
       const r = await run(() => call("create_custom_motor", args));
       if (r) {
+        const f = r.staticFire;
+        if (f) toast(`From the log: ${f.totalImpulse}, burn ${f.burn.split(": ").pop()}, offset removed ${f.offsetRemoved}.`);
+        for (const n of f?.notes ?? []) toast(n, "error");
         created(designation.trim());
         close();
       }
@@ -94,7 +116,8 @@
 
   let ready = $derived(
     !!designation.trim() && !!manufacturer.trim() && !!diameter.trim() && !!length.trim() && !!totalMass.trim() &&
-      !!propellantMass.trim() && (shape === "curve" ? points.length >= 2 : !!averageThrust.trim() && !!burnTime.trim()),
+      !!propellantMass.trim() &&
+      (shape === "curve" ? (raw ? curveText.trim().length > 0 : points.length >= 2) : !!averageThrust.trim() && !!burnTime.trim()),
   );
   const L = $derived(pretty(unitOf("LENGTH").unit));
   const M = $derived(pretty(unitOf("MASS").unit));
@@ -131,6 +154,10 @@
             <select class="select" bind:value={thrustUnit}><option value="N">N</option><option value="lbf">lbf</option><option value="kgf">kgf</option></select>
             <label class="btn file"><Upload size={14} /> Load CSV<input type="file" accept=".csv,.txt,.tsv" onchange={loadFile} /></label>
           </div>
+          <label class="check" title="For a log as the data logger wrote it: time before ignition, noise, a load cell that does not read zero, other columns.">
+            <input type="checkbox" bind:checked={raw} onchange={() => (rawTouched = true)} />
+            Raw test-stand log: remove the load cell's offset, find the burn (above 5% of peak), average the noise
+          </label>
           <textarea rows="7" bind:value={curveText} placeholder={"time, thrust (one point a line, from the static fire)\n0, 0\n0.05, 2400\n2.9, 2100\n3.1, 0"}></textarea>
         </div>
       {:else}
@@ -148,10 +175,14 @@
     </div>
 
     <div class="preview">
-      {#if shape === "curve" && points.length >= 2}
+      {#if shape === "curve" && raw && manyColumns}
+        <p class="muted">This log has several columns. The time and thrust columns are found from its header line (names such as "time" and "thrust", "force" or "load", with the unit, e.g. "Thrust (lbf)"); the saved motor's impulse and burn time are shown when it is saved.</p>
+      {:else if shape === "curve" && points.length >= 2}
         <Plot x={points.map((p) => p[0])} series={[{ label: "Thrust", values: points.map((p) => toShown(p[1], "FORCE")), color: "#e8590c" }]}
           xLabel="Time (s)" leftLabel={"Thrust (" + pretty(unitOf("FORCE").unit) + ")"} height={220} />
-        {#if summary}
+        {#if raw}
+          <p class="muted">As logged. The saved motor has the offset removed and only the burn; its impulse and burn time are shown when it is saved.</p>
+        {:else if summary}
           <dl>
             <dt>Points</dt><dd>{points.length}</dd>
             <dt>Total impulse</dt><dd>{num(toShown(summary.impulse, "IMPULSE"))} {pretty(unitOf("IMPULSE").unit)} ({summary.letter} class)</dd>
@@ -266,5 +297,14 @@
     gap: 12px;
     margin-top: 12px;
     font-size: 12px;
+  }
+  .curve .check {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--ink-2);
+    margin: 2px 0 6px;
   }
 </style>

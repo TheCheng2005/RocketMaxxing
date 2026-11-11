@@ -168,7 +168,14 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   size).
 - `set_motor`: includes air-start ignition.
 - `import_motor_file`: .eng or .rse files.
-- `create_custom_motor`: **liquid, hybrid and static-fire thrust curves**, with the tank CG shift.
+- `create_custom_motor`: **liquid, hybrid and static-fire thrust curves**, with the tank CG shift. A static-fire log goes in
+  as the test stand wrote it (`staticFireFile`, or its text as `staticFireCsv`; columns and units from the header, or
+  `timeColumn`, `thrustColumn`, `timeUnit`, `thrustUnit`): the load cell's offset is removed (the median before
+  ignition; a straight line to the median after the burn when the log goes on, since load cells drift as the stand
+  heats), the burn is taken from the first to the last time thrust is above 5% of peak (certification practice),
+  noise is averaged over 10 ms, and the curve is reduced to 200 points scaled to the full-rate total impulse. The
+  answer reports what was found (offset, noise, burn, impulse, Isp from the propellant mass) and warns about a log
+  that starts mid-burn, an offset that shifted by more than 1% of peak, or too few samples.
 
 ### Flight
 
