@@ -48,6 +48,7 @@ public final class Suggestions {
 
 			new Feature("rank_motors", "Motors and flight", "Which motor gets us closest to our target altitude?"),
 			new Feature("create_custom_motor", "Motors and flight", "Model our own motor or liquid engine from static-fire data."),
+			new Feature("simulate_engine", "Liquid and hybrid programmes", "Predict our hybrid, liquid or solid engine's thrust before we fire it."),
 			new Feature("monte_carlo", "Motors and flight", "Where will it land? Give us a landing map for Google Earth."),
 			new Feature("optimize", "Motors and flight", "Find the ballast or fin size that hits our target apogee."),
 			new Feature("sweep", "Motors and flight", "Show how apogee and stability change as we vary one thing (fin span, ballast, wind)."),

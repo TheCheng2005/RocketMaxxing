@@ -2,7 +2,7 @@
 
 Most people want [the desktop app](ROCKETMAXXING.md). This page is for teams who would rather work by talking to an AI
 assistant: the same engine runs as an MCP server for **Claude Desktop**, **claude.ai**, **Claude Code** and **Codex**.
-Ask in plain words, in feet or metres; the assistant runs real OpenRocket simulations and the same 50 analyses as the
+Ask in plain words, in feet or metres; the assistant runs real OpenRocket simulations and the same 51 analyses as the
 app's Analysis page, checks the results against the competition rules and your team's standards, and explains what it
 found.
 
@@ -170,7 +170,10 @@ the video from there, and read every plot with one time cursor. Outside Claude D
 
 **Motors**
 - "Find a motor for 10,000 ft on an L2 certification" — candidates are flown, not just filtered.
-- Use your own liquid or hybrid engine, or data from a static fire.
+- Use your own liquid or hybrid engine, or data from a static fire: the test stand's log goes in as it was written.
+- "Predict our hybrid before we fire it" — thrust, chamber pressure and burn time of a solid, hybrid or liquid engine
+  from its nozzle, its propellant and c* from CEA, as a motor the rocket can fly, with the thrust following the air
+  pressure along the flight.
 
 **Flight**
 - Apogee, speed, Mach number, rail exit speed, thrust-to-weight, staging and landing distance.

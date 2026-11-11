@@ -4,7 +4,7 @@ const WORDS: Record<string, string> = {
   meop: "MEOP", cd: "Cd", cds: "Drag coefficients", cg: "CG", cp: "CP", agl: "AGL", msl: "MSL", mhz: "(MHz)",
   dbm: "(dBm)", dbi: "(dBi)", db: "(dB)", sd: "std. dev.", rx: "receiver", tx: "transmitter", machs: "Mach numbers",
   kml: "KML", csv: "CSV", cfd: "CFD", fin: "fin", id: "ID", aoa: "AoA", cx: "Cx", cn: "CN", ld: "L/D",
-  url: "URL", glpp: "GLPP", isp: "Isp", aasi: "AASI", gps: "GPS", json: "JSON", fea: "FEA",
+  cstar: "c*", url: "URL", glpp: "GLPP", isp: "Isp", aasi: "AASI", gps: "GPS", json: "JSON", fea: "FEA",
 };
 
 /** "railExitVelocity" -> "Rail exit velocity"; "txPowerDbm" -> "Transmitter power (dBm)". */

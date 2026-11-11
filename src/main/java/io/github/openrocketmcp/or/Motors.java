@@ -276,10 +276,17 @@ public final class Motors {
 	}
 
 	private static List<ThrustCurveMotor> load(InputStream in, String filename) throws IOException {
+		return load(in, filename, true);
+	}
+
+	/** {@code keep}: add the motors to the database (false for one that is only flown once, to try it). */
+	private static List<ThrustCurveMotor> load(InputStream in, String filename, boolean keep) throws IOException {
 		List<ThrustCurveMotor> out = new ArrayList<>();
 		for (ThrustCurveMotor.Builder b : new GeneralMotorLoader().load(in, filename)) {
 			ThrustCurveMotor m = b.build();
-			OrRuntime.motors().addMotor(m);
+			if (keep) {
+				OrRuntime.motors().addMotor(m);
+			}
 			out.add(m);
 		}
 		if (out.isEmpty()) {
@@ -299,6 +306,26 @@ public final class Motors {
 	 * the CG shift of propellant tanks is modeled), loads it and returns it with the file path.
 	 */
 	public static ThrustCurveMotor createCustom(CustomMotor c, Path rseFile) throws IOException {
+		return createCustom(c, rseFile, null, null);
+	}
+
+	/**
+	 * As above, with the propellant left (kg) and the whole motor's CG from its top (m) at each point of the curve
+	 * when they are known (an engine model, a weighed test) instead of assumed: without them the propellant is taken
+	 * to go in proportion to the impulse delivered, at one place. The curve must then start at time zero.
+	 */
+	public static ThrustCurveMotor createCustom(CustomMotor c, Path rseFile, double[] propellantLeft, double[] cgFromTop)
+			throws IOException {
+		return createCustom(c, rseFile, propellantLeft, cgFromTop, true);
+	}
+
+	/** As above; {@code keep} false builds the motor without adding it to the database or writing a file. */
+	public static ThrustCurveMotor createCustom(CustomMotor c, Path rseFile, double[] propellantLeft, double[] cgFromTop,
+			boolean keep) throws IOException {
+		if (propellantLeft != null && (propellantLeft.length != c.time().length || c.time()[0] != 0
+				|| (cgFromTop != null && cgFromTop.length != c.time().length))) {
+			throw new IllegalArgumentException("propellantLeft and cgFromTop go point for point with a curve that starts at t = 0");
+		}
 		if (c.time().length != c.thrust().length || c.time().length < 2) {
 			throw new ToolException("thrustCurve needs at least two [time, thrust] points.");
 		}
@@ -390,22 +417,22 @@ public final class Motors {
 		xml.append("   <comments>").append(Xml.esc(c.comment() == null ? "Created by openrocket-mcp" : c.comment()))
 				.append("</comments>\n   <data>\n");
 		for (int i = 0; i < t.length; i++) {
-			double prop = c.propellantMass() * (1 - impulse[i] / total);
+			double prop = propellantLeft != null ? propellantLeft[i] : c.propellantMass() * (1 - impulse[i] / total);
 			double mass = dry + prop;
-			double cg = (dry * xDry + prop * xProp) / mass;
+			double cg = cgFromTop != null ? cgFromTop[i] : (dry * xDry + prop * xProp) / mass;
 			xml.append(String.format(Locale.ROOT, "    <eng-data t=\"%.5f\" f=\"%.4f\" m=\"%.4f\" cg=\"%.4f\"/>\n",
 					t[i], f[i], mass * 1000, cg * 1000));
 		}
 		xml.append("   </data>\n  </engine>\n </engine-list>\n</engine-database>\n");
 		byte[] bytes = xml.toString().getBytes(StandardCharsets.UTF_8);
-		if (rseFile != null) {
+		if (rseFile != null && keep) {
 			Path p = rseFile.toAbsolutePath().normalize();
 			if (p.getParent() != null) {
 				Files.createDirectories(p.getParent());
 			}
 			Files.write(p, bytes);
 		}
-		return load(new ByteArrayInputStream(bytes), c.designation() + ".rse").get(0);
+		return load(new ByteArrayInputStream(bytes), c.designation() + ".rse", keep).get(0);
 	}
 
 	private static double max(double[] v) {

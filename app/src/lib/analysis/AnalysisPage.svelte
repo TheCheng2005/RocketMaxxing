@@ -104,7 +104,11 @@
     const req = new Set(info?.inputSchema.required ?? []);
     const either = new Set(entry.oneOf ?? []);
     const all: Input[] = [];
+    // Inputs that go with another input's choice (an engine type's own) show for that choice only.
+    const when = entry.when;
+    const chosen = when ? analysis.values[entry.tool]?.[when.key] || (props[when.key] as any)?.enum?.[0] : undefined;
     for (const [key, schema] of Object.entries(props)) {
+      if (when?.fields[key] && !when.fields[key].includes(chosen)) continue;
       const k = kind(key, schema);
       if (k) all.push({ key, kind: k, schema, required: req.has(key), oneOf: either.has(key) });
     }

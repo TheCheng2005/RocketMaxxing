@@ -8,7 +8,7 @@ points to everything.
 
 ## Tools
 
-The 85 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
+The 86 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
 from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Session
@@ -168,6 +168,21 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   size).
 - `set_motor`: includes air-start ignition.
 - `import_motor_file`: .eng or .rse files.
+- `simulate_engine`: **an engine's burn predicted from its design**, before it is fired: `type` solid, hybrid or
+  liquid; the nozzle (`throatDiameter`, `exitDiameter` or `expansionRatio`); `cstar` (or `cstarTable` against
+  mixture ratio) and `gamma` from a thermochemistry code (NASA CEA, RocketCEA, ProPEP); `cstarEfficiency` (0.95;
+  hybrids 0.90) and `nozzleEfficiency` (0.97). Solid: BATES grains (`grainCount`, outer, core, length,
+  `inhibitedEnds`), `propellantDensity`, `burnRateCoefficient` and `burnRateExponent`. Hybrid: `oxidizerMass`, the
+  injector (`injectorHoleDiameter`, `injectorHoleCount`, `dischargeCoefficient`, `oxidizerDensity`, `tankPressure`,
+  `tankPressureEnd`) or `oxidizerFlow`, the fuel grain (`portDiameter`, `portCount`, `grainOuterDiameter`,
+  `grainLength`, `fuelDensity`) and `regressionCoefficient`, `regressionExponent`. Liquid: `oxidizerMass`,
+  `fuelMass`, `mixtureRatio`, `chamberPressure`, `feed` regulated or blowdown (`ullageFraction`,
+  `polytropicExponent`). Returns impulse and class, burn time, thrust, delivered Isp, chamber pressure, mass flow and
+  mixture ratio through the burn, what is left unburnt, the nozzle against the outside air, a plot, and warnings
+  (flow separation, port flooding, low injector pressure drop, erosive burning). With `designation`,
+  `manufacturer`, `diameter`, `length` and `dryMass` it becomes a motor whose mass and CG follow the burn
+  (`dryCgFromTop`, `oxidizerCgFromTop`, `fuelCgFromTop`). With `designId` the engine is flown in that rocket (the
+  design is not changed) and the thrust follows the air pressure along its flight.
 - `create_custom_motor`: **liquid, hybrid and static-fire thrust curves**, with the tank CG shift. A static-fire log goes in
   as the test stand wrote it (`staticFireFile`, or its text as `staticFireCsv`; columns and units from the header, or
   `timeColumn`, `thrustColumn`, `timeUnit`, `thrustUnit`): the load cell's offset is removed (the median before
@@ -596,6 +611,16 @@ See `openrocket://methods` for equations and sources. In short:
 - **Opening load**: Knacke (NWC TP 6575) infinite-mass `Cx·q·CdA`, plus a finite-mass inflation integration with fill time
   `n·D0/v`; Knacke's mass ratio indicates which applies. The design load is never below steady-descent drag.
 - **Black powder**: ideal-gas method, R = 266 in·lbf/(lbm·°R), T = 3307 °R (≈ 0.006·D²·L g at 15 psi).
+- **Engine prediction** (`simulate_engine`): a lumped model after Sutton, *Rocket Propulsion Elements*. At each 2 ms
+  step the chamber pressure is the one at which the throat passes what the propellant feeds in, `Pc = flow · c* / At`,
+  and thrust is `Cf · Pc · At` for a one-dimensional isentropic nozzle of constant gamma (momentum term times the
+  nozzle efficiency, plus `(pe − pa) · Ae`). Solid: `r = a·Pc^n` on the burning area of BATES grains, so
+  `Pc = (ρ·a·c*·Ab/At)^(1/(1−n))`. Hybrid: injector flow `Cd·A·√(2ρ(Ptank − Pc))` balanced against the throat by
+  bisection, fuel from `r = a·Gox^n` on a port that widens, c* read at the mixture ratio of the moment. Liquid: fixed
+  mixture ratio; blowdown `Pc = Pc0·(u/(u + x(1−u)))^k`. Checked against isentropic tables (NACA 1135) and against
+  burns with closed-form answers (port growth at constant oxidizer flow, the Kn relation, mass conservation). **Not
+  modelled**: ignition and tail-off, erosive burning, throat erosion, two-phase flow of self-pressurising oxidizers,
+  combustion dynamics, heat loss beyond the c* efficiency. It is a design estimate: fire the engine and use the log.
 - **Fin flutter**: NACA TN 4197 screening estimate with K = 2.674 (the widely copied 1.337 form overestimates flutter
   speed by √2, corrected in Apogee Peak of Flight #615), evaluated at every point of the flight. Solid plate fins only;
   composites need an effective shear modulus, and a stiffness test or FEA before relying on it.
