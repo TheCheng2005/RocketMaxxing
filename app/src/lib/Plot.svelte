@@ -4,6 +4,12 @@
     values: (number | null)[];
     color: string;
     axis?: "left" | "right";
+    /** This curve's own x column, when the curves do not share one (two simulations, a flight log). */
+    x?: (number | null)[];
+    /** Line pattern, to tell apart the same quantity from two flights. */
+    dash?: number[];
+    /** The time of each sample, shown under the cursor when x is not time. */
+    t?: (number | null)[];
   }
 
   /** True when the x column never goes backwards: then it is an ordinary plot against x, with readouts under the cursor. */
@@ -15,12 +21,29 @@
     return x.length === 0 || x[0] !== null;
   }
 
-  /** The plotted numbers as CSV: the x column, then each series. */
+  /** The plotted numbers as CSV: the x column, then each series; curves with their own x column get one each. */
   export function plotCsv(xLabel: string, x: (number | null)[], series: Series[]): string {
     const q = (s: string) => `"${s.replace(/"/g, '""')}"`;
-    const head = [xLabel || "x", ...series.map((s) => s.label)].map(q).join(",");
-    const rows = x.map((v, k) => [v ?? "", ...series.map((s) => s.values[k] ?? "")].join(","));
+    if (!series.some((s) => s.x)) {
+      const head = [xLabel || "x", ...series.map((s) => s.label)].map(q).join(",");
+      const rows = x.map((v, k) => [v ?? "", ...series.map((s) => s.values[k] ?? "")].join(","));
+      return [head, ...rows].join("\n");
+    }
+    const head = series.flatMap((s) => [`${xLabel || "x"}: ${s.label}`, s.label]).map(q).join(",");
+    const n = Math.max(0, ...series.map((s) => s.values.length));
+    const rows = Array.from({ length: n }, (_, k) => series.flatMap((s) => [(s.x ?? x)[k] ?? "", s.values[k] ?? ""]).join(","));
     return [head, ...rows].join("\n");
+  }
+
+  /** The sample of an ascending column nearest to v. */
+  export function nearest(col: (number | null)[], v: number): number {
+    let lo = 0, hi = col.length - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if ((col[mid] ?? -Infinity) <= v) lo = mid;
+      else hi = mid;
+    }
+    return hi >= 0 && Math.abs((col[hi] ?? Infinity) - v) < Math.abs((col[lo] ?? Infinity) - v) ? hi : lo;
   }
 </script>
 
@@ -31,9 +54,11 @@
   import { Download, ZoomOut } from "@lucide/svelte";
   import { call, connected } from "./api";
   import { toast } from "./state.svelte";
+  import { num } from "./units.svelte";
 
   // A line plot: one x column, any number of y series on up to two axes (left and right), event lines.
-  // Drag a box to zoom in (a mostly sideways drag zooms along x only); double-click or "Reset zoom" to see it all again.
+  // Drag a box to zoom in (a mostly sideways drag zooms along x only); the wheel zooms about the pointer (with Ctrl or
+  // a pinch, both ways); Shift-drag or the middle button moves the view; double-click or "Reset zoom" shows it all again.
   // When x goes backwards (altitude against velocity, a ground track) the curve is drawn in the order of the samples.
 
   let {
@@ -68,6 +93,10 @@
   let plot: uPlot | null = null;
   let zoomed = $state(false);
   let busy = $state(false);
+  /** Curves with their own x columns, or an x that goes backwards: drawn point by point, with our own readout. */
+  let xy = $derived(series.some((s) => s.x) || !ascending(x));
+  /** What is under the cursor in that mode: a heading, each curve's value, and the marked point. */
+  let readout = $state<{ head: string; values: string[]; dot?: { left: number; top: number; color: string } } | null>(null);
 
   const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -79,7 +108,7 @@
     const ink = css("--ink-2");
     const grid = css("--grid");
     const hasRight = series.some((s) => s.axis === "right");
-    const xy = !ascending(x);
+    readout = null;
     const axisStyle = { stroke: ink, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid, width: 1 } };
     const scaleOf = (s: Series) => (s.axis === "right" ? "right" : "left");
     const opts: uPlot.Options = {
@@ -87,16 +116,16 @@
       height,
       ...(xy ? { mode: 2 as const } : {}),
       scales: { x: { time: false } },
-      legend: { live: !xy },
+      legend: { show: !xy, live: true },
       // A box zooms both ways; a drag that stays within 30 px of level (or of upright) zooms along that direction only.
       cursor: { drag: { x: true, y: true, uni: 30 } },
       series: [
         xy ? {} : { label: xLabel },
         ...series.map((s) =>
           xy
-            ? { label: s.label, stroke: s.color, width: 2, paths: uPlot.paths.linear!(), points: { show: false },
+            ? { label: s.label, stroke: s.color, width: 2, dash: s.dash, paths: uPlot.paths.linear!(), points: { show: false },
                 facets: [{ scale: "x", auto: true }, { scale: scaleOf(s), auto: true }] }
-            : { label: s.label, stroke: s.color, width: 2, scale: scaleOf(s), spanGaps: false },
+            : { label: s.label, stroke: s.color, width: 2, dash: s.dash, scale: scaleOf(s), spanGaps: false },
         ),
       ] as uPlot.Series[],
       axes: [
@@ -107,6 +136,7 @@
       hooks: {
         // A finished drag leaves a selection behind for a moment: that is the zoom.
         setSelect: [(u: uPlot) => { if (u.select.width > 0 || u.select.height > 0) zoomed = true; }],
+        setCursor: [(u: uPlot) => { if (xy) point(u); }],
       },
       plugins: [
         {
@@ -124,9 +154,9 @@
                 const placed: [number, number][] = [];
                 for (const ev of events) {
                   const px = u.valToPos(ev.x, "x", true);
-                  if (xy) {
+                  if (ev.y !== undefined) {
                     // A point on the curve, named beside it.
-                    if (ev.y === undefined || ev.y === null) continue;
+                    if (ev.y === null) continue;
                     const py = u.valToPos(ev.y, "left", true);
                     if (!inside(px, py)) continue;
                     ctx.beginPath();
@@ -161,9 +191,112 @@
         },
       ],
     };
-    const data = xy ? [null, ...series.map((s) => [x, s.values])] : [x, ...series.map((s) => s.values)];
+    const data = xy ? [null, ...series.map((s) => [s.x ?? x, s.values])] : [x, ...series.map((s) => s.values)];
     plot = new uPlot(opts, data as unknown as uPlot.AlignedData, host);
-    plot.over.addEventListener("dblclick", () => (zoomed = false));
+    const over = plot.over;
+    over.addEventListener("dblclick", () => (zoomed = false));
+    over.addEventListener("wheel", wheel, { passive: false });
+    over.addEventListener("mousedown", grab, true);
+    over.addEventListener("mouseleave", () => (readout = null));
+  }
+
+  /** The value range of every scale, to zoom or move them together. */
+  function ranges(u: uPlot): [string, number, number][] {
+    return Object.entries(u.scales).flatMap(([k, sc]) => (sc.min == null || sc.max == null ? [] : [[k, sc.min, sc.max] as [string, number, number]]));
+  }
+
+  /** The wheel zooms about the pointer: along x, and with Ctrl, Cmd or a pinch along y as well. */
+  function wheel(e: WheelEvent) {
+    const u = plot;
+    if (!u || !e.deltaY) return;
+    e.preventDefault();
+    const box = u.over.getBoundingClientRect();
+    const fx = (e.clientX - box.left) / box.width, fy = 1 - (e.clientY - box.top) / box.height;
+    const k = Math.exp(Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60) * 0.004);
+    const both = e.ctrlKey || e.metaKey;
+    u.batch(() => {
+      for (const [key, min, max] of ranges(u)) {
+        if (key !== "x" && !both) continue;
+        const f = key === "x" ? fx : fy, at = min + f * (max - min);
+        u.setScale(key, { min: at - (at - min) * k, max: at + (max - at) * k });
+      }
+    });
+    zoomed = true;
+  }
+
+  /** Shift-drag, or the middle button, moves the view without changing its size. */
+  function grab(e: MouseEvent) {
+    const u = plot;
+    if (!u || !(e.button === 1 || (e.button === 0 && e.shiftKey))) return;
+    e.preventDefault();
+    e.stopImmediatePropagation(); // not a zoom box
+    const box = u.over.getBoundingClientRect();
+    const start = ranges(u), x0 = e.clientX, y0 = e.clientY;
+    const move = (m: MouseEvent) => {
+      const dx = (m.clientX - x0) / box.width, dy = (m.clientY - y0) / box.height;
+      u.batch(() => {
+        for (const [key, min, max] of start) {
+          const d = (key === "x" ? -dx : dy) * (max - min);
+          u.setScale(key, { min: min + d, max: max + d });
+        }
+      });
+      zoomed = true;
+    };
+    const up = () => {
+      removeEventListener("mousemove", move);
+      removeEventListener("mouseup", up);
+    };
+    addEventListener("mousemove", move);
+    addEventListener("mouseup", up);
+  }
+
+  /** What is under the cursor when the curves are drawn point by point. */
+  function point(u: uPlot) {
+    const left = u.cursor.left ?? -1, top = u.cursor.top ?? -1;
+    if (left < 0 || top < 0) {
+      readout = null;
+      return;
+    }
+    const xs = series.map((s) => s.x ?? x);
+    if (xs.every(ascending)) {
+      // Curves against the same ascending quantity (time): every curve's value at the cursor's x.
+      const xv = u.posToVal(left, "x");
+      readout = {
+        head: `${xLabel || "x"}: ${num(xv)}`,
+        values: series.map((s, i) => {
+          const col = xs[i];
+          if (!col.length || xv < (col[0] ?? 0) || xv > (col[col.length - 1] ?? 0)) return "";
+          return num(s.values[nearest(col, xv)]);
+        }),
+      };
+      return;
+    }
+    // Otherwise the nearest point of any curve, and when it was.
+    let best = -1, bi = -1, bd = Infinity;
+    series.forEach((s, i) => {
+      const scale = s.axis === "right" ? "right" : "left", col = xs[i];
+      for (let k = 0; k < col.length; k++) {
+        const a = col[k], b = s.values[k];
+        if (a === null || b === null) continue;
+        const d = (u.valToPos(a, "x") - left) ** 2 + (u.valToPos(b, scale) - top) ** 2;
+        if (d < bd) {
+          bd = d;
+          best = i;
+          bi = k;
+        }
+      }
+    });
+    if (best < 0 || bd > 60 * 60) {
+      readout = null;
+      return;
+    }
+    const s = series[best], a = xs[best][bi]!, b = s.values[bi]!;
+    const when = s.t?.[bi];
+    readout = {
+      head: `${xLabel || "x"}: ${num(a)}` + (when === null || when === undefined ? "" : `  at ${num(when)} s`),
+      values: series.map((_, i) => (i === best ? num(b) : "")),
+      dot: { left: u.valToPos(a, "x") + u.over.offsetLeft, top: u.valToPos(b, s.axis === "right" ? "right" : "left") + u.over.offsetTop, color: s.color },
+    };
   }
 
   /** Shows the whole curve again. */
@@ -219,8 +352,13 @@
       let px = pad;
       const y = top + src.height + k * line + line / 2;
       for (const { s, w } of row) {
-        c.fillStyle = s.color;
-        c.fillRect(px, y - 1.5 * r, 18 * r, 3 * r);
+        c.strokeStyle = s.color;
+        c.lineWidth = 2.5 * r;
+        c.setLineDash((s.dash ?? []).map((d) => d * r));
+        c.beginPath();
+        c.moveTo(px, y);
+        c.lineTo(px + 18 * r, y);
+        c.stroke();
         c.fillStyle = css("--ink-2") || "#444";
         c.fillText(s.label, px + 24 * r, y);
         px += w;
@@ -277,13 +415,27 @@
 
 {#if tools && x.length > 0}
   <div class="bar">
-    <span class="hint">{zoomed ? "Zoomed in" : "Drag on the plot to zoom"}</span>
+    <span class="hint" title="Drag a box to zoom in. The mouse wheel zooms about the pointer (hold Ctrl to zoom both ways). Hold Shift and drag to move the view. Double-click to see it all again.">{zoomed ? "Zoomed in · Shift-drag to move" : "Drag or scroll on the plot to zoom"}</span>
     {#if zoomed}<button class="pbtn" onclick={reset} title="Show the whole curve again (or double-click the plot)"><ZoomOut size={13} /> Reset zoom</button>{/if}
     <button class="pbtn" onclick={() => save("png")} disabled={busy} title="Save this plot as a picture, as it is shown now"><Download size={13} /> PNG</button>
     <button class="pbtn" onclick={() => save("csv")} disabled={busy} title="Save the plotted numbers as a spreadsheet file"><Download size={13} /> CSV</button>
   </div>
 {/if}
-<div class="plot" bind:this={host}></div>
+<div class="wrap">
+  <div class="plot" bind:this={host}></div>
+  {#if readout?.dot}<span class="dot" style="left:{readout.dot.left}px;top:{readout.dot.top}px;background:{readout.dot.color}"></span>{/if}
+</div>
+{#if xy && x.length > 0}
+  <div class="legend">
+    <span class="head">{readout?.head ?? ""}</span>
+    {#each series as s, i (i)}
+      <span class="item">
+        <svg width="20" height="8" aria-hidden="true"><line x1="0" y1="4" x2="20" y2="4" stroke={s.color} stroke-width="2.5" stroke-dasharray={(s.dash ?? []).join(" ")} /></svg>
+        {s.label}{#if readout?.values[i]}: <b>{readout.values[i]}</b>{/if}
+      </span>
+    {/each}
+  </div>
+{/if}
 
 <style>
   .plot {
@@ -297,6 +449,44 @@
   .plot :global(.u-select) {
     background: color-mix(in srgb, var(--select) 15%, transparent);
     border: 1px solid color-mix(in srgb, var(--select) 60%, transparent);
+  }
+  .wrap {
+    position: relative;
+  }
+  .dot {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    border: 1.5px solid var(--panel, #fff);
+    pointer-events: none;
+  }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 2px 14px;
+    font-size: 12px;
+    color: var(--ink-2);
+    padding: 2px 0 4px;
+    min-height: 20px;
+  }
+  .legend .head {
+    flex: 0 0 100%;
+    text-align: center;
+    min-height: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend .item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-variant-numeric: tabular-nums;
+  }
+  .legend b {
+    font-weight: 600;
+    color: var(--ink);
   }
   .bar {
     display: flex;

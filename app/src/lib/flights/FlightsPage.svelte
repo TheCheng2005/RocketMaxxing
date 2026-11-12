@@ -6,7 +6,7 @@
   import { call, ToolError, type IssueKind } from "../api";
   import { act, app, report, run } from "../state.svelte";
   import { fmt, num, pretty, toShown, unitOf, type Dim } from "../units.svelte";
-  import Plot, { plotCsv as csvOf, type Series } from "../Plot.svelte";
+  import FlightPlot from "./FlightPlot.svelte";
   import SimForm from "./SimForm.svelte";
   import Panel from "../Panel.svelte";
   import { context, pageMenu, copyText, type MenuItem } from "../menu/menu.svelte";
@@ -77,151 +77,7 @@
     EXTERNAL: ["none", "External"],
   };
 
-  // ------------------------------------------------------------------ plot
-  interface Var {
-    key: string;
-    name: string;
-    dim?: string;
-    values: (number | null)[];
-  }
-  let series = $state<{ branches: string[]; branch: number; variables: Var[]; events: { type: string; time: number }[] } | null>(null);
-  let branch = $state(0);
-  let chosen = $state<string[]>(["Altitude", "Vertical velocity", "Vertical acceleration"]);
-  /** What the curves are plotted against: time, or any other variable (altitude against distance, drag against Mach). */
-  let xVar = $state("Time");
-  type AxisChoice = "auto" | "left" | "right";
-  /** Which side each variable's scale is on; unset or "auto" puts the first unit on the left and the others on the right. */
-  let axes = $state<Record<string, AxisChoice>>({});
   let plotKey = $state(0);
-
-  $effect(() => {
-    void plotKey;
-    void app.revision;
-    const s = current;
-    const b = branch;
-    series = null;
-    if (!s || !app.design || !(s.status === "UPTODATE" || s.status === "LOADED" || s.status === "OUTDATED") || !s.results?.apogee) return;
-    call("app_series", { designId: app.design.designId, simulation: s.index, branch: b })
-      .then((r) => (series = r))
-      .catch(() => (series = null));
-  });
-
-  const COLORS = ["#e8590c", "#1d6fe0", "#1f9d55", "#9b51e0", "#d63384", "#0aa2c0", "#8a6420"];
-  // Launch, first ignition and liftoff all sit at t = 0: rail exit stands for them.
-  const EVENT: Record<string, string> = { IGNITION: "Ignition", LAUNCHROD: "Rail exit",
-    BURNOUT: "Burnout", EJECTION_CHARGE: "Ejection", STAGE_SEPARATION: "Separation", APOGEE: "Apogee",
-    RECOVERY_DEVICE_DEPLOYMENT: "Deploy", GROUND_HIT: "Landing" };
-
-  let plot = $derived.by(() => {
-    if (!series) return null;
-    const time = series.variables.find((v) => v.name === "Time");
-    if (!time) return null;
-    const xv = series.variables.find((v) => v.name === xVar) ?? time;
-    const unit = (v: Var) => (v.name === "Time" ? " (s)" : v.dim ? ` (${pretty(unitOf(v.dim as Dim).unit)})` : "");
-    const shown = (v: Var) => v.values.map((x) => (x === null ? null : v.dim ? toShown(x, v.dim as Dim) : x));
-    const picked = series.variables.filter((v) => chosen.includes(v.name));
-    const auto = [...new Set(picked.filter((v) => (axes[v.name] ?? "auto") === "auto").map((v) => v.dim ?? ""))];
-    const side = (v: Var): "left" | "right" => {
-      const a = axes[v.name] ?? "auto";
-      return a !== "auto" ? a : auto.indexOf(v.dim ?? "") === 0 ? "left" : "right";
-    };
-    const out: Series[] = picked.map((v, i) => ({ label: v.name + unit(v), values: shown(v), color: COLORS[i % COLORS.length], axis: side(v) }));
-    const names = (which: "left" | "right") => picked.filter((v) => side(v) === which).map((v) => v.name).join(", ");
-    const xs = shown(xv);
-    const t = time.values;
-    const first = out.find((o) => o.axis === "left") ?? out[0];
-    return {
-      x: xs,
-      xLabel: xv.name + unit(xv),
-      series: out,
-      left: names("left"),
-      right: names("right"),
-      events: series.events.filter((e) => EVENT[e.type] && !(e.type === "IGNITION" && e.time < 0.5)).flatMap((e) => {
-        if (xv === time) return [{ x: e.time, label: EVENT[e.type] }];
-        // Against another variable an event is a point on the first curve: where the rocket was at that moment.
-        const k = t.findIndex((v) => v !== null && v >= e.time);
-        const px = k < 0 ? null : xs[k];
-        return px === null || px === undefined ? [] : [{ x: px, y: first?.values[k] ?? null, label: EVENT[e.type] }];
-      }),
-    };
-  });
-
-  interface Setup {
-    name: string;
-    x?: string;
-    vars: string[];
-    axes?: Record<string, AxisChoice>;
-  }
-  const PRESETS: Setup[] = [
-    { name: "Vertical motion", vars: ["Altitude", "Vertical velocity", "Vertical acceleration"] },
-    { name: "Total motion", vars: ["Altitude", "Total velocity", "Total acceleration"] },
-    { name: "Stability", vars: ["Stability margin calibers", "CP location", "CG location"] },
-    { name: "Drag", vars: ["Drag coefficient", "Mach number"] },
-    { name: "Forces", vars: ["Thrust", "Drag force", "Mass"] },
-    { name: "Angle of attack", vars: ["Angle of attack", "Total velocity"] },
-    { name: "Flight path", x: "Lateral distance", vars: ["Altitude"] },
-    { name: "Drag against Mach", x: "Mach number", vars: ["Drag coefficient"] },
-  ];
-
-  // Plots the team set up and named, kept between launches.
-  const SAVED = "rocketmaxxing.plots";
-  function loadSaved(): Setup[] {
-    try {
-      const v = JSON.parse(localStorage.getItem(SAVED) ?? "[]");
-      return Array.isArray(v) ? v.filter((p) => p && typeof p.name === "string" && Array.isArray(p.vars)) : [];
-    } catch {
-      return [];
-    }
-  }
-  let saved = $state<Setup[]>(loadSaved());
-  function keep() {
-    try {
-      localStorage.setItem(SAVED, JSON.stringify(saved));
-    } catch {
-      /* storage unavailable: kept for this run */
-    }
-  }
-
-  const side = (name: string, a?: Record<string, AxisChoice>) => a?.[name] ?? "auto";
-  const same = (p: Setup) =>
-    (p.x ?? "Time") === xVar && p.vars.length === chosen.length && p.vars.every((v) => chosen.includes(v) && side(v, p.axes) === side(v, axes));
-  /** The built-in or saved plot on screen, as the picker's value ("my:" before a saved one's name). */
-  let preset = $derived.by(() => {
-    const mine = saved.find(same);
-    if (mine) return "my:" + mine.name;
-    return PRESETS.find(same)?.name ?? "";
-  });
-
-  function show(p: Setup) {
-    xVar = p.x ?? "Time";
-    chosen = [...p.vars];
-    axes = { ...(p.axes ?? {}) };
-  }
-  function pick(value: string) {
-    const p = value.startsWith("my:") ? saved.find((x) => "my:" + x.name === value) : PRESETS.find((x) => x.name === value);
-    if (p) show(p);
-  }
-  async function savePlot() {
-    const name = (await ask("Save this plot", "Name", preset.startsWith("my:") ? preset.slice(3) : ""))?.trim();
-    if (!name) return;
-    const used: Record<string, AxisChoice> = {};
-    for (const v of chosen) if (side(v, axes) !== "auto") used[v] = axes[v];
-    saved = [...saved.filter((p) => p.name !== name), { name, x: xVar, vars: [...chosen], axes: used }];
-    keep();
-    toast(`Saved the plot "${name}"`);
-  }
-  function forget(name: string) {
-    saved = saved.filter((p) => p.name !== name);
-    keep();
-  }
-
-  function toggleVar(name: string) {
-    chosen = chosen.includes(name) ? chosen.filter((n) => n !== name) : [...chosen, name];
-  }
-
-  let names = $derived((series?.variables ?? []).map((v) => v.name).filter((n) => n !== "Time"));
-  /** The variables on the plot that this flight has, in the order they were added. */
-  let shownVars = $derived(chosen.filter((n) => names.includes(n)));
 
   // ------------------------------------------------------------------ right-click menus
   const toAnalysis = (tool: string) => () => {
@@ -250,18 +106,6 @@
       { label: "Delete", danger: true, run: () => act("app_sim_delete", { simulation: s.index }) },
     ];
   }
-  function plotItems(): MenuItem[] {
-    return [
-      { header: "Plot" },
-      ...PRESETS.map((p) => ({ label: p.name, checked: preset === p.name, run: () => show(p) })),
-      ...(saved.length ? ["-" as const, ...saved.map((p) => ({ label: p.name, checked: preset === "my:" + p.name, run: () => show(p) }))] : []),
-      "-",
-      { label: "Save this plot…", off: !plot && "Nothing plotted", run: savePlot },
-      { label: "Copy the plotted data (CSV)", off: !plot && "Nothing plotted", run: () => copyText(csvOf(plot!.xLabel, plot!.x, plot!.series)).then((ok) => ok && toast("Copied the plotted data")) },
-      { label: "Export all flight data (CSV)", run: toAnalysis("export_flight_data") },
-    ];
-  }
-
   $effect(() => {
     void ui.request;
     if (current && take("video")) video = true;
@@ -329,70 +173,7 @@
           <SimForm sim={current} {configs} />
         </Panel>
       </div>
-      <Panel id="flights.plot" icon={ChartLine} title="Plot">
-        {#snippet tools()}
-          <select class="select small" value={preset} onchange={(e) => pick((e.target as HTMLSelectElement).value)} title="Which plot to show">
-            {#if !preset}<option value="">Custom</option>{/if}
-            {#each PRESETS as p (p.name)}<option value={p.name}>{p.name}</option>{/each}
-            {#if saved.length}
-              <optgroup label="My plots">
-                {#each saved as p (p.name)}<option value={"my:" + p.name}>{p.name}</option>{/each}
-              </optgroup>
-            {/if}
-          </select>
-          {#if (series?.branches.length ?? 0) > 1}
-            <select class="select small" bind:value={branch}>
-              {#each series!.branches as b, i}<option value={i}>{b}</option>{/each}
-            </select>
-          {/if}
-        {/snippet}
-        <div class="plotbody" use:context={plotItems}>
-          {#if plot}
-            <Plot x={plot.x} series={plot.series} xLabel={plot.xLabel} leftLabel={plot.left} rightLabel={plot.right} events={plot.events} height={300}
-              name={`${app.design?.name ?? "Rocket"} ${current.name} plot`} title={`${app.design?.name ?? "Rocket"}: ${current.name}`} />
-            <details class="custom">
-              <summary>Customize the plot</summary>
-              <div class="cfg">
-                <label class="crow"><span class="clabel">X axis</span>
-                  <select class="select small" bind:value={xVar} id="plot-x">
-                    <option value="Time">Time</option>
-                    {#each names as n (n)}<option value={n}>{n}</option>{/each}
-                  </select>
-                </label>
-                <div class="crow top"><span class="clabel">Y axis</span>
-                  <div class="ys">
-                    {#each shownVars as n (n)}
-                      <div class="yrow">
-                        <span class="yname">{n}</span>
-                        <select class="select small" value={axes[n] ?? "auto"} aria-label="Axis for {n}" title="Which side this variable's scale is on"
-                          onchange={(e) => (axes = { ...axes, [n]: (e.target as HTMLSelectElement).value as AxisChoice })}>
-                          <option value="auto">Auto</option><option value="left">Left axis</option><option value="right">Right axis</option>
-                        </select>
-                        <button class="x" onclick={() => toggleVar(n)} aria-label="Remove {n}" title="Remove from the plot">×</button>
-                      </div>
-                    {/each}
-                    <select class="select small add" id="plot-add" value="" onchange={(e) => {
-                      const el = e.target as HTMLSelectElement;
-                      if (el.value) toggleVar(el.value);
-                      el.value = "";
-                    }}>
-                      <option value="">Add a variable…</option>
-                      {#each names.filter((n) => !chosen.includes(n)) as n (n)}<option value={n}>{n}</option>{/each}
-                    </select>
-                  </div>
-                </div>
-                <div class="crow">
-                  <span class="clabel"></span>
-                  <button class="btn" onclick={savePlot}>Save as my plot…</button>
-                  {#if preset.startsWith("my:")}<button class="btn ghost" onclick={() => forget(preset.slice(3))}>Delete "{preset.slice(3)}"</button>{/if}
-                </div>
-              </div>
-            </details>
-          {:else}
-            <p class="muted empty">{current.results?.apogee ? "Loading…" : "Not run yet."}</p>
-          {/if}
-        </div>
-      </Panel>
+      <FlightPlot {sims} {current} {plotKey} />
     </div>
   {/if}
 </div>
@@ -461,80 +242,5 @@
   }
   .bottom > :global(.panel:last-child) {
     flex: 1;
-  }
-  .plotbody {
-    padding: 6px 10px;
-    min-width: 0;
-  }
-  .select.small {
-    height: 24px;
-    font-size: 12px;
-  }
-  details {
-    margin-top: 4px;
-  }
-  summary {
-    cursor: pointer;
-    color: var(--ink-2);
-  }
-  .cfg {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 0 4px;
-  }
-  .crow {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .crow.top {
-    align-items: flex-start;
-  }
-  .clabel {
-    flex: 0 0 52px;
-    color: var(--ink-2);
-    font-size: 12px;
-  }
-  .ys {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  .yrow {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .yrow .select {
-    flex: 0 0 112px;
-    width: 112px;
-    min-width: 112px;
-  }
-  .yname {
-    flex: 0 1 220px;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .x {
-    width: 22px;
-    height: 22px;
-    border: 0;
-    border-radius: 4px;
-    background: transparent;
-    color: var(--ink-2);
-    font-size: 15px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  .x:hover {
-    background: color-mix(in srgb, var(--ink-3) 15%, transparent);
-    color: var(--ink);
-  }
-  .add {
-    align-self: flex-start;
   }
 </style>
