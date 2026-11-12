@@ -6,7 +6,7 @@ Where each version lives, and what to look at when one is raised. After any upgr
 
 | What | Where | Notes |
 |---|---|---|
-| RocketMaxxing (the app) | `appVersion` in `gradle.properties`, and `version` in `app/package.json` | `VersionsTest` fails when the two differ. The release tag is `rocketmaxxing-v<appVersion>`; the release workflow checks it. |
+| RocketMaxxing (the app) | `appVersion` in `gradle.properties`, and `version` in `app/package.json` | `VersionsTest` fails when the two differ. The release tag is `v<appVersion>` (`v1.5` for 1.5.0); the release workflow checks it. |
 | The engine / MCP server | `version` in `gradle.properties` | Shown by `openrocket-mcp --version` and in the Claude Desktop extension. |
 | Every Java library | `gradle/libs.versions.toml` | `build.gradle` uses them as `libs.<name>`. |
 | The interface's packages | `app/package.json` (exact versions) and `app/package-lock.json` | Change with `npm install <package>@<version>` in `app/`, so the lockfile follows. |
