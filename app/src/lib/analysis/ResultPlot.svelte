@@ -5,7 +5,7 @@
 
   // A plot of one list in a result. The engine writes values as text ("3205 m", "Fins.height = 150 mm"), so each is
   // read back as its number and unit.
-  let { data, spec }: { data: any; spec: PlotSpec } = $props();
+  let { data, spec, name = "Analysis plot" }: { data: any; spec: PlotSpec; name?: string } = $props();
 
   const NUM = /[-+]?\d[\d,]*\.?\d*(?:[eE][-+]?\d+)?/;
 
@@ -59,7 +59,7 @@
 
 {#if plot}
   <div class="rp">
-    <Plot x={plot?.x ?? []} series={plot?.series ?? []} xLabel={plot?.xLabel ?? ""} leftLabel={plot?.left ?? ""} rightLabel={plot?.right ?? ""} height={260} />
+    <Plot x={plot?.x ?? []} series={plot?.series ?? []} xLabel={plot?.xLabel ?? ""} leftLabel={plot?.left ?? ""} rightLabel={plot?.right ?? ""} height={260} {name} title={name} />
   </div>
 {/if}
 

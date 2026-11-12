@@ -46,4 +46,22 @@ class DownloadsTest {
 		assertFalse(Downloads.openable(Path.of("run.sh")));
 		assertFalse(Downloads.openable(Path.of("RocketMaxxing.app")));
 	}
+
+	@Test
+	void aPlotIsSavedWithoutReplacingAnything(@TempDir Path dir) throws Exception {
+		Path csv = Downloads.export(dir, "Maple flight plot.csv", "\"Time (s)\",\"Altitude (m)\"\n0,0\n", null);
+		assertEquals(dir.resolve("Maple flight plot.csv"), csv);
+		assertTrue(Files.readString(csv).startsWith("\"Time (s)\""));
+		Path again = Downloads.export(dir, "Maple flight plot.csv", "x", null);
+		assertEquals(dir.resolve("Maple flight plot (2).csv"), again, "the first one is kept");
+		byte[] png = { (byte) 0x89, 'P', 'N', 'G' };
+		Path picture = Downloads.export(dir, "a/b plot.png", null, java.util.Base64.getEncoder().encodeToString(png));
+		assertEquals(dir.resolve("a b plot.png"), picture, "no folders in the name");
+		assertEquals(4, Files.size(picture));
+		for (String[] bad : new String[][] { { "plot.exe", "x", null }, { "plot.png", null, null }, { "plot.png", "x", "eA==" },
+				{ "plot.png", null, "not base64!" }, { "plot.csv", "", null } }) {
+			org.junit.jupiter.api.Assertions.assertThrows(io.github.openrocketmcp.mcp.ToolException.class,
+					() -> Downloads.export(dir, bad[0], bad[1], bad[2]), bad[0]);
+		}
+	}
 }

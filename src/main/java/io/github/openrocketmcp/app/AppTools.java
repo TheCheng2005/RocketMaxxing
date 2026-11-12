@@ -291,6 +291,16 @@ public final class AppTools {
 					Path p = Downloads.freePath(folder, a.str("name"));
 					return Map.of("path", p.toString(), "folder", folder.toString(), "folderName", folder.getFileName().toString());
 				}));
+		add(s, new ToolDef("app_export", "App: save a plot",
+				"Saves a file the page made (a plot as a .png or .svg picture, or its data as .csv) in the Downloads folder "
+						+ "(else the Desktop, else the designs folder), numbered so it replaces nothing.",
+				Schema.object().str("name", "File name ending in .png, .csv or .svg.", true)
+						.str("text", "The file's text (CSV or SVG).", false).str("base64", "The file's bytes in base64 (PNG).", false).build(),
+				true, a -> {
+					Path folder = Downloads.folder(Path.of(System.getProperty("user.home")), ctx.workspace());
+					Path p = Downloads.export(folder, a.str("name"), a.str("text", null), a.str("base64", null));
+					return Map.of("path", p.toString(), "folder", folder.toString(), "folderName", folder.getFileName().toString());
+				}));
 		add(s, new ToolDef("app_reveal", "App: show a file",
 				"Show a file the engine wrote, or its folder, in the system's file manager; open: true opens the file itself in "
 						+ "its own program (videos, pictures, documents only).",

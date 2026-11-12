@@ -167,7 +167,7 @@
           <h4>{chosen.manufacturer} {chosen.designation}</h4>
           {#if curve}
             <Plot x={curve?.time ?? []} series={[{ label: "Thrust", values: (curve?.thrust ?? []).map((t) => toShown(t, "FORCE")), color: "#e8590c" }]}
-              xLabel="Time (s)" leftLabel={"Thrust (" + pretty(unitOf("FORCE").unit) + ")"} height={200} />
+              xLabel="Time (s)" leftLabel={"Thrust (" + pretty(unitOf("FORCE").unit) + ")"} height={200} name="Thrust curve" />
           {/if}
           <dl>
             <dt>Total impulse</dt><dd>{fmt(chosen.totalImpulse, "IMPULSE")}</dd>

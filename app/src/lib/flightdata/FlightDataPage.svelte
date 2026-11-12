@@ -168,7 +168,7 @@
         {#if fd.comparing}<RocketLoader text="Flying the simulation in the day's conditions and fitting the drag" />{/if}
         {#if log}
           {#if plot}
-            <Plot x={plot.x} series={plot.series} xLabel="Time from launch (s)" leftLabel={"Altitude (" + pretty(unitOf("DISTANCE").unit) + ")"} height={280} />
+            <Plot x={plot.x} series={plot.series} xLabel="Time from launch (s)" leftLabel={"Altitude (" + pretty(unitOf("DISTANCE").unit) + ")"} height={280} name="Flight log against simulation" />
           {/if}
           <table class="grid">
             <thead><tr><th></th><th class="n">Measured</th><th class="n">Simulated</th><th class="n">Difference</th></tr></thead>

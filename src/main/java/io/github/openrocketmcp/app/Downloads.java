@@ -8,6 +8,8 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import io.github.openrocketmcp.mcp.ToolException;
+
 /**
  * Where the app saves what the user takes away (the flight video): the Downloads folder, else the Desktop, else the
  * designs folder, under a name that replaces nothing.
@@ -60,6 +62,34 @@ final class Downloads {
 			s = stem + " (" + i + ")";
 		}
 		return folder.resolve(s + ext);
+	}
+
+	/** What the page may hand over to be saved: a plot's picture or its numbers. */
+	static final long EXPORT_LIMIT = 25L * 1024 * 1024;
+
+	/**
+	 * Saves a file the page made (a plot as a picture, or its data as a table) in {@code folder} under a name that
+	 * replaces nothing. Exactly one of {@code text} and {@code base64} carries the content.
+	 */
+	static Path export(Path folder, String name, String text, String base64) throws IOException {
+		if (name == null || !name.toLowerCase(Locale.ROOT).matches(".*\\.(png|csv|svg)$")) {
+			throw new ToolException("A plot is saved as .png, .csv or .svg; got: " + name);
+		}
+		if ((text == null) == (base64 == null)) {
+			throw new ToolException("Give the file's content as text or as base64, not both.");
+		}
+		byte[] bytes;
+		try {
+			bytes = text != null ? text.getBytes(StandardCharsets.UTF_8) : java.util.Base64.getDecoder().decode(base64);
+		} catch (IllegalArgumentException e) {
+			throw new ToolException("The picture did not arrive whole (not valid base64).");
+		}
+		if (bytes.length == 0 || bytes.length > EXPORT_LIMIT) {
+			throw new ToolException(bytes.length == 0 ? "Nothing to save: the file is empty." : "Too large to save (over 25 MB).");
+		}
+		Path p = freePath(folder, name);
+		Files.write(p, bytes);
+		return p;
 	}
 
 	/** Files the app may open in their own program: what it writes, never programs or scripts. */

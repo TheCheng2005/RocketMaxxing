@@ -592,7 +592,7 @@
           {/each}
         {/if}
         {#if outcome}
-          {#if entry.plot}<ResultPlot data={outcome.data} spec={entry.plot} />{/if}
+          {#if entry.plot}<ResultPlot data={outcome.data} spec={entry.plot} name={entry.label} />{/if}
           {#each outcome.images as img}<img src={img.src} alt="Plot" />{/each}
           <Result value={noted(outcome.data)} />
         {:else}

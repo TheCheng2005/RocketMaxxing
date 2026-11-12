@@ -84,7 +84,7 @@ const PAGES: { id: Page; title: string; sub: string; keys: string }[] = [
   { id: "home", title: "Start", sub: "Recent files and examples", keys: "home recent examples open file" },
   { id: "design", title: "Design", sub: "The rocket's parts, the 3-D view and the rule check", keys: "parts components edit 3D view tree" },
   { id: "motors", title: "Motors", sub: "Motors, configurations, deployment and staging", keys: "motor configuration delay ignition staging separation deployment" },
-  { id: "flights", title: "Flights", sub: "Simulations, launch conditions and plots", keys: "simulation simulate flight apogee plot launch conditions" },
+  { id: "flights", title: "Flights", sub: "Simulations, launch conditions and plots", keys: "simulation simulate flight apogee plot launch conditions custom plot compare simulations stages booster sustainer zoom export png csv flight log units" },
   { id: "targets", title: "Targets", sub: "The team's targets and the competition rules", keys: "goals requirements apogee target" },
   { id: "standards", title: "Standards", sub: "Rule set, launch site, safety factors, ratings and materials", keys: "rule set launch site safety factor pin ratings materials team standards" },
   { id: "analysis", title: "Analysis", sub: "Rule check, recovery, structures, studies", keys: "analyses tools" },

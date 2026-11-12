@@ -6,7 +6,7 @@
   import { call, ToolError, type IssueKind } from "../api";
   import { act, app, report, run } from "../state.svelte";
   import { fmt, num, pretty, toShown, unitOf, type Dim } from "../units.svelte";
-  import Plot, { type Series } from "../Plot.svelte";
+  import FlightPlot from "./FlightPlot.svelte";
   import SimForm from "./SimForm.svelte";
   import Panel from "../Panel.svelte";
   import { context, pageMenu, copyText, type MenuItem } from "../menu/menu.svelte";
@@ -77,74 +77,7 @@
     EXTERNAL: ["none", "External"],
   };
 
-  // ------------------------------------------------------------------ plot
-  interface Var {
-    key: string;
-    name: string;
-    dim?: string;
-    values: (number | null)[];
-  }
-  let series = $state<{ branches: string[]; branch: number; variables: Var[]; events: { type: string; time: number }[] } | null>(null);
-  let branch = $state(0);
-  let chosen = $state<string[]>(["Altitude", "Vertical velocity", "Vertical acceleration"]);
   let plotKey = $state(0);
-
-  $effect(() => {
-    void plotKey;
-    void app.revision;
-    const s = current;
-    const b = branch;
-    series = null;
-    if (!s || !app.design || !(s.status === "UPTODATE" || s.status === "LOADED" || s.status === "OUTDATED") || !s.results?.apogee) return;
-    call("app_series", { designId: app.design.designId, simulation: s.index, branch: b })
-      .then((r) => (series = r))
-      .catch(() => (series = null));
-  });
-
-  const COLORS = ["#e8590c", "#1d6fe0", "#1f9d55", "#9b51e0", "#d63384", "#0aa2c0", "#8a6420"];
-  // Launch, first ignition and liftoff all sit at t = 0: rail exit stands for them.
-  const EVENT: Record<string, string> = { IGNITION: "Ignition", LAUNCHROD: "Rail exit",
-    BURNOUT: "Burnout", EJECTION_CHARGE: "Ejection", STAGE_SEPARATION: "Separation", APOGEE: "Apogee",
-    RECOVERY_DEVICE_DEPLOYMENT: "Deploy", GROUND_HIT: "Landing" };
-
-  let plot = $derived.by(() => {
-    if (!series) return null;
-    const time = series.variables.find((v) => v.name === "Time");
-    if (!time) return null;
-    const picked = series.variables.filter((v) => chosen.includes(v.name));
-    const dims = [...new Set(picked.map((v) => v.dim ?? ""))];
-    const out: Series[] = picked.map((v, i) => ({
-      label: v.name + (v.dim ? ` (${pretty(unitOf(v.dim as Dim).unit)})` : ""),
-      values: v.values.map((x) => (x === null ? null : toShown(x, v.dim as Dim))),
-      color: COLORS[i % COLORS.length],
-      axis: dims.indexOf(v.dim ?? "") === 0 ? "left" : "right",
-    }));
-    const label = (d: string) => (d ? picked.filter((v) => (v.dim ?? "") === d).map((v) => v.name).join(", ") : "");
-    return {
-      x: time.values as number[],
-      series: out,
-      left: label(dims[0] ?? ""),
-      right: dims.slice(1).map(label).join(" / "),
-      events: series.events.filter((e) => EVENT[e.type] && !(e.type === "IGNITION" && e.time < 0.5)).map((e) => ({ x: e.time, label: EVENT[e.type] })),
-    };
-  });
-
-  const PRESETS: [string, string[]][] = [
-    ["Vertical motion", ["Altitude", "Vertical velocity", "Vertical acceleration"]],
-    ["Total motion", ["Altitude", "Total velocity", "Total acceleration"]],
-    ["Stability", ["Stability margin calibers", "CP location", "CG location"]],
-    ["Drag", ["Drag coefficient", "Mach number"]],
-    ["Forces", ["Thrust", "Drag force", "Mass"]],
-    ["Angle of attack", ["Angle of attack", "Total velocity"]],
-  ];
-
-  let preset = $derived(PRESETS.find(([, vars]) => vars.length === chosen.length && vars.every((v) => chosen.includes(v)))?.[0] ?? "");
-
-  function toggleVar(name: string) {
-    chosen = chosen.includes(name) ? chosen.filter((n) => n !== name) : [...chosen, name];
-  }
-
-  let names = $derived((series?.variables ?? []).map((v) => v.name).filter((n) => n !== "Time"));
 
   // ------------------------------------------------------------------ right-click menus
   const toAnalysis = (tool: string) => () => {
@@ -173,23 +106,6 @@
       { label: "Delete", danger: true, run: () => act("app_sim_delete", { simulation: s.index }) },
     ];
   }
-  /** The plotted curves as CSV (time and each variable shown, in the units on screen). */
-  function plotCsv(): string {
-    if (!plot) return "";
-    const head = ["Time (s)", ...plot.series.map((x) => x.label)];
-    const rows = plot.x.map((t, k) => [t, ...plot.series.map((x) => x.values[k] ?? "")].join(","));
-    return [head.map((h) => `"${h}"`).join(","), ...rows].join("\n");
-  }
-  function plotItems(): MenuItem[] {
-    return [
-      { header: "Plot" },
-      ...PRESETS.map(([label, vars]) => ({ label, checked: preset === label, run: () => (chosen = [...vars]) })),
-      "-",
-      { label: "Copy the plotted data (CSV)", off: !plot && "Nothing plotted", run: () => copyText(plotCsv()).then((ok) => ok && toast("Copied the plotted data")) },
-      { label: "Export all flight data (CSV)", run: toAnalysis("export_flight_data") },
-    ];
-  }
-
   $effect(() => {
     void ui.request;
     if (current && take("video")) video = true;
@@ -257,37 +173,7 @@
           <SimForm sim={current} {configs} />
         </Panel>
       </div>
-      <Panel id="flights.plot" icon={ChartLine} title="Plot">
-        {#snippet tools()}
-          <select class="select small" value={preset} onchange={(e) => {
-            const p = PRESETS.find(([l]) => l === (e.target as HTMLSelectElement).value);
-            if (p) chosen = p[1];
-          }}>
-            {#if !preset}<option value="">Custom</option>{/if}
-            {#each PRESETS as [label] (label)}<option value={label}>{label}</option>{/each}
-          </select>
-          {#if (series?.branches.length ?? 0) > 1}
-            <select class="select small" bind:value={branch}>
-              {#each series!.branches as b, i}<option value={i}>{b}</option>{/each}
-            </select>
-          {/if}
-        {/snippet}
-        <div class="plotbody" use:context={plotItems}>
-          {#if plot}
-            <Plot x={plot?.x ?? []} series={plot?.series ?? []} xLabel="Time (s)" leftLabel={plot?.left ?? ""} rightLabel={plot?.right ?? ""} events={plot?.events ?? []} height={300} />
-            <details>
-              <summary>Variables</summary>
-              <div class="vars">
-                {#each names as n (n)}
-                  <label class="var"><input type="checkbox" checked={chosen.includes(n)} onchange={() => toggleVar(n)} /> {n}</label>
-                {/each}
-              </div>
-            </details>
-          {:else}
-            <p class="muted empty">{current.results?.apogee ? "Loading…" : "Not run yet."}</p>
-          {/if}
-        </div>
-      </Panel>
+      <FlightPlot {sims} {current} {plotKey} />
     </div>
   {/if}
 </div>
@@ -356,31 +242,5 @@
   }
   .bottom > :global(.panel:last-child) {
     flex: 1;
-  }
-  .plotbody {
-    padding: 6px 10px;
-    min-width: 0;
-  }
-  .select.small {
-    height: 24px;
-    font-size: 12px;
-  }
-  details {
-    margin-top: 4px;
-  }
-  summary {
-    cursor: pointer;
-    color: var(--ink-2);
-  }
-  .vars {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 0 12px;
-    padding: 6px 0;
-  }
-  .var {
-    display: flex;
-    gap: 6px;
-    align-items: center;
   }
 </style>

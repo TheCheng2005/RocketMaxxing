@@ -119,7 +119,7 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 |---|---|---|
 | Design | Rocket design | Parts list on the left, the rocket in the middle, the selected part's properties on the right (no pop-up dialog). The add-part buttons are below the view; the ones that can't go where you are pointing are greyed out. Summary shows stability against your rule set's minimum, mass, length and a quick flight of the active configuration. Fins show their outline (freeform fins are drawn and edited there); parts with a catalogue have a Catalogue button; every part can be given a paint colour. Parts move by dragging in the list or along the rocket in the view (lining up with their neighbours), and the view has an exploded mode (see below). Picture makes an exploded, cut-away or outside 3-D image with a numbered parts list, or the side drawing with CG and CP. The Avionics bay button lays out a whole electronics bay between two tubes. |
 | Motors | Motors & Configuration | Motors, recovery and stages as three tables on one page, a row per flight configuration. The motor list is OpenRocket's own database (the thrustcurve.org motors that come with OpenRocket 24.12, offline): it can be searched, filtered to motors that fit the mount, and shows the thrust curve. Import file adds a .eng, .rse or zipped motor file; Your own motor makes one from static-fire data (a thrust curve to paste or load from CSV, or the test stand's raw log as it was written: the load cell's offset is removed, the burn found and the noise averaged; or an average thrust and burn time) with its masses, delays and CG. Both are kept in the designs folder's `motors/` and load whenever the app starts, so a design keeps its motor. |
-| Flights | Flight simulations | The simulations, the launch conditions of the selected one, and its plot. Video turns the selected flight into an animation (a chase camera, the separations and canopies, the numbers on screen): an MP4 saved to your Downloads folder (Open video and Show in folder once it is made; nothing plays inside the app), with the key-moment stills beside it and a GIF for chat if you ask. |
+| Flights | Flight simulations | The simulations, the launch conditions of the selected one, and its plot. Pick one of the ready-made plots or open **Customize the plot** to choose what goes on the X axis (time, or any other variable, such as altitude against distance) and which variables go on the left and right axes; each quantity can have its own unit on this plot (feet for altitude) without changing the app's units, and **Save as my plot** keeps a setup under a name for next time. **Compare** draws other simulations on the same axes (one colour per quantity, one line pattern per simulation; with a single quantity, one colour per simulation). A staged rocket's sustainer and booster are drawn as separate curves, each stage with its own tick box. With an altimeter log loaded on the Flight data page, **Flight log** adds the measured altitude. Video turns the selected flight into an animation (a chase camera, the separations and canopies, the numbers on screen): an MP4 saved to your Downloads folder (Open video and Show in folder once it is made; nothing plays inside the app), with the key-moment stills beside it and a GIF for chat if you ask. |
 | Standards | (not in OpenRocket) | The team's standards, which every check uses: the competition rule set, the launch site, recovery and structures safety factors, shear pin ratings, material data, altimeter, battery and radio settings. Only what the team changes goes into its file (`openrocket-mcp.json`); a dot marks those values, and each can go back to its default. |
 | Targets | (not in OpenRocket) | The team's targets: a minimum, goal and maximum for apogee, speeds, rail exit, stability, flutter margin, mass, descent rates, landing and more, each with the margin to the nearer limit (met, close within 5%, missed), checked again after each edit. The competition rules sit beside them. |
 | Flight data | (not in OpenRocket) | After a flight: load the altimeter log and see it against the simulation flown in the day's conditions, with the drag factor that matches the measured apogee (and, when the log has an accelerometer, thrust and drag fitted separately). Read a folder of past rockets and logs to see how well apogee was predicted over the years, and open or compare any of them. |
@@ -163,7 +163,7 @@ and Enter.
 | Design | Properties, a setting | find a setting, fold or unfold all sections, catalogue parts, default colour; a list setting's choices, Automatic, copy the value |
 | Design | an Add part tile, Summary, Rule check | add (and rename); copy the numbers, the analyses behind them; check again, copy the results, show passes, automatic checking, the rule set |
 | Motors | a configuration, a motor, a deployment, a separation | make active, rename, copy, delete; change or remove the motor, its ejection delay, the same motor in every configuration, rank motors; deploy at apogee or at an altitude, edit for every configuration, size the parachute, recovery loads |
-| Flights | a simulation, the plot | run, video, rename, make its configuration active, export, Monte Carlo, delete; plot presets, copy the plotted data as CSV |
+| Flights | a simulation, the plot | run, video, rename, make its configuration active, export, Monte Carlo, delete; plot presets and saved plots, save this plot, copy the plotted data as CSV |
 | Targets | a target | goal, minimum or maximum = where the design is now, clear, copy the line, copy all targets |
 | Standards | a value, a table row, a list row | back to the default, copy; remove; duplicate, move, remove; go to a section, show the standards file |
 | Analysis | an analysis, the form, the result | open, run with these inputs, clear its inputs or result, fold or unfold the groups; run; copy the result, run again |
@@ -235,6 +235,14 @@ Plots in Analysis: stability and Cd against Mach, the parameter sweep, late depl
 the Monte Carlo landing map and the flight log against the simulation.
 
 ![Stability and drag vs Mach](rocketmaxxing/aero-plot.png)
+
+**Every plot zooms and exports.** Drag a box on a plot to zoom into it, as in OpenRocket; a drag that stays level zooms
+along X only. The mouse wheel zooms about the pointer (with Ctrl, Cmd or a pinch, both ways), and Shift-drag or the
+middle button moves the view. Double-click, or **Reset zoom**, shows the whole curve again. Under the pointer the legend
+shows every curve's value; on a plot against something other than time it shows the nearest point and when it happened. Click a
+curve's name in the legend to hide or show it. **PNG** saves the plot as a picture exactly
+as it is shown (zoom included, with its legend) and **CSV** saves the plotted numbers; both go to your Downloads folder
+under a name that replaces nothing.
 
 ![Flight log against the simulation](rocketmaxxing/flight-log.png)
 
@@ -465,7 +473,6 @@ and uses it.
 
 Use OpenRocket on the same file for:
 - decals and textures, the photo studio, fin templates, printing;
-- custom plot setups (the Analysis page exports flight data);
 - importing a fin outline from an image or a CSV file.
 
 Every engine analysis is now on the Analysis page. Two need something outside the app: the fin FEA runs CalculiX
