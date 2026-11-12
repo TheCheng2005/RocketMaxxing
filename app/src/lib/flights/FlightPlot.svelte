@@ -48,6 +48,8 @@
   let hidden = $state<number[]>([]);
   /** The measured altitude from the Flight data page, drawn with the simulation. */
   let withLog = $state(false);
+  /** The plot editor stays open while the curves are refreshed. */
+  let customizing = $state(false);
 
   const ran = (s: Sim | undefined) => !!s && (s.status === "UPTODATE" || s.status === "LOADED" || s.status === "OUTDATED") && !!s.results?.apogee;
   let others = $derived(sims.filter((s) => s.index !== current.index && ran(s)));
@@ -60,40 +62,60 @@
   let turn = 0;
   const key = (sim: number, branch: number) => `${sim}:${branch}`;
 
-  async function fetchAll(want: number[], fresh: boolean) {
+  /** Set when what is on screen is out of date (a new run, an edit): everything is read again, then swapped in at once. */
+  let stale = false;
+
+  async function fetchAll(want: number[], fresh: boolean, sameDesign: boolean) {
     const mine = ++turn;
     const designId = app.design?.designId;
     if (!designId) return;
-    if (fresh) flights = {};
+    if (fresh) stale = true;
+    if (!sameDesign) flights = {}; // another rocket: its curves must not stay up
+    const all = stale;
+    const into: Record<string, Flight> = all ? {} : flights;
     loading = true;
     try {
       for (const sim of want) {
-        if (flights[key(sim, 0)]) continue;
-        const first = await call<Flight>("app_series", { designId, simulation: sim, branch: 0 });
-        if (mine !== turn) return;
-        flights[key(sim, 0)] = first;
-        for (let b = 1; b < first.branches.length; b++) {
-          const r = await call<Flight>("app_series", { designId, simulation: sim, branch: b });
+        if (into[key(sim, 0)]) continue;
+        try {
+          const first = await call<Flight>("app_series", { designId, simulation: sim, branch: 0 });
           if (mine !== turn) return;
-          flights[key(sim, b)] = r;
+          into[key(sim, 0)] = first;
+          for (let b = 1; b < first.branches.length; b++) {
+            const r = await call<Flight>("app_series", { designId, simulation: sim, branch: b });
+            if (mine !== turn) return;
+            into[key(sim, b)] = r;
+          }
+        } catch {
+          if (mine !== turn) return; // a flight that cannot be read is left off the plot
         }
       }
-    } catch {
-      /* a flight that cannot be read is left off the plot */
+      if (all) {
+        flights = into;
+        stale = false;
+      }
     } finally {
       if (mine === turn) loading = false;
     }
   }
 
   // A new run or an edited design: everything again. Another simulation picked or added: only what is missing.
-  let seen = "";
+  let seen = "", seenDesign = "";
   $effect(() => {
-    const stamp = `${plotKey}/${app.revision}/${app.design?.designId}`;
+    const design = app.design?.designId ?? "";
+    const stamp = `${plotKey}/${app.revision}/${design}`;
     const want = shownSims.map((s) => s.index);
     untrack(() => {
-      const fresh = stamp !== seen;
+      const fresh = stamp !== seen, sameDesign = design === seenDesign;
       seen = stamp;
-      fetchAll(want, fresh);
+      seenDesign = design;
+      if (!sameDesign) {
+        // What was compared and hidden belonged to the other rocket.
+        compare = [];
+        hidden = [];
+        withLog = false;
+      }
+      fetchAll(want, fresh, sameDesign);
     });
   });
 
@@ -101,16 +123,23 @@
   /** Stage names of the selected simulation (one for a single-stage rocket). */
   let stages = $derived(primary?.branches ?? []);
 
+  /** The stages left off, never all of them (a rocket with fewer stages than the last one keeps its curve). */
+  let hiddenStages = $derived.by(() => {
+    const h = hidden.filter((b) => b < stages.length);
+    return h.length >= stages.length ? [] : h;
+  });
+
   /** Each curve family on the plot: a stage of a simulation, with the words that tell it from the others. */
   let sources = $derived.by(() => {
     const out: { flight: Flight; tag: string }[] = [];
     const many = shownSims.length > 1;
+    const hiddenNow = hiddenStages;
     for (const s of shownSims) {
       const first = flights[key(s.index, 0)];
       if (!first) continue;
       first.branches.forEach((name, b) => {
         const f = flights[key(s.index, b)];
-        if (!f || hidden.includes(b)) return;
+        if (!f || hiddenNow.includes(b)) return;
         const parts = [many ? s.name : "", first.branches.length > 1 ? name : ""].filter(Boolean);
         out.push({ flight: f, tag: parts.join(", ") });
       });
@@ -130,7 +159,7 @@
     if (!dim) return null;
     return choices(dim as Dim).find((u) => u.unit === unitNames[name]) ?? unitOf(dim as Dim);
   }
-  const unitText = (v: Var) => (v.name === "Time" ? " (s)" : v.dim ? ` (${pretty(unitFor(v.name, v.dim)!.unit)})` : "");
+  const unitText = (v: Var) => (v.dim ? ` (${pretty(unitFor(v.name, v.dim)!.unit)})` : v.name === "Time" ? " (s)" : "");
   const shown = (v: Var) => {
     const u = unitFor(v.name, v.dim);
     return v.values.map((x) => (x === null ? null : u ? toShown(x, v.dim as Dim, u) : x));
@@ -184,7 +213,7 @@
         color: "#6b7280",
         dash: [2, 2],
         axis: alt && picked.includes(alt) ? side(alt) : "left",
-        x: log.series.time,
+        x: time.dim ? log.series.time.map((s) => toShown(s, time.dim as Dim, unitFor("Time", time.dim)!)) : log.series.time,
       });
     }
     // An axis is named after its one quantity; with several, after their units (the legend names the curves).
@@ -204,11 +233,11 @@
       left: names("left"),
       right: names("right"),
       events: main.events.filter((e) => EVENT[e.type] && !(e.type === "IGNITION" && e.time < 0.5)).flatMap((e) => {
-        if (byTime) return [{ x: e.time, label: EVENT[e.type] }];
+        if (byTime) return [{ x: time.dim ? toShown(e.time, time.dim as Dim, unitFor("Time", time.dim)!) : e.time, label: EVENT[e.type] }];
         // Against another variable an event is a point on the first curve: where the rocket was at that moment.
         const k = t.findIndex((v) => v !== null && v >= e.time);
         const px = k < 0 ? null : xs[k];
-        return px === null || px === undefined ? [] : [{ x: px, y: first?.values[k] ?? null, label: EVENT[e.type] }];
+        return px === null || px === undefined ? [] : [{ x: px, y: first?.values[k] ?? null, axis: first?.axis, label: EVENT[e.type] }];
       }),
     };
   });
@@ -252,7 +281,9 @@
   }
 
   const side = (name: string, a?: Record<string, AxisChoice>) => a?.[name] ?? "auto";
-  const unitsUsed = () => Object.fromEntries(Object.entries(unitNames).filter(([n, u]) => u && (n === xVar || chosen.includes(n))));
+  /** The units picked for this plot that differ from the app's own. */
+  const unitsUsed = () =>
+    Object.fromEntries(Object.entries(unitNames).filter(([n, u]) => u && (n === xVar || chosen.includes(n)) && dimOf(n) && unitOf(dimOf(n)!).unit !== u));
   const same = (p: Setup) =>
     (p.x ?? "Time") === xVar && p.vars.length === chosen.length && p.vars.every((v) => chosen.includes(v) && side(v, p.axes) === side(v, axes)) &&
     JSON.stringify(Object.entries(p.units ?? {}).sort()) === JSON.stringify(Object.entries(unitsUsed()).sort());
@@ -343,11 +374,14 @@
         <div class="pickrow" id="plot-stages">
           <span class="clabel">Stages</span>
           {#each stages as st, b (b)}
-            <label class="tick"><input type="checkbox" checked={!hidden.includes(b)} onchange={() => (hidden = flip(hidden, b))} /> {st}</label>
+            {@const only = !hiddenStages.includes(b) && hiddenStages.length === stages.length - 1}
+            <label class="tick" title={only ? "The only stage on the plot" : ""}>
+              <input type="checkbox" checked={!hiddenStages.includes(b)} disabled={only} onchange={() => (hidden = flip(hiddenStages, b))} /> {st}
+            </label>
           {/each}
         </div>
       {/if}
-      <details class="custom">
+      <details class="custom" bind:open={customizing}>
         <summary>Customize the plot</summary>
         <div class="cfg">
           <div class="crow"><label class="clabel" for="plot-x">X axis</label>
@@ -359,10 +393,13 @@
           </div>
           <div class="crow top"><span class="clabel">Y axis</span>
             <div class="ys">
+              {#if shownVars.length}
+                <div class="yrow heads"><span class="yname">Quantity</span><span class="hu">Unit</span><span class="hs">Axis</span></div>
+              {/if}
               {#each shownVars as n (n)}
                 <div class="yrow">
                   <span class="yname">{n}</span>
-                  {@render unitPick(n)}
+                  {#if unitChoices(n).length > 1}{@render unitPick(n)}{:else}<span class="hu"></span>{/if}
                   <select class="select small side" value={axes[n] ?? "auto"} aria-label="Axis for {n}" title="Which side this variable's scale is on"
                     onchange={(e) => (axes = { ...axes, [n]: (e.target as HTMLSelectElement).value as AxisChoice })}>
                     <option value="auto">Auto</option><option value="left">Left axis</option><option value="right">Right axis</option>
@@ -456,10 +493,16 @@
     color: var(--ink-2);
     font-size: 12px;
   }
-  .ys, .ticks {
+  .ys {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    min-width: 0;
+  }
+  .ticks {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
     min-width: 0;
   }
   .tick {
@@ -482,8 +525,18 @@
     width: 76px;
     min-width: 76px;
   }
+  .heads {
+    color: var(--ink-3);
+    font-size: 11.5px;
+  }
+  .hu {
+    flex: 0 0 76px;
+  }
+  .hs {
+    flex: 0 0 112px;
+  }
   .yname {
-    flex: 0 1 220px;
+    flex: 0 0 200px;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

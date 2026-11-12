@@ -48,7 +48,7 @@
 </script>
 
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import uPlot from "uplot";
   import "uplot/dist/uPlot.min.css";
   import { Download, ZoomOut } from "@lucide/svelte";
@@ -78,8 +78,8 @@
     xLabel?: string;
     leftLabel?: string;
     rightLabel?: string;
-    /** Marked moments: a line at x, or a point at (x, y) on the left axis when x is not ascending. */
-    events?: { x: number; label: string; y?: number | null }[];
+    /** Marked moments: a line at x, or with y a point at (x, y) on that axis (left unless said). */
+    events?: { x: number; label: string; y?: number | null; axis?: "left" | "right" }[];
     height?: number;
     /** File name for exports, without the extension. */
     name?: string;
@@ -95,8 +95,14 @@
   let busy = $state(false);
   /** Curves with their own x columns, or an x that goes backwards: drawn point by point, with our own readout. */
   let xy = $derived(series.some((s) => s.x) || !ascending(x));
-  /** What is under the cursor in that mode: a heading, each curve's value, and the marked point. */
+  /** Every curve's x column goes forwards: the readout is each curve's value at the pointer's x. */
+  let forwards = $derived(series.every((s) => ascending(s.x ?? x)));
+  /** What is under the pointer: a heading, each curve's value, and (for the nearest point of a path) its mark. */
   let readout = $state<{ head: string; values: string[]; dot?: { left: number; top: number; color: string } } | null>(null);
+  /** Curves switched off in the legend, by name, so they stay off when the data is refreshed. */
+  let off = $state<string[]>([]);
+  /** The scales showing everything, to stop the wheel zooming out past the data. */
+  let full: [string, number, number][] = [];
 
   const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -111,21 +117,23 @@
     readout = null;
     const axisStyle = { stroke: ink, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid, width: 1 } };
     const scaleOf = (s: Series) => (s.axis === "right" ? "right" : "left");
+    const hiddenNow = untrack(() => off);
+    const show = (s: Series) => !hiddenNow.includes(s.label);
     const opts: uPlot.Options = {
       width: host.clientWidth || 600,
       height,
       ...(xy ? { mode: 2 as const } : {}),
       scales: { x: { time: false } },
-      legend: { show: !xy, live: true },
+      legend: { show: false },
       // A box zooms both ways; a drag that stays within 30 px of level (or of upright) zooms along that direction only.
       cursor: { drag: { x: true, y: true, uni: 30 } },
       series: [
         xy ? {} : { label: xLabel },
         ...series.map((s) =>
           xy
-            ? { label: s.label, stroke: s.color, width: 2, dash: s.dash, paths: uPlot.paths.linear!(), points: { show: false },
+            ? { label: s.label, stroke: s.color, width: 2, dash: s.dash, show: show(s), paths: uPlot.paths.linear!(), points: { show: false },
                 facets: [{ scale: "x", auto: true }, { scale: scaleOf(s), auto: true }] }
-            : { label: s.label, stroke: s.color, width: 2, dash: s.dash, scale: scaleOf(s), spanGaps: false },
+            : { label: s.label, stroke: s.color, width: 2, dash: s.dash, show: show(s), scale: scaleOf(s), spanGaps: false },
         ),
       ] as uPlot.Series[],
       axes: [
@@ -136,7 +144,7 @@
       hooks: {
         // A finished drag leaves a selection behind for a moment: that is the zoom.
         setSelect: [(u: uPlot) => { if (u.select.width > 0 || u.select.height > 0) zoomed = true; }],
-        setCursor: [(u: uPlot) => { if (xy) point(u); }],
+        setCursor: [(u: uPlot) => point(u)],
       },
       plugins: [
         {
@@ -157,7 +165,7 @@
                   if (ev.y !== undefined) {
                     // A point on the curve, named beside it.
                     if (ev.y === null) continue;
-                    const py = u.valToPos(ev.y, "left", true);
+                    const py = u.valToPos(ev.y, ev.axis === "right" ? "right" : "left", true);
                     if (!inside(px, py)) continue;
                     ctx.beginPath();
                     ctx.arc(px, py, 3 * r, 0, 2 * Math.PI);
@@ -191,10 +199,16 @@
         },
       ],
     };
-    const data = xy ? [null, ...series.map((s) => [s.x ?? x, s.values])] : [x, ...series.map((s) => s.values)];
+    // A sample without an x has nowhere to be drawn: it becomes a gap.
+    const pair = (s: Series) => {
+      const col = s.x ?? x;
+      return col.some((v) => v === null) ? [col.map((v) => v ?? 0), s.values.map((v, k) => (col[k] === null ? null : v))] : [col, s.values];
+    };
+    const data = xy ? [null, ...series.map(pair)] : [x, ...series.map((s) => s.values)];
     plot = new uPlot(opts, data as unknown as uPlot.AlignedData, host);
+    full = ranges(plot);
     const over = plot.over;
-    over.addEventListener("dblclick", () => (zoomed = false));
+    over.addEventListener("dblclick", reset);
     over.addEventListener("wheel", wheel, { passive: false });
     over.addEventListener("mousedown", grab, true);
     over.addEventListener("mouseleave", () => (readout = null));
@@ -214,6 +228,14 @@
     const fx = (e.clientX - box.left) / box.width, fy = 1 - (e.clientY - box.top) / box.height;
     const k = Math.exp(Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60) * 0.004);
     const both = e.ctrlKey || e.metaKey;
+    // Zooming out stops at the whole curve, and zooming in before the numbers run out of digits.
+    const whole = full.find(([key]) => key === "x");
+    const now = ranges(u).find(([key]) => key === "x");
+    if (whole && now && k > 1 && (now[2] - now[1]) * k >= whole[2] - whole[1]) {
+      reset();
+      return;
+    }
+    if (whole && now && k < 1 && (now[2] - now[1]) * k < (whole[2] - whole[1]) * 1e-6) return;
     u.batch(() => {
       for (const [key, min, max] of ranges(u)) {
         if (key !== "x" && !both) continue;
@@ -233,6 +255,7 @@
     const box = u.over.getBoundingClientRect();
     const start = ranges(u), x0 = e.clientX, y0 = e.clientY;
     const move = (m: MouseEvent) => {
+      if (plot !== u) return up(); // redrawn with new data while being moved
       const dx = (m.clientX - x0) / box.width, dy = (m.clientY - y0) / box.height;
       u.batch(() => {
         for (const [key, min, max] of start) {
@@ -242,15 +265,15 @@
       });
       zoomed = true;
     };
-    const up = () => {
+    function up() {
       removeEventListener("mousemove", move);
       removeEventListener("mouseup", up);
-    };
+    }
     addEventListener("mousemove", move);
     addEventListener("mouseup", up);
   }
 
-  /** What is under the cursor when the curves are drawn point by point. */
+  /** What is under the pointer. */
   function point(u: uPlot) {
     const left = u.cursor.left ?? -1, top = u.cursor.top ?? -1;
     if (left < 0 || top < 0) {
@@ -258,7 +281,13 @@
       return;
     }
     const xs = series.map((s) => s.x ?? x);
-    if (xs.every(ascending)) {
+    if (!xy) {
+      // One x column: the sample under the pointer.
+      const k = u.cursor.idx;
+      readout = k === null || k === undefined ? null : { head: `${xLabel || "x"}: ${num(x[k])}`, values: series.map((s) => num(s.values[k])) };
+      return;
+    }
+    if (forwards) {
       // Curves against the same ascending quantity (time): every curve's value at the cursor's x.
       const xv = u.posToVal(left, "x");
       readout = {
@@ -274,6 +303,7 @@
     // Otherwise the nearest point of any curve, and when it was.
     let best = -1, bi = -1, bd = Infinity;
     series.forEach((s, i) => {
+      if (off.includes(s.label)) return;
       const scale = s.axis === "right" ? "right" : "left", col = xs[i];
       for (let k = 0; k < col.length; k++) {
         const a = col[k], b = s.values[k];
@@ -303,7 +333,15 @@
   function reset() {
     if (!plot) return;
     plot.setData(plot.data);
+    full = ranges(plot);
     zoomed = false;
+  }
+
+  /** Hides or shows one curve (a click on its name in the legend). */
+  function toggle(i: number) {
+    const label = series[i].label, hide = !off.includes(label);
+    off = hide ? [...off, label] : off.filter((l) => l !== label);
+    plot?.setSeries(i + 1, { show: !hide });
   }
 
   /** The plot as a picture: its heading, the curves as they are on screen (zoom included) and the legend, on the page's background. */
@@ -316,7 +354,7 @@
     const c = out.getContext("2d")!;
     // The legend wraps to the picture's width.
     c.font = `${12 * r}px sans-serif`;
-    const items = series.map((s) => ({ s, w: c.measureText(s.label).width + 30 * r }));
+    const items = series.filter((s) => !off.includes(s.label)).map((s) => ({ s, w: c.measureText(s.label).width + 30 * r }));
     const rows: (typeof items)[] = [[]];
     let used = 0;
     for (const it of items) {
@@ -425,14 +463,15 @@
   <div class="plot" bind:this={host}></div>
   {#if readout?.dot}<span class="dot" style="left:{readout.dot.left}px;top:{readout.dot.top}px;background:{readout.dot.color}"></span>{/if}
 </div>
-{#if xy && x.length > 0}
+{#if x.length > 0}
   <div class="legend">
     <span class="head">{readout?.head ?? ""}</span>
     {#each series as s, i (i)}
-      <span class="item">
+      <button class="item" class:off={off.includes(s.label)} onclick={() => toggle(i)} aria-pressed={!off.includes(s.label)}
+        title={off.includes(s.label) ? "Show this curve" : "Hide this curve"}>
         <svg width="20" height="8" aria-hidden="true"><line x1="0" y1="4" x2="20" y2="4" stroke={s.color} stroke-width="2.5" stroke-dasharray={(s.dash ?? []).join(" ")} /></svg>
-        {s.label}{#if readout?.values[i]}: <b>{readout.values[i]}</b>{/if}
-      </span>
+        {s.label}{#if readout?.values[i] && !off.includes(s.label)}: <b>{readout.values[i]}</b>{/if}
+      </button>
     {/each}
   </div>
 {/if}
@@ -441,10 +480,6 @@
   .plot {
     width: 100%;
     min-width: 0;
-  }
-  .plot :global(.u-legend) {
-    font-size: 12px;
-    color: var(--ink-2);
   }
   .plot :global(.u-select) {
     background: color-mix(in srgb, var(--select) 15%, transparent);
@@ -459,7 +494,7 @@
     height: 9px;
     margin: -4.5px 0 0 -4.5px;
     border-radius: 50%;
-    border: 1.5px solid var(--panel, #fff);
+    border: 1.5px solid var(--surface);
     pointer-events: none;
   }
   .legend {
@@ -482,7 +517,17 @@
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
     font-variant-numeric: tabular-nums;
+  }
+  .legend .item.off {
+    opacity: 0.4;
+    text-decoration: line-through;
   }
   .legend b {
     font-weight: 600;

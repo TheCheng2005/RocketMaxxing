@@ -239,7 +239,8 @@ the Monte Carlo landing map and the flight log against the simulation.
 **Every plot zooms and exports.** Drag a box on a plot to zoom into it, as in OpenRocket; a drag that stays level zooms
 along X only. The mouse wheel zooms about the pointer (with Ctrl, Cmd or a pinch, both ways), and Shift-drag or the
 middle button moves the view. Double-click, or **Reset zoom**, shows the whole curve again. Under the pointer the legend
-shows every curve's value; on a plot against something other than time it shows the nearest point and when it happened. **PNG** saves the plot as a picture exactly
+shows every curve's value; on a plot against something other than time it shows the nearest point and when it happened. Click a
+curve's name in the legend to hide or show it. **PNG** saves the plot as a picture exactly
 as it is shown (zoom included, with its legend) and **CSV** saves the plotted numbers; both go to your Downloads folder
 under a name that replaces nothing.
 
