@@ -55,18 +55,18 @@ jobs:
             devtools: 9333
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
       - name: Packaging tools (fakeroot for .deb, Xvfb for the window)
         if: runner.os == 'Linux'
         # The runner's DNS sometimes fails to resolve the Ubuntu mirrors for a while, so try again before giving up.
@@ -101,7 +101,7 @@ jobs:
         run: ${{ matrix.screen }} python scripts/test_rocketmaxxing.py --window ${{ matrix.app }}
       - name: Build the installer
         run: ./gradlew rocketmaxxingInstaller -PinstallerType=${{ matrix.type }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: rocketmaxxing-${{ matrix.name }}
           path: build/installers/*.${{ matrix.type }}
