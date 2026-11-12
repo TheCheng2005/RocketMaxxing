@@ -1,11 +1,18 @@
 name: RocketMaxxing release
 
-# Push a tag named after the app's version (appVersion in gradle.properties), e.g. rocketmaxxing-v0.2.0: the installers are built and
-# checked on every platform (installers.yml), then published as a GitHub Release with the changes since the last one.
-# Versions 0.x are marked as pre-releases.
+# Publish a release tagged after the app's version (appVersion in gradle.properties): v1.5 or v1.5.0 for 1.5.0. The
+# installers are built and checked on every platform (installers.yml) and attached to that release; CI attaches the
+# Claude Desktop extension (.mcpb) to the same one. A release made on the Releases page is kept as written; one made
+# by pushing the tag gets the download table and the changes since the last release. Versions 0.x are pre-releases.
+# Run it by hand with a tag to add the installers to a release that already exists.
 on:
   push:
-    tags: ['rocketmaxxing-v*']
+    tags: ['v*', 'rocketmaxxing-v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The existing release to attach the installers to, e.g. v1.5
+        required: true
 
 permissions:
   contents: write
@@ -15,18 +22,23 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       - name: The tag matches the app's version
         id: v
         run: |
           v=$(sed -n 's/^appVersion=//p' gradle.properties | tr -d '[:space:]')
-          tag="${GITHUB_REF_NAME#rocketmaxxing-v}"
-          if [ "$v" != "$tag" ]; then
-            echo "::error::The tag says $tag but appVersion in gradle.properties is $v: change one so they match."
+          tag="${TAG_INPUT:-$GITHUB_REF_NAME}"
+          named="${tag#rocketmaxxing-}"; named="${named#v}"
+          if [ "$named" != "$v" ] && [ "$named" != "${v%.0}" ]; then
+            echo "::error::The tag says $named but appVersion in gradle.properties is $v: change one so they match."
             exit 1
           fi
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+        env:
+          TAG_INPUT: ${{ inputs.tag }}
 
   installers:
     needs: version
@@ -75,4 +87,11 @@ jobs:
           NOTES
           pre=""
           case "$v" in 0.*) pre="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" dist/* --title "RocketMaxxing $v" --notes-file notes.md --generate-notes $pre
+          tag="${{ needs.version.outputs.tag }}"
+          # The release may exist already (made on the Releases page, or by CI attaching the extension): add to it.
+          if gh release view "$tag" > /dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+          else
+            gh release create "$tag" dist/* --title "RocketMaxxing $v" --notes-file notes.md --generate-notes $pre \
+              || gh release upload "$tag" dist/* --clobber
+          fi

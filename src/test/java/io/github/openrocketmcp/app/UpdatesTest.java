@@ -2,6 +2,7 @@ package io.github.openrocketmcp.app;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.InetSocketAddress;
@@ -31,6 +32,16 @@ class UpdatesTest {
 			 {"tag_name": "something-else-v9", "prerelease": false, "draft": false},
 			 {"tag_name": "rocketmaxxing-v0.2.0", "prerelease": true, "draft": false, "html_url": "https://x/0.2.0"}
 			]""";
+
+	@Test
+	void plainVersionTagsAreReleasesToo() {
+		assertEquals("1.5", Updates.version("v1.5"));
+		assertEquals("1.5.0", Updates.version("rocketmaxxing-v1.5.0"));
+		assertNull(Updates.version("vnext"));
+		assertNull(Updates.version("nightly"));
+		assertEquals(0, Updates.compare("1.5", "1.5.0"));
+		assertTrue(Updates.compare("1.6", "1.5.0") > 0);
+	}
 
 	@Test
 	void versionsInOrder() {

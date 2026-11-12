@@ -18,14 +18,15 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
 /**
- * Is there a newer RocketMaxxing? Asks GitHub for the project's releases (tags rocketmaxxing-vX.Y.Z), at most once a day
+ * Is there a newer RocketMaxxing? Asks GitHub for the project's releases (tags vX.Y or rocketmaxxing-vX.Y.Z), at most once a day
  * unless asked to (the answer is kept in a file), and finds the installer for this computer. It sends nothing but the
  * request itself, and offline it says so instead of failing. Pre-releases are offered only to someone already on one
  * (0.x versions included), so a stable version is never pushed onto a beta.
  */
 final class Updates {
 	static final String REPO = "TheCheng2005/RocketMaxxing";
-	static final String TAG = "rocketmaxxing-v";
+	/** A release tag is the version after one of these: v1.5, rocketmaxxing-v1.5.0. */
+	static final String[] TAGS = { "rocketmaxxing-v", "v" };
 	static final long DAY = 24 * 3600 * 1000L;
 
 	private Updates() {
@@ -102,10 +103,10 @@ final class Updates {
 		for (JsonElement e : releases) {
 			JsonObject r = e.getAsJsonObject();
 			String tag = str(r, "tag_name");
-			if (tag == null || !tag.startsWith(TAG) || bool(r, "draft") || (bool(r, "prerelease") && !betas)) {
+			String v = version(tag);
+			if (v == null || bool(r, "draft") || (bool(r, "prerelease") && !betas)) {
 				continue;
 			}
-			String v = tag.substring(TAG.length());
 			if (bestVersion == null || compare(v, bestVersion) > 0) {
 				best = r;
 				bestVersion = v;
@@ -148,6 +149,18 @@ final class Updates {
 			return a.contains("aarch64") || a.contains("arm") ? "-macos-apple-silicon.dmg" : "-macos-intel.dmg";
 		}
 		return "-linux-x64.deb";
+	}
+
+	/** The version a release tag names (v1.5 gives 1.5), or null when the tag is not a version. */
+	static String version(String tag) {
+		if (tag != null) {
+			for (String prefix : TAGS) {
+				if (tag.startsWith(prefix) && tag.length() > prefix.length() && Character.isDigit(tag.charAt(prefix.length()))) {
+					return tag.substring(prefix.length());
+				}
+			}
+		}
+		return null;
 	}
 
 	/** Version order: numbers part by part; a release ranks above its own pre-releases (0.2.0 > 0.2.0-beta.1). */

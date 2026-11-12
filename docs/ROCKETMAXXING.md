@@ -9,7 +9,7 @@ forth between the two programs. (The same engine also runs on its own for AI ass
 [The assistant](#the-assistant-optional) · [Good to know](#good-to-know) · [Running from source](#running-from-source) ·
 [How it works](#how-it-works) · [Development](#development) · [Not in RocketMaxxing yet](#not-in-rocketmaxxing-yet)
 
-Version 0.1.0 covers OpenRocket's three main tabs, and adds the engine's engineering tools, the team's targets with
+Version 1.5 covers OpenRocket's three main tabs, and adds the engine's engineering tools, the team's targets with
 live margins, flight data after a launch, and an optional assistant. Parts can be dragged, lined up, copied and
 pulled apart in an exploded view, and right-click, search, a Guide and a tour make it easy to find things. See
 [the plan](dev/APP_PLAN.md) for what comes next.

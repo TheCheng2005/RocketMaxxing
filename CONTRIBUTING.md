@@ -43,15 +43,17 @@ The *RocketMaxxing installers* workflow builds the desktop app's installers on a
 and using it first.
 
 To release the desktop app: set the new version as `appVersion` in `gradle.properties` (and in `app/package.json`; a
-test fails when the two differ), merge to `main`, then push a tag named after it:
+test fails when the two differ), merge to `main`, then make a release tagged after it, on the Releases page or with:
 
 ```sh
-git tag rocketmaxxing-v0.2.0 && git push origin rocketmaxxing-v0.2.0
+git tag v1.6 && git push origin v1.6
 ```
 
-The *RocketMaxxing release* workflow checks the tag matches `appVersion`, builds and checks the installers on every
-platform, and publishes them on the Releases page with the changes since the last release (0.x versions as
-pre-releases). `./gradlew thirdPartyNotices` writes the licence notices the installers carry
+The *RocketMaxxing release* workflow checks the tag matches `appVersion` (`v1.6` or `v1.6.0` for 1.6.0), builds and
+checks the installers on every platform, and attaches them to the release; CI attaches the Claude Desktop extension
+(`.mcpb`) to the same one. A release made by pushing the tag also gets the download table and the changes since the
+last release (0.x versions as pre-releases). To add the installers to a release that already exists, run the workflow
+by hand (Actions > RocketMaxxing release > Run workflow) with its tag. `./gradlew thirdPartyNotices` writes the licence notices the installers carry
 (`build/notices/THIRD-PARTY-NOTICES.txt`); the build includes them by itself. Installed copies find the new release by
 themselves (`app/Updates.java` reads the Releases page once a day and picks the asset whose name ends in the platform
 suffix `release.yml` gives it, so keep those names); `-Drocketmaxxing.updates.url=...` points the check elsewhere for
