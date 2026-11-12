@@ -161,7 +161,7 @@
         </div>
       </div>
     </div>
-    {#if plot}<div class="plot"><Plot x={plot.x} series={plot.series} xLabel="Mach" leftLabel="CD" events={plot.events} height={180} /></div>{/if}
+    {#if plot}<div class="plot"><Plot x={plot.x} series={plot.series} xLabel="Mach" leftLabel="CD" events={plot.events} height={180} name="Drag against Mach" /></div>{/if}
   {:else}
     <div class="src">
       <span><b>RASAero table:</b> {data.source}{#if data.tableMaxMach}{` (to Mach ${num(data.tableMaxMach, 3)})`}{/if}</span>
@@ -185,7 +185,7 @@
         {/each}
       </tbody>
     </table>
-    {#if plot}<div class="plot"><Plot x={plot.x} series={plot.series} xLabel="Mach" leftLabel="CD" events={plot.events} height={180} /></div>{/if}
+    {#if plot}<div class="plot"><Plot x={plot.x} series={plot.series} xLabel="Mach" leftLabel="CD" events={plot.events} height={180} name="Drag against Mach" /></div>{/if}
     <details class="bym">
       <summary>CD and CP by Mach</summary>
       <table class="grid">

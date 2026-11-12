@@ -179,7 +179,7 @@
         <p class="muted">This log has several columns. The time and thrust columns are found from its header line (names such as "time" and "thrust", "force" or "load", with the unit, e.g. "Thrust (lbf)"); the saved motor's impulse and burn time are shown when it is saved.</p>
       {:else if shape === "curve" && points.length >= 2}
         <Plot x={points.map((p) => p[0])} series={[{ label: "Thrust", values: points.map((p) => toShown(p[1], "FORCE")), color: "#e8590c" }]}
-          xLabel="Time (s)" leftLabel={"Thrust (" + pretty(unitOf("FORCE").unit) + ")"} height={220} />
+          xLabel="Time (s)" leftLabel={"Thrust (" + pretty(unitOf("FORCE").unit) + ")"} height={220} name="Thrust curve" />
         {#if raw}
           <p class="muted">As logged. The saved motor has the offset removed and only the burn; its impulse and burn time are shown when it is saved.</p>
         {:else if summary}
