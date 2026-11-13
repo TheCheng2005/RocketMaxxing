@@ -317,14 +317,17 @@ final class AppDesign {
 		}
 		JsonArray arr = a.array("points");
 		if (arr.size() < 3) {
-			throw new ToolException("A fin needs at least three points.");
+			throw new ToolException("A fin needs at least three points: the two ends of the root and one point off it (got "
+					+ arr.size() + ").");
 		}
 		List<Coordinate> pts = new ArrayList<>();
 		for (JsonElement e : arr) {
 			JsonArray xy = e.getAsJsonArray();
 			double x = xy.get(0).getAsDouble(), y = xy.get(1).getAsDouble();
 			if (!Double.isFinite(x) || !Double.isFinite(y) || y < -1e-9 || Math.abs(x) > 10 || y > 10) {
-				throw new ToolException("Fin points are [x, y] in metres with y >= 0.");
+				throw new ToolException(y < -1e-9
+						? "A fin point is below the root (y = " + y + " m): every point is on or outside the body."
+						: "A fin point is not a usable position (x = " + x + " m, y = " + y + " m): points are within 10 m, in metres.");
 			}
 			pts.add(new Coordinate(x, y));
 		}
@@ -336,7 +339,11 @@ final class AppDesign {
 			throw new ToolException("The trailing edge of the root must be behind the leading edge.");
 		}
 		if (crosses(pts)) {
-			throw new ToolException("The outline crosses itself; points not changed.");
+			throw new ToolException("The outline crosses itself, so it does not enclose a fin. A point was probably dragged past "
+					+ "its neighbour: keep the points in order from the leading edge to the trailing edge. Points not changed.");
+		}
+		if (pts.stream().noneMatch(p -> p.y > 1e-6)) {
+			throw new ToolException("Every point is on the root, so the fin has no height. Move at least one point outwards.");
 		}
 		f.setPoints(pts.toArray(new Coordinate[0]));
 		d.doc.setSaved(false);
@@ -442,7 +449,8 @@ final class AppDesign {
 			c.setAppearance(null);
 		} else {
 			if (!hex.matches("#?[0-9a-fA-F]{6}")) {
-				throw new ToolException("Colour as #rrggbb.");
+				throw new ToolException("'" + hex + "' is not a colour this can use. Give it as # and six hex digits, for example "
+						+ "#ff0000 for red, or leave it empty for the part's default look.");
 			}
 			int rgb = Integer.parseInt(hex.replace("#", ""), 16);
 			double shine = Math.max(0, Math.min(1, a.num("shine", c.getAppearance() == null ? 0.3 : c.getAppearance().getShine())));

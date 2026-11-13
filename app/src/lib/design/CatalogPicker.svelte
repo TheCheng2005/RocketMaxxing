@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import { X } from "@lucide/svelte";
   import { call } from "../api";
-  import { app, act } from "../state.svelte";
+  import { app, act, quietly } from "../state.svelte";
   import { fmt } from "../units.svelte";
 
   // OpenRocket's parts database for the selected part: the parts nearest its diameter first. Picking one loads its
@@ -40,7 +40,7 @@
       result = await call("app_presets", { designId: app.design!.designId, component, text: t, sameDiameter });
       error = "";
     } catch (e) {
-      error = (e as Error).message;
+      error = quietly(e, "Parts catalogue");
     } finally {
       loading = false;
     }

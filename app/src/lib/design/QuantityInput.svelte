@@ -45,7 +45,8 @@
   function done() {
     editing = false;
     clearTimeout(nudgeTimer);
-    const t = text.trim();
+    // A decimal comma (30,5) is read as a point; 1,000 could be either, so it is left for the engine to question.
+    const t = text.trim().replace(/^(-?\d+),(\d{1,2}|\d{4,})$/, "$1.$2");
     if (t === sent) {
       sent = "";
       return;

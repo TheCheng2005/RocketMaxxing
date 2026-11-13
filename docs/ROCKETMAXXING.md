@@ -292,10 +292,18 @@ Every error and warning says whose problem it is:
 
 | Kind | Means | Where it shows |
 |---|---|---|
-| Input | Something in what was asked can't be used: a value, a unit, a name. | The pop-up, the field in the Analysis form (marked red), the result. |
+| Input | Something in what was asked can't be used: a value, a unit, a name. | The pop-up, the field it was typed in (marked red, with the reason under it on the Design page and in the Analysis form), the result. |
 | Physics | The rocket or its flight: it doesn't lift off, tumbles, never reaches apogee; OpenRocket's own warnings (large angle of attack, a gap in the airframe, fins too thick for its model). | Under the Design summary after every edit, the result, the Flights table (a warning sign on the run), the rule check. |
 | Output | A result to treat with care: a value that could not be computed, or one from beyond where the model is valid (past Mach 3; OpenRocket's body calculations past Mach 1). | Under the Design summary, the result, the rule check ("Within the models' range"). |
 | System | Something on this computer or in RocketMaxxing failed, not the design: no internet, a file that can't be written, a program not installed, or a bug. | The pop-up and the result. |
+
+**An error says what could be behind it.** The pop-up gives the message and what to try; the Problems list adds what
+could be causing it, likeliest first. A file that will not open lists the usual reasons (not a design file, a download
+or cloud sync that did not finish, written by a newer OpenRocket); a save that fails lists a read-only folder, a file
+open in another program and a full disk; a lost connection to the engine says the app was closed or crashed and what
+is and is not saved. On the Design page a value the engine refuses stays out of the design: the field goes back to
+what it was, and when OpenRocket limits a value (1 to 8 fins) a note says what it was set to. If an assistant or
+another window deletes a part or closes the design, the page catches up instead of showing what is no longer there.
 
 The warning sign at the top right opens the Problems list: what to watch in the current design's flight, then
 every error since the app started, newest first, with where it happened. It is red when there are errors you haven't

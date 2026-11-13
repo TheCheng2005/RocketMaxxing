@@ -1,6 +1,7 @@
 // What the app shows, and everything it does to a design. Each action is one engine tool call followed by a refresh,
 // so the screen always shows the engine's own state (and undo covers every edit).
 
+import { plain } from "./issues/explain";
 import { call, callFull, ToolError, type Issue } from "./api";
 import { record, type Logged } from "./issues/issues.svelte";
 import { complete, knownMeshes } from "./design/meshStore";
@@ -157,6 +158,8 @@ export const app = $state({
   hover: null as string | null,
   /** The part just selected or added, with when: the view pulses it and its tree row flashes. */
   flash: null as { id: string; at: number; added: boolean } | null,
+  /** The last edit the engine refused, shown at the field it was typed in until the next edit or selection. */
+  fieldError: null as { component: string; key: string; text: string; hint?: string } | null,
   editor: null as Editor | null,
   model: null as Model | null,
   flight: null as QuickFlight | null,
@@ -317,7 +320,9 @@ export function report(e: unknown, where = PAGES[app.page]): Logged {
 }
 
 /** A background check's failure: into the problems list without a pop-up (it shows in its own panel). */
-function quietly(e: unknown, where: string): string {
+export function quietly(e: unknown, where: string): string {
+  // A rocket with no motor yet is a stage of the work, not a problem: its panel says so, the problems list stays clear.
+  if (e instanceof ToolError && /has no motors/.test(e.issue.text)) return plain(e.issue.text);
   if (e instanceof ToolError) return record(e.issue, where, e.tool, e.args).text;
   const text = e instanceof Error ? e.message : String(e);
   record({ kind: "system", severity: "error", text, bug: true, report: e instanceof Error ? e.stack : undefined }, where);
@@ -510,25 +515,60 @@ export function parentOf(n: TreeNode, id: string): TreeNode | null {
 
 export async function select(id: string, added = false) {
   if (!app.design) return;
+  if (app.fieldError && app.fieldError.component !== id) app.fieldError = null;
   app.selected = id;
   app.flash = { id, at: performance.now(), added };
-  await run(async () => {
-    app.editor = await call<Editor>("app_component", { designId: app.design!.designId, component: id });
-  });
+  await run(
+    async () => {
+      app.editor = await call<Editor>("app_component", { designId: app.design!.designId, component: id });
+    },
+    undefined,
+    catchUp,
+  );
 }
 
-async function change(tool: string, args: Record<string, unknown>) {
+/**
+ * An error that means the page is behind the engine (a part deleted or a design closed by an assistant or another
+ * window): the design is read again, or left, so the page does not go on showing what is no longer there.
+ */
+async function catchUp(l: Logged) {
+  if (/no longer in the design/.test(l.text)) {
+    await refresh().catch(() => {});
+  } else if (/no longer open in the engine/.test(l.text)) {
+    app.design = null;
+    app.selected = "rocket";
+    app.fieldError = null;
+    app.page = "home";
+    app.session = await call<Session>("app_session").catch(() => app.session);
+  }
+}
+
+async function change(tool: string, args: Record<string, unknown>, onIssue?: (l: Logged) => void) {
   const d = app.design;
   if (!d) return undefined;
-  return run(async () => {
-    const r = await call(tool, { designId: d.designId, ...args });
-    await refresh();
-    return r;
-  });
+  return run(
+    async () => {
+      const r = await call(tool, { designId: d.designId, ...args });
+      await refresh();
+      return r;
+    },
+    undefined,
+    (l) => {
+      onIssue?.(l);
+      catchUp(l);
+    },
+  );
 }
 
+/** Sets one field of the selected part. A value the engine refuses is marked at the field, and undefined comes back. */
 export async function editField(key: string, value: unknown) {
-  return change("app_edit", { component: app.selected, key, value });
+  const component = app.selected;
+  app.fieldError = null;
+  const r = await change("app_edit", { component, key, value }, (l) => (app.fieldError = { component, key, text: l.text, hint: l.fix ?? l.causes[0] }));
+  // OpenRocket keeps some values within what the part allows (1 to 8 fins): say so when it did not take what was typed.
+  const kept = typeof r?.applied === "string" ? /= (.+?) \(asked for (.+?);/.exec(r.applied) : null;
+  if (kept) toast(`Set to ${kept[1]}, not ${kept[2]}: OpenRocket keeps this value within what the part allows.`);
+  return r;
 }
 
 /** Where a new part of this type goes: inside the selection if it fits there, else after it, else further up. */
@@ -565,7 +605,8 @@ export async function removeSelected() {
   const p = parentOf(tree, app.selected);
   const name = findNode(tree, app.selected)?.name;
   const r = await change("remove_component", { component: app.selected });
-  if (r !== undefined && name) toast(`Deleted ${name}. ${MAC ? "⌘Z" : "Ctrl+Z"} brings it back.`);
+  if (r === undefined || !app.design) return; // refused: the part and the selection stay as they were
+  if (name) toast(`Deleted ${name}. ${MAC ? "⌘Z" : "Ctrl+Z"} brings it back.`);
   if (p) await select(exists(app.design.tree, p.id) ? p.id : "rocket");
 }
 

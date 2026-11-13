@@ -439,6 +439,16 @@ class AppToolsTest {
 		assertTrue(call("app_set_fin_points", ffArgs + ", \"points\": [[0, 0], [0.06, 0.05], [0.0, 0.05], [0.07, 0]]}", true)
 				.get("text").getAsString().contains("crosses itself"));
 		assertEquals(set.getAsJsonArray("points").toString(), call("app_fin_points", ffArgs + "}").getAsJsonArray("points").toString());
+		// What cannot be a fin is refused with what is wrong and what to do, not a bare rule.
+		assertTrue(call("app_set_fin_points", ffArgs + ", \"points\": [[0, 0], [0.03, 0], [0.06, 0]]}", true).get("text").getAsString()
+				.contains("no height"));
+		assertTrue(call("app_set_fin_points", ffArgs + ", \"points\": [[0, 0], [0.03, -0.02], [0.06, 0]]}", true).get("text").getAsString()
+				.contains("below the root"));
+		assertEquals(set.getAsJsonArray("points").toString(), call("app_fin_points", ffArgs + "}").getAsJsonArray("points").toString());
+		String count = call("app_edit", ffArgs + ", \"key\": \"finCount\", \"value\": \"three\"}", true).get("text").getAsString();
+		assertTrue(count.contains("Fin count is a count") && !count.contains("For input string"), count);
+		String colour = call("app_appearance", ffArgs + ", \"color\": \"blue-ish\"}", true).get("text").getAsString();
+		assertTrue(colour.contains("#ff0000"), colour);
 
 		String tubeArgs = "{\"designId\": \"" + d + "\", \"component\": \"" + tube + "\"";
 		JsonObject p = call("app_presets", tubeArgs + ", \"sameDiameter\": true}");

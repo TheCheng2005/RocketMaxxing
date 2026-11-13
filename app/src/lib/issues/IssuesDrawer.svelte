@@ -92,6 +92,15 @@
           <span class="time">{time(l.at)}</span>
         </div>
         <div class="text">{l.text}</div>
+        {#if l.severity === "error" && (l.causes.length || l.fix)}
+          <div class="why">
+            {#if l.causes.length}
+              <div class="wh">What could be causing it</div>
+              <ul>{#each l.causes as c}<li>{c}</li>{/each}</ul>
+            {/if}
+            {#if l.fix}<div class="fix"><b>Try:</b> {l.fix}</div>{/if}
+          </div>
+        {/if}
         {#if l.field}<div class="sub">About: {label(l.field)}</div>{/if}
         {#if l.bug}
           <div class="bug">
@@ -170,6 +179,24 @@
   .n {
     font-size: 11px;
     color: var(--ink-3);
+  }
+  .why {
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .why .wh {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+  }
+  .why ul {
+    margin: 2px 0 4px;
+    padding-left: 18px;
+  }
+  .why .fix {
+    color: var(--ink);
   }
   .about {
     margin: 2px 12px 4px;

@@ -375,9 +375,15 @@ public final class Components {
 						: Units.toSi(value.getAsString(), d);
 				arg = physical(c, canonical, d, v);
 			} else if (type == int.class || type == Integer.class) {
-				double v = value.getAsDouble();
-				if (v != Math.rint(v) || v < 0 || v > 10_000) {
-					throw new ToolException(canonical + " is a count: give a whole number from 0 (got " + value + ").");
+				double v;
+				try {
+					v = value.getAsDouble();
+				} catch (NumberFormatException | UnsupportedOperationException | IllegalStateException e) {
+					v = Double.NaN;
+				}
+				if (!(v == Math.rint(v)) || v < 0 || v > 10_000) {
+					throw new ToolException(spaced(canonical) + " is a count: give a whole number such as 3 or 4, in digits (got "
+							+ value + ").");
 				}
 				arg = (int) v;
 			} else if (type == boolean.class || type == Boolean.class) {
@@ -536,8 +542,8 @@ public final class Components {
 			throw new ToolException(c.getName() + ": " + property + " cannot be negative (got " + v + " " + d.si + ").");
 		}
 		if (v == 0 && mustExist(c, p)) {
-			throw new ToolException(c.getName() + ": " + property + " cannot be zero on a " + c.getClass().getSimpleName()
-					+ " (a part needs a real size to fly; remove_component takes a part out).");
+			throw new ToolException(c.getName() + ": " + property + " cannot be zero (a part needs a real size to fly; "
+					+ "remove the part to take it out of the rocket).");
 		}
 		if (d == Dim.LENGTH && Math.abs(v) > 1000 || d == Dim.MASS && v > 1e5 || p.equals("cd") && v > 10) {
 			throw new ToolException(c.getName() + ": " + property + " = " + v + " " + d.si
@@ -659,5 +665,11 @@ public final class Components {
 		} catch (ReflectiveOperationException e) {
 			throw new ToolException("Cannot create " + match + ": " + e.getMessage());
 		}
+	}
+
+	/** A property's name as words: FinCount becomes "Fin count". */
+	static String spaced(String canonical) {
+		String w = canonical.replaceAll("(?<=[a-z0-9])(?=[A-Z])", " ");
+		return w.isEmpty() ? w : w.substring(0, 1) + w.substring(1).toLowerCase(Locale.ROOT);
 	}
 }

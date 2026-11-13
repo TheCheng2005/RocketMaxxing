@@ -1,4 +1,5 @@
 import { ToolError, type Issue, type IssueKind } from "../api";
+import { explain } from "./explain";
 
 // Everything that went wrong, and what to watch, in one list: whose problem it is (input, output, system, physics),
 // where it happened, and for a bug in RocketMaxxing a report to send.
@@ -35,6 +36,11 @@ export interface Logged extends Issue {
   where: string;
   tool?: string;
   args?: Record<string, unknown>;
+  /** What could be causing it, likeliest first, and what to try. */
+  causes: string[];
+  fix?: string;
+  /** The engine's own words, for a report. */
+  raw: string;
 }
 
 const MAX = 100;
@@ -49,9 +55,12 @@ export const issues = $state({
 
 export function record(i: Issue, where: string, tool?: string, args?: Record<string, unknown>): Logged {
   // The same error again (a check that fails after every edit) moves to the top instead of filling the list.
-  const same = issues.log.find((l) => l.text === i.text && l.kind === i.kind && l.tool === tool);
+  const said = explain(i);
+  const same = issues.log.find((l) => l.raw === i.text && l.kind === i.kind && l.tool === tool);
   if (same) issues.log = issues.log.filter((l) => l !== same);
-  const l: Logged = { ...i, n: ++next, at: new Date(), where, tool, args };
+  // An edit's arguments are "key" and "value": the field it is about is marked where it was typed, not named here.
+  if (tool === "app_edit") i = { ...i, field: undefined };
+  const l: Logged = { ...i, text: said.text, causes: said.causes, fix: said.fix, raw: i.text, n: ++next, at: new Date(), where, tool, args };
   issues.log = [l, ...issues.log].slice(0, MAX);
   return l;
 }
@@ -83,7 +92,7 @@ export function reportText(l: Logged, versions: { version?: string; engineVersio
     `When: ${l.at.toISOString()}`,
     `Where: ${l.where}${l.tool ? ` (${l.tool})` : ""}`,
     l.id ? `Error ID: ${l.id}` : "",
-    `Message: ${l.text}`,
+    `Message: ${l.raw}`,
     l.args ? `Arguments: ${shortArgs(l.args)}` : "",
     l.report ? `Details:\n${l.report}` : "",
   ]

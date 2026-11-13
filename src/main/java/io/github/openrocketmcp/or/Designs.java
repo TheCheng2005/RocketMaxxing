@@ -63,15 +63,25 @@ public final class Designs {
 		OrRuntime.init();
 		Path p = path.toAbsolutePath().normalize();
 		if (!Files.exists(p)) {
-			throw new ToolException("File not found: " + p);
+			throw new ToolException("File not found: " + p + ". It may have been moved, renamed or deleted, or be on a drive or "
+					+ "cloud folder that is not connected right now.");
+		}
+		if (Files.isDirectory(p)) {
+			throw new ToolException(p.getFileName() + " is a folder, not a design. Choose a .ork or .rkt file inside it.");
+		}
+		if (Files.size(p) == 0) {
+			throw new ToolException(p.getFileName() + " is empty (0 bytes): the save, download or cloud sync that made it did not "
+					+ "finish. Use another copy of the design.");
 		}
 		GeneralRocketLoader loader = new GeneralRocketLoader(p.toFile());
 		OpenRocketDocument doc;
 		try {
 			doc = loader.load();
 		} catch (RocketLoadException e) {
-			throw new ToolException("OpenRocket could not read " + p.getFileName() + ": " + e.getMessage()
-					+ ". It reads .ork files from any OpenRocket version and RockSim .rkt files.", e);
+			String why = e.getMessage() == null ? "" : e.getMessage().replaceAll("[.\\s]+$", "");
+			throw new ToolException("OpenRocket could not read " + p.getFileName() + (why.isEmpty() ? "" : " (" + why + ")")
+					+ ". Either it is not an OpenRocket (.ork) or RockSim (.rkt) design, or the file is damaged or incomplete, "
+					+ "for example a download or cloud sync that did not finish.", e);
 		}
 		boolean ork = p.toString().toLowerCase(Locale.ROOT).endsWith(".ork");
 		Design d;
@@ -210,20 +220,36 @@ public final class Designs {
 					: "This design has no file yet; pass a path ending in .ork.");
 		}
 		if (!p.toString().toLowerCase(Locale.ROOT).endsWith(".ork")) {
-			throw new ToolException("Save path must end in .ork");
-		}
-		if (p.getParent() != null) {
-			Files.createDirectories(p.getParent());
+			throw new ToolException(Files.isDirectory(p)
+					? p + " is a folder: give the design a file name ending in .ork inside it."
+					: "Designs are saved as OpenRocket files: the name must end in .ork (got " + p.getFileName() + ").");
 		}
 		try {
+			if (p.getParent() != null) {
+				Files.createDirectories(p.getParent());
+			}
 			new GeneralRocketSaver().save(p.toFile(), d.doc);
 		} catch (IOException e) {
-			throw new ToolException("Could not save to " + p + ": " + e.getMessage(), e);
+			throw ToolException.system("Could not save to " + p + " (" + reason(e) + "). The folder may be "
+					+ "read-only or need administrator rights, the disk may be full, or the file may be open in another program. "
+					+ "The design is still open here: save it somewhere else.", e);
 		}
 		d.doc.setFile(p.toFile());
 		d.doc.setSaved(true);
 		d.path = p;
 		saveAeroTable(d);
 		return p;
+	}
+
+	/** The system's reason for a failed write, without the path it repeats. */
+	private static String reason(IOException e) {
+		String kind = e instanceof java.nio.file.AccessDeniedException ? "access denied"
+				: e instanceof java.nio.file.NoSuchFileException ? "the folder does not exist"
+				: e instanceof java.nio.file.FileSystemException f && f.getReason() != null ? f.getReason() : null;
+		if (kind != null) {
+			return kind;
+		}
+		String m = e.getMessage();
+		return m == null || m.isBlank() ? e.getClass().getSimpleName() : m;
 	}
 }
