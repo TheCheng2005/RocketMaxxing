@@ -1,4 +1,5 @@
 import type { Issue } from "../api";
+import { CATALOG } from "../analysis/catalog";
 
 // What an error means for someone using the app: the engine's sentence in the app's own words (its messages are
 // also read by AI assistants, and name their tools), what could be causing it, and what to try. An error code or
@@ -36,10 +37,24 @@ const REWRITES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/This is a bug in the server, not in your design: please report it with the call that caused it\./, "This is a bug in RocketMaxxing, not in your design."],
 ];
 
+// The engine names its tools (for AI assistants); the app has a page, a button or an analysis for each.
+const PLACES: Record<string, string> = {
+  set_motor: "the Motors page", search_motors: "the Motors page", import_motor_file: "the Motors page", create_custom_motor: "the Motors page",
+  run_simulation: "the Flights page", get_flight_data: "the Flights page", animate_flight: "Video on the Flights page",
+  add_component: "Add part on the Design page", remove_component: "Delete on the Design page", edit_components: "the Design page",
+  get_design: "the Design page", describe_component: "the part's Properties", set_deployment: "the parachute's Deployment settings",
+  set_stage_separation: "the stage's Separation settings", flight_configuration: "the Motors page", search_parts: "the part's Catalogue button",
+  apply_preset: "the part's Catalogue button", open_design: "Open", save_design: "Save", list_files: "Open", update_standards: "the Standards page",
+  get_standards: "the Standards page", load_standards: "the Standards page", targets: "the Targets page", render_3d: "Picture on the Design page",
+  draw_rocket: "Picture on the Design page", undo: "Undo", redo: "Redo",
+};
+const ANALYSES: Record<string, string> = Object.fromEntries(CATALOG.flatMap((g) => g.items.map((a) => [a.tool, a.label])));
+
 /** The engine's sentence without the tool names and identifiers only an AI assistant can use. */
 export function plain(text: string): string {
   let t = text;
   for (const [re, to] of REWRITES) t = t.replace(re, to as any);
+  t = t.replace(/\b[a-z0-9]+(?:_[a-z0-9]+)+\b/g, (m) => PLACES[m] ?? (ANALYSES[m] ? `the ${ANALYSES[m]} analysis` : m));
   return t.replace(/\s{2,}/g, " ").trim();
 }
 
@@ -209,6 +224,58 @@ const RULES: Rule[] = [
     fix: "Install it (the message names it), then try again.",
   },
 ];
+
+RULES.push(
+  {
+    test: /must be a number, with a unit|must be a number, got|must be a whole number/,
+    causes: ["Letters, a sum or a comma for the decimal point where one number goes.", "A list typed into a box that takes a single value."],
+    fix: 'Type one number, with a unit if the input has one: "20 ft/s", "4 in", "0.05".',
+  },
+  { test: /is yes or no/, causes: ["A word other than true or false in a yes-or-no input."] },
+  {
+    test: /outside the physical range|not a usable spread/,
+    causes: ["A unit slip (feet typed as metres, a percentage typed as a fraction).", "An extra digit or a missing decimal point."],
+    fix: "Check the number against the range in the message, and its unit.",
+  },
+  {
+    test: /Give path|Give url|Give exactly one|needs? (at least )?one of|Missing required argument/,
+    causes: ["An input this analysis cannot do without was left empty.", "Of several inputs that can each do the job, none was filled in."],
+    fix: "Fill in the input marked with a red star, then run again.",
+  },
+  {
+    test: /numeric rows|Could not find .* columns|needs a part .* column|at least two rows|header/i,
+    causes: [
+      "The file is not the kind this analysis reads: another program's export, or the wrong file picked.",
+      "Its columns are named differently, or the first lines are notes above the header row.",
+      "It uses semicolons or decimal commas (a spreadsheet saved in a European locale).",
+    ],
+    fix: "Open the file in a text editor: it should be comma-separated, with one header row naming the columns the message asks for.",
+  },
+  {
+    test: /GPS coordinates|latitude and longitude/,
+    causes: ["The launch site's position is not set, here or in the team standards."],
+    fix: "Enter latitude and longitude in decimal degrees (48.47, -81.33), or set the launch site on the Standards page.",
+  },
+  {
+    test: /Say which tubes|between \(upperTube, lowerTube\)|Say which/,
+    causes: ["The design has more than one place this could go, and the analysis will not guess."],
+    fix: "Pick the parts in the form, then run again.",
+  },
+  {
+    test: /does not (lift off|leave the rail)|never reaches apogee|tumbl|unstable|did not reach/i,
+    causes: [
+      "The motor is too small for the rocket's mass, or burns out on the rail.",
+      "The rocket is unstable: the centre of pressure is ahead of, or too close to, the centre of gravity.",
+      "A mass or drag override far from the real value.",
+    ],
+    fix: "Look at the Summary on the Design page (stability, thrust-to-weight), then at the flight on the Flights page.",
+  },
+  {
+    test: /No (parachute|recovery|fin|motor mount|body tube|altimeter|simulation)|has no (fins|parachute|recovery|stages|body)|not found in the design|needs a (fin|parachute|motor)/i,
+    causes: ["The design does not have the part this analysis works on, or has it under another stage.", "The part picked in the form was deleted or renamed."],
+    fix: "Add the part on the Design page, or pick another in the form.",
+  },
+);
 
 const BY_KIND: Record<string, string> = {
   input: "Something typed or chosen cannot be used as it is: a value, a unit or a name.",

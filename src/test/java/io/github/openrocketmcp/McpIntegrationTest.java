@@ -311,7 +311,7 @@ class McpIntegrationTest {
 		assertTrue(Double.parseDouble(drivers.get("motorThrust").getAsString()) > 0, "more thrust, more apogee");
 		assertTrue(Double.parseDouble(drivers.get("airframeDrag").getAsString()) < 0, "more drag, less apogee");
 		String bad = callExpectError("monte_carlo", "{\"designId\":\"" + id + "\",\"runs\":4,\"massSd\":5}");
-		assertTrue(bad.contains("between 0 and 0.5"), bad);
+		assertTrue(bad.contains("from 0 to 0.5") && bad.contains("massSd"), bad);
 	}
 
 	@Test

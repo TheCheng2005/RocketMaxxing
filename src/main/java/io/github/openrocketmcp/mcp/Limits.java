@@ -188,6 +188,7 @@ public final class Limits {
 					&& e.getValue().getAsDouble() != Math.rint(e.getValue().getAsDouble())) {
 				throw new ToolException("Argument '" + e.getKey() + "' must be a whole number, got " + e.getValue() + ".");
 			}
+			shape(e.getKey(), type, e.getValue());
 			Rule r = BY_NAME.get(e.getKey());
 			if (r == null || !e.getValue().isJsonPrimitive() || e.getValue().getAsJsonPrimitive().isBoolean()) {
 				continue;
@@ -209,6 +210,39 @@ public final class Limits {
 				v = p.si();
 			}
 			check(e.getKey(), dim, v);
+		}
+	}
+
+	/**
+	 * A value of the wrong shape for what the tool declares is refused here, read or not: text where a number or a
+	 * quantity goes, a word where yes or no goes. A tool that ignores an input in one of its modes would otherwise run
+	 * as if nothing had been typed, and the user would never learn the value was not used.
+	 */
+	private static void shape(String key, com.google.gson.JsonElement type, com.google.gson.JsonElement value) {
+		if (type == null || !value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
+			return;
+		}
+		String text = value.getAsString().trim();
+		boolean number = false, string = false, bool = false;
+		for (com.google.gson.JsonElement t : type.isJsonArray() ? type.getAsJsonArray() : java.util.List.of(type)) {
+			String name = t.isJsonPrimitive() ? t.getAsString() : "";
+			number |= name.equals("number") || name.equals("integer");
+			string |= name.equals("string");
+			bool |= name.equals("boolean");
+		}
+		if (bool && !string && !text.equalsIgnoreCase("true") && !text.equalsIgnoreCase("false")) {
+			throw new ToolException("'" + key + "' is yes or no (true or false), got '" + text + "'.").field(key);
+		}
+		if (!number || text.isEmpty()) {
+			return;
+		}
+		try {
+			Units.parse(text);
+		} catch (IllegalArgumentException e) {
+			throw new ToolException(string
+					? "'" + key + "' must be a number, with a unit if you like (e.g. \"20 ft/s\", \"4 in\"), got '" + text + "'. "
+							+ "Letters, a sum or a comma for the decimal point cannot be read."
+					: "'" + key + "' must be a number, got '" + text + "'.").field(key);
 		}
 	}
 

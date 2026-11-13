@@ -20,6 +20,7 @@
   import RocketLoader from "../RocketLoader.svelte";
   import { firstSentence, label } from "./text";
   import { KINDS, openIssues } from "../issues/issues.svelte";
+  import { plain } from "../issues/explain";
   import Tip from "../Tip.svelte";
   import { MAC } from "../keys";
   import { GUIDES, needsFlight, type Guide } from "./guides";
@@ -582,13 +583,20 @@
             <div>
               {failure.text}
               {#if failure.field}<div class="sub">Check {label(failure.field)}, marked in the form above.</div>{/if}
+              {#if failure.causes?.length}
+                <div class="why">
+                  <span class="wh">What could be causing it</span>
+                  <ul>{#each failure.causes as c}<li>{c}</li>{/each}</ul>
+                </div>
+              {/if}
+              {#if failure.fix}<div class="sub"><b>Try:</b> {failure.fix}</div>{/if}
               {#if failure.bug}<div class="sub">A bug in RocketMaxxing. <button class="link" onclick={openIssues}>Report it</button></div>{/if}
             </div>
           </div>
         {/if}
         {#if outcome && !failure}
           {#each outcome.issues ?? [] as i, j (j)}
-            <div class="issue k-{i.kind} {i.severity}"><span class="tag">{KINDS[i.kind].label}</span><div>{i.text}</div></div>
+            <div class="issue k-{i.kind} {i.severity}"><span class="tag">{KINDS[i.kind].label}</span><div>{plain(i.text)}</div></div>
           {/each}
         {/if}
         {#if outcome}
@@ -880,6 +888,21 @@
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--kind);
+  }
+  .issue .why {
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .issue .why .wh {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+  }
+  .issue .why ul {
+    margin: 2px 0 2px;
+    padding-left: 18px;
   }
   .issue .sub {
     margin-top: 2px;

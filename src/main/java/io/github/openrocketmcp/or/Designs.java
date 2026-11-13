@@ -59,9 +59,16 @@ public final class Designs {
 	private final Map<String, Design> designs = new LinkedHashMap<>();
 	private int counter;
 
-	public synchronized Design open(Path path) throws Exception {
-		OrRuntime.init();
-		Path p = path.toAbsolutePath().normalize();
+	/**
+	 * A design file read from disk. One that cannot be read says which of the usual reasons applies: missing, a
+	 * folder, empty, or not a design OpenRocket understands.
+	 */
+	public static OpenRocketDocument read(Path p) throws Exception {
+		return read(p, null);
+	}
+
+	/** As {@link #read(Path)}, adding what OpenRocket warned about while reading to {@code warnings}. */
+	static OpenRocketDocument read(Path p, List<String> warnings) throws Exception {
 		if (!Files.exists(p)) {
 			throw new ToolException("File not found: " + p + ". It may have been moved, renamed or deleted, or be on a drive or "
 					+ "cloud folder that is not connected right now.");
@@ -73,16 +80,28 @@ public final class Designs {
 			throw new ToolException(p.getFileName() + " is empty (0 bytes): the save, download or cloud sync that made it did not "
 					+ "finish. Use another copy of the design.");
 		}
-		GeneralRocketLoader loader = new GeneralRocketLoader(p.toFile());
-		OpenRocketDocument doc;
 		try {
-			doc = loader.load();
+			GeneralRocketLoader loader = new GeneralRocketLoader(p.toFile());
+			OpenRocketDocument doc = loader.load();
+			if (warnings != null) {
+				for (Warning w : loader.getWarnings()) {
+					warnings.add(w.toString());
+				}
+			}
+			return doc;
 		} catch (RocketLoadException e) {
 			String why = e.getMessage() == null ? "" : e.getMessage().replaceAll("[.\\s]+$", "");
 			throw new ToolException("OpenRocket could not read " + p.getFileName() + (why.isEmpty() ? "" : " (" + why + ")")
 					+ ". Either it is not an OpenRocket (.ork) or RockSim (.rkt) design, or the file is damaged or incomplete, "
 					+ "for example a download or cloud sync that did not finish.", e);
 		}
+	}
+
+	public synchronized Design open(Path path) throws Exception {
+		OrRuntime.init();
+		Path p = path.toAbsolutePath().normalize();
+		List<String> warnings = new ArrayList<>();
+		OpenRocketDocument doc = read(p, warnings);
 		boolean ork = p.toString().toLowerCase(Locale.ROOT).endsWith(".ork");
 		Design d;
 		if (ork) {
@@ -96,9 +115,7 @@ public final class Designs {
 			d = register(doc, null, "import:" + p.getFileName());
 			d.importedFrom = p;
 		}
-		for (Warning w : loader.getWarnings()) {
-			d.loadWarnings.add(w.toString());
-		}
+		d.loadWarnings.addAll(warnings);
 		return d;
 	}
 
