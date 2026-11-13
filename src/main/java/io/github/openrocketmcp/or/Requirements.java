@@ -290,6 +290,16 @@ public final class Requirements {
 		}
 		// Ignore the last seconds before apogee, where airspeed is too low for a meaningful static margin.
 		Sims.Window w = Sims.extremes(b, FlightDataType.TYPE_STABILITY, rail, apogee, 30.48);
+		if (Double.isNaN(w.min())) {
+			// A small motor never reaches the airspeed where a static margin means something: say so, not "n/a cal".
+			r.add(Status.WARN, label + " (minimum, rail exit to apogee while airspeed > 100 ft/s)",
+					">= " + Units.num(min) + " cal",
+					"not evaluated: the rocket never flies faster than " + Units.fmt(30.48, Dim.VELOCITY) + " (top speed "
+							+ Units.fmt(b.getMaximum(FlightDataType.TYPE_VELOCITY_TOTAL), Dim.VELOCITY)
+							+ "), so there is no part of the ascent to read a margin from; see the Stability value at rest",
+					std.ruleRef("stability"));
+			return;
+		}
 		double aoa = Sims.at(b, FlightDataType.TYPE_AOA, w.minTime());
 		String why = aoa > Math.toRadians(3)
 				? "; angle of attack " + Units.fmt(aoa, Dim.ANGLE) + " there (wind / rail exit): OpenRocket's CP moves forward at high angle of attack. Zero-AoA margin: "
@@ -469,7 +479,7 @@ public final class Requirements {
 					"flutter speed >= " + Units.num(need) + " x airspeed along the flight (team standard; NACA TN 4197 screen, "
 							+ "see fin_flutter)",
 					Units.num(f.minMargin()) + " at " + Units.fmt(f.altitude(), Dim.DISTANCE) + ", " + Units.fmt(f.airspeed(), Dim.VELOCITY),
-					"structures.flutterMinMargin");
+					"Team standard");
 		}
 	}
 

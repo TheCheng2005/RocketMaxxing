@@ -12,6 +12,7 @@
   import { isOpen, toggle } from "../panels.svelte";
   import Panel from "../Panel.svelte";
   import Result from "./Result.svelte";
+  import RuleCheck from "../design/RuleCheck.svelte";
   import ResultPlot from "./ResultPlot.svelte";
   import RowsEditor from "./RowsEditor.svelte";
   import StartHere from "./StartHere.svelte";
@@ -298,6 +299,12 @@
   function noted(d: any) {
     if (!d || typeof d !== "object" || Array.isArray(d) || !outcome?.issues?.length) return d;
     const { PROBLEMS: _p, problems: _q, ...rest } = d;
+    return rest;
+  }
+
+  /** A rule check's result without what the rule list already shows. */
+  function unlisted(d: any) {
+    const { checks: _c, manualChecks: _m, summary: _s, ruleSet: _r, ...rest } = d;
     return rest;
   }
 
@@ -611,7 +618,14 @@
         {#if outcome}
           {#if entry.plot}<ResultPlot data={outcome.data} spec={entry.plot} name={entry.label} />{/if}
           {#each outcome.images as img}<img src={img.src} alt="Plot" />{/each}
-          <Result value={noted(outcome.data)} />
+          {#if entry.tool === "check_requirements" && Array.isArray(outcome.data?.checks)}
+            <!-- The same list as the Design page's panel, not a generic table. -->
+            {#if outcome.data.summary}<p class="verdict">{outcome.data.summary}</p>{/if}
+            <div class="rulebox"><RuleCheck data={outcome.data} tall /></div>
+            <Result value={noted(unlisted(outcome.data))} />
+          {:else}
+            <Result value={noted(outcome.data)} />
+          {/if}
         {:else}
           {#if !running && !failure}<p class="muted">Not run yet.</p>{/if}
         {/if}
@@ -987,5 +1001,15 @@
     margin: 4px 0 10px;
     border: 1px solid var(--line);
     background: #fff;
+  }
+  .verdict {
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .rulebox {
+    margin-bottom: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
   }
 </style>
