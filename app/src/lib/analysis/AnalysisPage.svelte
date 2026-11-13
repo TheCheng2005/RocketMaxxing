@@ -175,6 +175,13 @@
     const out = inputs.main.filter((i) => i.required && !filled(i)).map((i) => label(i.key));
     const either = [...inputs.main, ...inputs.more].filter((i) => i.oneOf);
     if (either.length && !either.some(filled)) out.push(eitherList);
+    // Inputs a choice elsewhere in the form calls for (the file, when the mode is import).
+    const all = [...inputs.main, ...inputs.conditions, ...inputs.more];
+    for (const rule of entry.needIf ?? []) {
+      if (!rule.is.includes((values[rule.key] ?? "").trim())) continue;
+      const need = rule.need.map((k) => all.find((i) => i.key === k)).filter((i): i is Input => !!i);
+      if (need.length && !need.some(filled)) out.push(need.map((i) => label(i.key)).join(" or "));
+    }
     if (noMotor) out.push("a motor");
     return out;
   });
@@ -230,8 +237,10 @@
   function args(): Record<string, unknown> {
     const out: Record<string, unknown> = { designId: app.design?.designId };
     for (const i of [...inputs.main, ...inputs.conditions, ...inputs.more]) {
-      const raw = (values[i.key] ?? "").trim();
+      let raw = (values[i.key] ?? "").trim();
       if (raw === "") continue;
+      // A decimal comma (6,5) is read as a point; 1,000 could be either, so it is left for the engine to question.
+      if (i.kind === "number" || i.kind === "qty") raw = raw.replace(/^(-?\d+),(\d{1,2}|\d{4,})(?=$|\s)/, "$1.$2");
       if (i.kind === "rows") {
         const props = i.schema.items?.properties ?? {};
         const list = filledRows(raw).map((row) => {
@@ -560,7 +569,7 @@
           {@render fold("analysis.more", "More options", inputs.more)}
           {@render fold("analysis.conditions", "Launch conditions for this run", inputs.conditions)}
           {#if [...inputs.main, ...inputs.more].some((i) => i.required || i.oneOf)}
-            <p class="legend"><b class="req">*</b> needed{#if entry.oneOf} (of {eitherList}, one is enough){/if} · ⓘ what to enter</p>
+            <p class="legend"><b class="req">*</b> needed{#if entry.oneOf}{" "}(of {eitherList}, one is enough){/if} · ⓘ what to enter</p>
           {:else}
             <p class="legend">Everything is optional: empty inputs use the design and the team standards · ⓘ what to enter</p>
           {/if}

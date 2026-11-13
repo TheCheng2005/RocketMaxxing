@@ -23,6 +23,11 @@ export interface Analysis {
    * the input they depend on, and for each such input the choices it is shown and sent for.
    */
   when?: { key: string; fields: Record<string, string[]> };
+  /**
+   * Inputs needed only for some choices of another input (a file when the mode is import): when {@code key} has one
+   * of the values {@code is} ("" is its default), at least one of {@code need} must be filled in.
+   */
+  needIf?: { key: string; is: string[]; need: string[] }[];
   /** Inputs that name a file to read, with the extensions to offer. */
   files?: Record<string, string>;
 }
@@ -71,7 +76,7 @@ export const CATALOG: Group[] = [
     items: [
       { tool: "recovery_analysis", label: "Recovery loads", blurb: "Each deployment from the simulated flight: airspeed, opening load, descent rate, shear pins.", main: ["simulation", "pinType", "pinStrength"] },
       { tool: "parachute_sizes", label: "Parachute size chart", blurb: "Descent rate against canopy diameter for a few drag coefficients.", main: ["device", "cds", "targetDescentRate", "apply"] },
-      { tool: "size_parachute", label: "Size a parachute", blurb: "Canopy diameter for a target descent rate.", main: ["targetDescentRate", "device", "cd", "count"] },
+      { tool: "size_parachute", label: "Size a parachute", blurb: "Canopy diameter for a target descent rate.", main: ["targetDescentRate", "device", "mass", "cd", "count"], oneOf: ["device", "mass"] },
       { tool: "deployment_delay_sweep", label: "Late deployment", plot: { list: "results", x: "delay", left: ["designLoad", "openingLoadFiniteMass"], right: ["altitudeAGL"] }, blurb: "How the opening load grows if a device deploys late.", main: ["device", "delays", "pinType", "pinCount"] },
       { tool: "recovery_sections", label: "Recovery sections", blurb: "The sections that come down separately, with their masses.", main: ["joints"] },
       { tool: "shear_pins", label: "Shear pins", blurb: "Number of shear pins to hold a load, with a safety factor.", main: ["holdForce", "pinType", "pinStrength", "safetyFactor"] },
@@ -105,7 +110,7 @@ export const CATALOG: Group[] = [
       { tool: "sensor_data", label: "Flight software test data", blurb: "Writes what the flight computer's sensors would read in flight, to test its software.", main: ["path", "rate", "gpsRate", "sensors"], defaults: (n) => ({ path: `${n}-sensors.csv` }) },
       { tool: "radio_link", label: "Radio link", blurb: "Tracker radio link margin in flight and after landing.", main: ["frequencyMhz", "txPowerDbm", "rxSensitivityDbm", "groundStationHeight"] },
       { tool: "power_budget", label: "Power budget", blurb: "Battery life of each avionics circuit through the pad wait and the flight.", main: ["circuits", "padWait", "recoveryTime"] },
-      { tool: "wind_profile", label: "Winds aloft", blurb: "Sets wind by altitude for the simulations, from levels you enter or a power law.", main: ["mode", "levels", "groundSpeed", "direction", "exponent"] },
+      { tool: "wind_profile", label: "Winds aloft", blurb: "Sets wind by altitude for the simulations, from levels you enter or a power law.", main: ["mode", "levels", "groundSpeed", "direction", "exponent"], needIf: [{ key: "mode", is: ["levels"], need: ["levels"] }] },
     ],
   },
   {
@@ -122,11 +127,11 @@ export const CATALOG: Group[] = [
   {
     title: "Compare and import",
     items: [
-      { tool: "add_from_link", label: "Part from a shop link", blurb: "Puts a product into the design from its web page.", main: ["url", "pageText", "kind", "parent", "component", "apply"] },
+      { tool: "add_from_link", label: "Part from a shop link", blurb: "Puts a product into the design from its web page.", main: ["url", "pageText", "kind", "parent", "component", "apply"], oneOf: ["url", "pageText"] },
       { tool: "compare_designs", label: "Compare designs", blurb: "Differences in parts and flight against another open design or a file.", main: ["baselineDesignId", "baselinePath", "revision", "sameConditions"], oneOf: ["baselineDesignId", "baselinePath", "revision"], files: { baselinePath: "ork,rkt" } },
       { tool: "progress_log", label: "Progress log", blurb: "Records where the design stands, and what changed since a milestone or date.", main: ["mode", "label", "note", "since"] },
       { tool: "history", label: "Edit history", blurb: "The edits made in this session that can be undone.", main: [] },
-      { tool: "import_aero_table", label: "RASAero aero table", blurb: "Uses CP and drag from a RASAero export (per stage) instead of OpenRocket's.", main: ["mode", "stage", "path", "cpUnit", "useDrag"], files: { path: "csv,txt" } },
+      { tool: "import_aero_table", label: "RASAero aero table", blurb: "Uses CP and drag from a RASAero export (per stage) instead of OpenRocket's.", main: ["mode", "stage", "path", "cpUnit", "useDrag"], needIf: [{ key: "mode", is: ["", "import"], need: ["path", "csv"] }], files: { path: "csv,txt" } },
       { tool: "compare_flight", label: "Flight log vs simulation", blurb: "Compares an altimeter log with the simulated flight.", main: ["path", "altitudeUnit", "simulation"], oneOf: ["path", "csv"], files: { path: "csv,txt" }, defaults: (n) => ({ plotPath: `plots/${n}-flight-vs-log.svg` }) },
     ],
   },

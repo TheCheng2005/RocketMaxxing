@@ -1,5 +1,6 @@
 import type { Issue } from "../api";
 import { CATALOG } from "../analysis/catalog";
+import { label } from "../analysis/text";
 
 // What an error means for someone using the app: the engine's sentence in the app's own words (its messages are
 // also read by AI assistants, and name their tools), what could be causing it, and what to try. An error code or
@@ -27,10 +28,20 @@ const REWRITES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/\s*Open designs: \[[^\]]*\]\.?/g, ""],
   [/\s*Check the path \(list_files shows the workspace\)\.?/g, ""],
   [/\s*Use set_motor first\.?/g, " Choose a motor on the Motors page."],
+  [/set launchSite\.latitude \/ longitude in the team standards/, "set the launch site on the Standards page"],
+  [/^I need the launch site's GPS coordinates: give/, "The forecast needs the launch site's position: give"],
+  [/\(upperTube, lowerTube\)/, "(Upper tube and Lower tube in the form)"],
   [/\s*Run the simulation first\.?/g, " Run it on the Flights page first."],
   [/Unknown designId '[^']*'\.?/, "This design is no longer open in the engine."],
   [/No component '[^']*'\.?/, "That part is no longer in the design."],
   [/^Property '([A-Za-z0-9]+)': /, (_m, p) => `${words(p)}: `],
+  // Inputs are named in the engine's spelling (targetDescentRate): the form's own words read better.
+  [/^Missing required argument '([A-Za-z0-9]+)'/, (_m, p) => `${label(p)} is needed`],
+  [/^Argument '([A-Za-z0-9]+)':? /, (_m, p) => `${label(p)}: `],
+  [/^'([A-Za-z][A-Za-z0-9]*)' (must be|is yes or no|=)/, (_m, p, v) => `${label(p)} ${v}`],
+  [/'([a-z][a-z0-9]*(?:[A-Z][a-zA-Z0-9]*)+)'/g, (_m, p) => label(p)],
+  // Bare input names in a list (windSpeed, launchAngle); not units (kPa, mAh) and not parts of a file name or path.
+  [/(?<![\/\\.\w-])[a-z]{3,}[a-z0-9]*(?:[A-Z][a-z0-9]+)+(?![\/\\\w-]|\.\w)/g, (m) => label(m)],
   [/: ([A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+) (cannot|=|is)/, (_m, p, v) => `: ${words(p).toLowerCase()} ${v}`],
   [/\((\w+) hit an internal error/, "(the engine hit an internal error"],
   [/^\w+ hit an internal error/, "The engine hit an internal error"],
@@ -55,7 +66,10 @@ export function plain(text: string): string {
   let t = text;
   for (const [re, to] of REWRITES) t = t.replace(re, to as any);
   t = t.replace(/\b[a-z0-9]+(?:_[a-z0-9]+)+\b/g, (m) => PLACES[m] ?? (ANALYSES[m] ? `the ${ANALYSES[m]} analysis` : m));
-  return t.replace(/\s{2,}/g, " ").trim();
+  t = t.replace(/\s{2,}/g, " ").trim();
+  // A sentence that now starts with an input's name starts with a capital; one that starts with a file name is left.
+  const was = text.replace(/^Error:\s*/, "");
+  return was.charAt(0) === t.charAt(0) ? t : t.charAt(0).toUpperCase() + t.slice(1);
 }
 
 interface Rule {
@@ -123,8 +137,8 @@ const RULES: Rule[] = [
   },
   {
     test: /is an? \w+ but an? \w+ was expected/,
-    causes: ["The unit typed belongs to a different kind of quantity (a mass in a length field)."],
-    fix: "Use a unit of the kind the field shows.",
+    causes: ["The unit typed belongs to a different kind of quantity, for example a mass where a length or a speed goes."],
+    fix: "Use a unit of the kind the message names.",
   },
   {
     test: /cannot be negative/,
@@ -227,8 +241,13 @@ const RULES: Rule[] = [
 
 RULES.push(
   {
-    test: /must be a number, with a unit|must be a number, got|must be a whole number/,
-    causes: ["Letters, a sum or a comma for the decimal point where one number goes.", "A list typed into a box that takes a single value."],
+    test: /must be a whole number|is a count/,
+    causes: ["A decimal, a word or a negative number where a count goes."],
+    fix: "Type digits only: 3, 100.",
+  },
+  {
+    test: /must be a number, with a unit|must be a number, got/,
+    causes: ["Letters or symbols where one number goes.", "A sum (10+5), or a list typed into a box that takes a single value.", "A comma used for thousands (1,000)."],
     fix: 'Type one number, with a unit if the input has one: "20 ft/s", "4 in", "0.05".',
   },
   { test: /is yes or no/, causes: ["A word other than true or false in a yes-or-no input."] },
@@ -238,7 +257,7 @@ RULES.push(
     fix: "Check the number against the range in the message, and its unit.",
   },
   {
-    test: /Give path|Give url|Give exactly one|needs? (at least )?one of|Missing required argument/,
+    test: /^Give |Give exactly one|needs? (at least )?one of|Missing required argument|is needed/,
     causes: ["An input this analysis cannot do without was left empty.", "Of several inputs that can each do the job, none was filled in."],
     fix: "Fill in the input marked with a red star, then run again.",
   },

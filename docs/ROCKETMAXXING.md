@@ -305,6 +305,11 @@ is and is not saved. On the Design page a value the engine refuses stays out of 
 what it was, and when OpenRocket limits a value (1 to 8 fins) a note says what it was set to. If an assistant or
 another window deletes a part or closes the design, the page catches up instead of showing what is no longer there.
 
+On the Analysis page the Run button stays off until the analysis has what it needs, and says what that is (a file
+when the mode is import, a parachute or a mass to size a canopy). A value of the wrong kind (words where a number goes,
+a mass where a speed goes, a percentage where a fraction goes) is refused before the analysis runs, marked at its
+input, and explained under the result with what could be causing it. Messages name inputs as the form does.
+
 The warning sign at the top right opens the Problems list: what to watch in the current design's flight, then
 every error since the app started, newest first, with where it happened. It is red when there are errors you haven't
 looked at, amber when the flight has something to watch. A bug in RocketMaxxing (in the engine or in the window)

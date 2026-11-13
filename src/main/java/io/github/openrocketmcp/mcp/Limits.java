@@ -240,8 +240,7 @@ public final class Limits {
 			Units.parse(text);
 		} catch (IllegalArgumentException e) {
 			throw new ToolException(string
-					? "'" + key + "' must be a number, with a unit if you like (e.g. \"20 ft/s\", \"4 in\"), got '" + text + "'. "
-							+ "Letters, a sum or a comma for the decimal point cannot be read."
+					? "'" + key + "' must be a number, with a unit if you like (e.g. \"20 ft/s\", \"4 in\"), got '" + text + "'."
 					: "'" + key + "' must be a number, got '" + text + "'.").field(key);
 		}
 	}
