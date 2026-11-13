@@ -310,6 +310,11 @@ when the mode is import, a parachute or a mass to size a canopy). A value of the
 a mass where a speed goes, a percentage where a fraction goes) is refused before the analysis runs, marked at its
 input, and explained under the result with what could be causing it. Messages name inputs as the form does.
 
+The rule check (the panel on the Design page and the analysis of the same name) names each row so it can be told from
+the others: a part carries its stage on a staged rocket ("Fins in Booster"), and rows that still share a name are
+numbered. Under the rows, **To check by hand** lists what the rules ask that no simulation can show. When there is
+nothing to check yet (no motor chosen), the panel says why and offers the way there.
+
 The warning sign at the top right opens the Problems list: what to watch in the current design's flight, then
 every error since the app started, newest first, with where it happened. It is red when there are errors you haven't
 looked at, amber when the flight has something to watch. A bug in RocketMaxxing (in the engine or in the window)

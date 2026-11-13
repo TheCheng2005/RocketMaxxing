@@ -3,6 +3,7 @@
   import { context, copyText, type MenuItem } from "../menu/menu.svelte";
   import { analysis } from "../analysis/store.svelte";
   import { status } from "../analysis/text";
+  import { explain, plain } from "../issues/explain";
 
   let { tall = false }: { tall?: boolean } = $props();
   // The competition rule check, re-run after edits: failures and warnings first, passes on request.
@@ -10,7 +11,14 @@
 
   let c = $derived(app.checks && app.checks.designId === app.design?.designId ? app.checks : null);
   type Level = "fail" | "warn" | "info" | "pass";
-  let rows = $derived((c?.checks ?? []).map((x) => ({ ...x, s: (status(x.status) || "info") as Level })));
+  // The engine words its rows for AI assistants too (tool names, standards keys): shown in the app's words.
+  let rows = $derived((c?.checks ?? []).map((x) => ({
+    ...x, item: plain(x.item), requirement: x.requirement ? plain(x.requirement) : x.requirement, value: x.value ? plain(x.value) : x.value,
+    s: (status(x.status) || "info") as Level,
+  })));
+  let manual = $derived(c?.manualChecks ?? []);
+  /** Why there is no check, with what could be behind it and what to do. */
+  let failed = $derived(c?.error ? explain({ kind: "input", severity: "error", text: c.error }) : null);
   const order: Record<Level, number> = { fail: 0, warn: 1, info: 2, pass: 3 };
   let shown = $derived(rows.filter((r) => showPassed || r.s !== "pass").sort((a, b) => order[a.s] - order[b.s]));
   let passed = $derived(rows.filter((r) => r.s === "pass").length);
@@ -24,7 +32,7 @@
     return [
       { header: "Rule check" },
       r ? { label: "Copy this line", run: () => copyText(line(r)).then((ok) => ok && toast("Copied")) } : null,
-      { label: "Copy all results", off: !rows.length && "No results yet", run: () => copyText([c?.ruleSet ?? "", ...rows.map(line)].join("\n")).then((ok) => ok && toast("Copied the rule check")) },
+      { label: "Copy all results", off: !rows.length && "No results yet", run: () => copyText([c?.ruleSet ?? "", ...rows.map(line), ...(manual.length ? ["", "To check by hand:", ...manual.map((m) => "- " + m)] : [])].join("\n")).then((ok) => ok && toast("Copied the rule check")) },
       { label: "Check again", run: () => checkRules() },
       { label: showPassed ? "Hide passed" : "Show passed", run: () => (showPassed = !showPassed) },
       "-",
@@ -39,8 +47,17 @@
 <div class="rc" class:stale={app.checking} class:tall use:context={items}>
   {#if !c}
     <p class="muted pad">{autoCheck() ? "Waiting for the first check…" : "Click the refresh button to check the rules (automatic checking is off in Settings)."}</p>
-  {:else if c.error}
-    <p class="muted pad">{c.error}</p>
+  {:else if failed}
+    <div class="pad none">
+      <div><b>Not checked.</b> {failed.text}</div>
+      {#if failed.causes.length}
+        <ul class="why">{#each failed.causes as cause}<li>{cause}</li>{/each}</ul>
+      {/if}
+      <div class="acts">
+        {#if /motor/i.test(failed.text)}<button class="btn" onclick={() => (app.page = "motors")}>Choose a motor</button>{/if}
+        <button class="btn" onclick={() => checkRules()}>Check again</button>
+      </div>
+    </div>
   {:else}
     <ul class="rules">
       {#each shown as r, i (i)}
@@ -54,6 +71,12 @@
         </li>
       {/each}
     </ul>
+    {#if manual.length}
+      <details class="manual">
+        <summary>To check by hand ({manual.length}): what the rules ask that a simulation cannot show</summary>
+        <ul>{#each manual as m}<li>{plain(m)}</li>{/each}</ul>
+      </details>
+    {/if}
     <div class="foot">
       <span class="muted">{c.ruleSet}</span>
       <button class="link" onclick={() => (showPassed = !showPassed)}>{showPassed ? "Hide passed" : `Show passed (${passed})`}</button>
@@ -75,6 +98,37 @@
   .pad {
     margin: 0;
     padding: 12px 14px;
+  }
+  .none {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: var(--ink-2);
+  }
+  .none .why {
+    margin: 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+  }
+  .none .acts {
+    display: flex;
+    gap: 6px;
+  }
+  .manual {
+    padding: 8px 14px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .manual summary {
+    cursor: pointer;
+  }
+  .manual ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .rules {
     list-style: none;

@@ -28,6 +28,14 @@ const REWRITES: [RegExp, string | ((...m: string[]) => string)][] = [
   [/\s*Open designs: \[[^\]]*\]\.?/g, ""],
   [/\s*Check the path \(list_files shows the workspace\)\.?/g, ""],
   [/\s*Use set_motor first\.?/g, " Choose a motor on the Motors page."],
+  // A team-standards key in brackets is for editing the file by hand; the app has the Standards page.
+  [/\s*\((?:[a-z][A-Za-z0-9]*\.)+[A-Za-z0-9]+\)/g, ""],
+  [/in the team standards/g, "on the Standards page"],
+  [/add the material to structures\.shearModulus/, "add the material's shear modulus"],
+  // A standards key outside brackets (structures.shearModulus): its last word, as the Standards page names it.
+  // Not a file name: those have a short ending (.ork, .csv) or sit in a path.
+  [/(?<![\/\\\w-])(?:[a-z][A-Za-z0-9]*\.)+[A-Za-z][A-Za-z0-9]{5,}\b(?![\/\\])/g, (m) => (/[a-z][A-Z]/.test(m) ? label(m.split(".").pop()!).toLowerCase() : m)],
+
   [/set launchSite\.latitude \/ longitude in the team standards/, "set the launch site on the Standards page"],
   [/^I need the launch site's GPS coordinates: give/, "The forecast needs the launch site's position: give"],
   [/\(upperTube, lowerTube\)/, "(Upper tube and Lower tube in the form)"],
@@ -66,7 +74,8 @@ export function plain(text: string): string {
   let t = text;
   for (const [re, to] of REWRITES) t = t.replace(re, to as any);
   t = t.replace(/\b[a-z0-9]+(?:_[a-z0-9]+)+\b/g, (m) => PLACES[m] ?? (ANALYSES[m] ? `the ${ANALYSES[m]} analysis` : m));
-  t = t.replace(/\s{2,}/g, " ").trim();
+  // "Pass X" is how an assistant is told to give an input; a person gives it in the form.
+  t = t.replace(/\bPass (?=[A-Z][a-z])/g, "Give ").replace(/\s{2,}/g, " ").trim();
   // A sentence that now starts with an input's name starts with a capital; one that starts with a file name is left.
   const was = text.replace(/^Error:\s*/, "");
   return was.charAt(0) === t.charAt(0) ? t : t.charAt(0).toUpperCase() + t.slice(1);

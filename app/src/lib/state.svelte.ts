@@ -188,6 +188,8 @@ export interface Checks {
   ruleSet?: string;
   summary?: string;
   checks?: Check[];
+  /** What the rules ask for that no simulation can show: for the team to check by hand. */
+  manualChecks?: string[];
   error?: string;
   designId: string;
 }

@@ -1,6 +1,7 @@
 package io.github.openrocketmcp.or;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,7 +61,27 @@ public final class Requirements {
 			items.add(m);
 		}
 
+		/**
+		 * Rows that share a name (the fins of two stages, two boosters called the same) are numbered, so each can be
+		 * told from the others and a failure is not read as the same one twice. Every row is kept: two boosters that
+		 * both lack recovery are two failures.
+		 */
+		private void tidy() {
+			Map<Object, Integer> named = new HashMap<>(), seen = new HashMap<>();
+			for (Map<String, Object> i : items) {
+				named.merge(i.get("item"), 1, Integer::sum);
+			}
+			for (Map<String, Object> i : items) {
+				Object item = i.get("item");
+				int of = named.get(item);
+				if (of > 1) {
+					i.put("item", item + " (" + seen.merge(item, 1, Integer::sum) + " of " + of + ")");
+				}
+			}
+		}
+
 		public Map<String, Object> render(String rules) {
+			tidy();
 			Map<String, Object> out = new LinkedHashMap<>();
 			int fail = 0, warn = 0;
 			for (Map<String, Object> i : items) {
@@ -92,6 +113,15 @@ public final class Requirements {
 		double ld = Dynamics.lengthToDiameter(fc);
 		double floor = Math.max(Double.isNaN(cal) ? 0 : cal, Double.isNaN(pct) ? 0 : pct / 100 * ld);
 		return new double[] { floor, cal, pct, ld };
+	}
+
+	/** A part named so it can be found: with its stage when the rocket has more than one. */
+	static String where(RocketComponent c) {
+		if (c == null) {
+			return "?";
+		}
+		boolean staged = c.getRocket() != null && c.getRocket().getStageCount() > 1;
+		return staged && c.getStage() != null && c.getStage() != c ? c.getName() + " in " + c.getStage().getName() : c.getName();
 	}
 
 	public static String floorText(double[] f) {
@@ -146,7 +176,8 @@ public final class Requirements {
 					+ " (use yours if you bring your own)", Units.fmt(opt.getLaunchRodLength(), Dim.LENGTH), std.ruleRef("railLength"));
 		}
 		if (Double.isNaN(std.q("launchSite.altitudeMsl", Dim.DISTANCE, Double.NaN))) {
-			r.add(Status.WARN, "Launch site altitude", "Set launchSite.altitudeMsl in the team standards so air density is right",
+			r.add(Status.WARN, "Launch site altitude",
+					"Set the launch site's altitude in the team standards (launchSite.altitudeMsl) so air density is right",
 					Units.fmt(opt.getLaunchAltitude(), Dim.DISTANCE) + " used by this simulation", null);
 		}
 
@@ -211,13 +242,13 @@ public final class Requirements {
 					double tilt = Sims.tilt(main, e.getTime());
 					if (!Double.isNaN(tiltMax)) {
 						Status s = tilt > tiltMax ? Status.FAIL : !Double.isNaN(tiltRec) && tilt > tiltRec ? Status.WARN : Status.PASS;
-						r.add(s, "Tilt at upper-stage ignition (" + e.getSource().getName() + ")",
+						r.add(s, "Tilt at upper-stage ignition (" + where(e.getSource()) + ")",
 								"tilt lockout <= " + Units.fmt(tiltMax, Dim.ANGLE) + ", should be < " + Units.fmt(tiltRec, Dim.ANGLE)
 										+ "; nominal flight must be well inside the lockout",
 								Units.fmt(tilt, Dim.ANGLE), std.ruleRef("staging"));
 					}
 					if (!Double.isNaN(frac)) {
-						r.add(Status.INFO, "Air-start altitude inhibit (" + e.getSource().getName() + ")",
+						r.add(Status.INFO, "Air-start altitude inhibit (" + where(e.getSource()) + ")",
 								"program inhibit at " + Units.num(frac * 100) + "% of the simulated ignition altitude",
 								"simulated " + Units.fmt(alt, Dim.DISTANCE) + " -> inhibit below " + Units.fmt(frac * alt, Dim.DISTANCE),
 								std.ruleRef("staging"));
@@ -342,7 +373,7 @@ public final class Requirements {
 					String mat = rb.getMaterial().getName().toLowerCase(Locale.ROOT);
 					boolean metal = mat.contains("aluminum") || mat.contains("aluminium") || mat.contains("steel")
 							|| mat.contains("brass") || mat.contains("titanium") || mat.contains("copper");
-					r.add(metal ? Status.FAIL : Status.PASS, "Rail button material (" + c.getName() + ")",
+					r.add(metal ? Status.FAIL : Status.PASS, "Rail button material (" + where(c) + ")",
 							"no metal rail buttons; machine them from Delrin (POM)", rb.getMaterial().getName(), std.ruleRef("railButtons"));
 				}
 			}
@@ -434,7 +465,7 @@ public final class Requirements {
 				continue;
 			}
 			Status s = f.minMargin() < 1 ? Status.FAIL : f.minMargin() < need ? Status.WARN : Status.PASS;
-			r.add(s, "Fin flutter margin (" + f.fin().getName() + ", " + f.fin().getMaterial().getName() + ")",
+			r.add(s, "Fin flutter margin (" + where(f.fin()) + ", " + f.fin().getMaterial().getName() + ")",
 					"flutter speed >= " + Units.num(need) + " x airspeed along the flight (team standard; NACA TN 4197 screen, "
 							+ "see fin_flutter)",
 					Units.num(f.minMargin()) + " at " + Units.fmt(f.altitude(), Dim.DISTANCE) + ", " + Units.fmt(f.airspeed(), Dim.VELOCITY),
