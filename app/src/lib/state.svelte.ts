@@ -8,6 +8,8 @@ import { complete, knownMeshes } from "./design/meshStore";
 import { units, setSystem as setUnitSystem } from "./units.svelte";
 import { MAC } from "./keys";
 
+import { ui } from "./search/ui.svelte";
+
 export interface TreeNode {
   id: string;
   name: string;
@@ -52,8 +54,17 @@ export interface Design {
   selected: string;
   stability: Stability;
   loadWarnings?: string[];
+  /** What to look at after opening the file: what was left out, what may be wrong, what to set up next. */
+  importReport?: ImportReport | null;
   /** The imported RASAero (or other) aero table for the whole vehicle: its source, or null. */
   aeroTable?: string | null;
+}
+
+export interface ImportReport {
+  format: string;
+  file: string;
+  cameIn: { stages: number; parts: number; configurationsWithMotors: number; simulations: number; length?: string; mass?: string };
+  findings: { level: "lost" | "check" | "note"; text: string }[];
 }
 
 export interface FieldDef {
@@ -397,7 +408,9 @@ export async function openPath(path: string) {
   await run(async () => {
     const r = await call("open_design", { path });
     await load(r.designId);
-    if (r.conversionWarnings?.length) toast("Converted on opening: " + r.conversionWarnings.join("; "));
+    // A file from another program, or one OpenRocket had to change: say what to look at before the numbers are trusted.
+    if (r.importReport && (r.importReport.format !== "OpenRocket" || r.importReport.findings.length)) ui.importReport = true;
+    else if (r.conversionWarnings?.length) toast("Converted on opening: " + r.conversionWarnings.join("; "));
   });
 }
 

@@ -128,6 +128,24 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 Every panel and section folds (click its title). The Parts and Properties panels fold to a strip at the side to give
 the view more room. What is folded is remembered.
 
+### Opening files from other programs
+
+RocketMaxxing opens OpenRocket `.ork`, RockSim `.rkt` and RASAero II `.CDX1` files. An `.ork` is its own format and
+comes in whole: parts, materials, motors, flight configurations, simulations and their results. The other two are read
+by OpenRocket's importers and carry less, so a design opened from one comes with an **import check**:
+
+- **Left out**: parts OpenRocket could not place (fins on an inner tube, pods on a nose cone, ring tails), motors it does
+  not know, and a count when the file has more parts than came in.
+- **Check these**: a length that differs from the one the other program wrote in its file, part masses that add up
+  differently, masses or CGs typed in by hand, a stability figure that cannot be right (a sign that a fin or body part
+  came in at the wrong size or place), and shapes OpenRocket's aerodynamics handle roughly.
+- **To set up next**: what that kind of file never carries. RockSim files come in without motors or simulations;
+  RASAero files describe the outside of the rocket only, so masses come from default materials.
+
+The check opens once when the file is opened, and the **Imported from …** mark beside the design's name opens it again.
+The original file is never written over: Save writes an `.ork`. An `.ork` that OpenRocket had to change while reading
+(written by an older version, or using a motor that is not in the database) shows the same check.
+
 ### RASAero beside OpenRocket
 
 OpenRocket's drag and centre of pressure are least sure between Mach 0.8 and 1.2, and Launch Canada asks for RASAero's

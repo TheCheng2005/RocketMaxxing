@@ -80,6 +80,13 @@ public final class DesignTools {
 						out.put("checkConversion", "OpenRocket changed or dropped the items above while reading this file (an older "
 								+ "version or another program). Check them with get_design before trusting the numbers.");
 					}
+					if (d.importReport != null) {
+						out.put("importReport", d.importReport.render());
+						if (!d.importReport.findings().isEmpty()) {
+							out.put("checkImport", "Tell the user what importReport found before working with the numbers: 'lost' was "
+									+ "not brought in, 'check' came in but may be wrong, 'note' is what to set up next.");
+						}
+					}
 					out.put("next", "Call get_design to see components, stability and simulations.");
 					return out;
 				}));

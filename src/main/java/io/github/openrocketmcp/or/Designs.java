@@ -44,6 +44,8 @@ public final class Designs {
 		public final List<String> loadWarnings = new ArrayList<>();
 		/** The file it was imported from when that is not an .ork (a RockSim .rkt); it is saved as .ork elsewhere. */
 		public Path importedFrom;
+		/** What to look at after opening the file (parts left out, numbers that do not match the file); null when nothing. */
+		public ImportCheck.Report importReport;
 
 		Design(String id, OpenRocketDocument doc, Path path, String origin) {
 			this.id = id;
@@ -117,6 +119,14 @@ public final class Designs {
 			d.importedFrom = p;
 		}
 		d.loadWarnings.addAll(warnings);
+		try {
+			ImportCheck.Report report = ImportCheck.check(p, doc, warnings);
+			if (!ork || !report.findings().isEmpty()) {
+				d.importReport = report;
+			}
+		} catch (RuntimeException e) {
+			// The check is advice: a design it cannot look at still opens.
+		}
 		return d;
 	}
 

@@ -54,6 +54,13 @@
     <div class="title" title={app.design.path ?? "Not saved yet"}>
       <span class="name">{app.design.name}</span>
       {#if !app.design.saved}<span class="edited">(edited)</span>{/if}
+      {#if app.design.importReport}
+        {@const n = app.design.importReport.findings.filter((f) => f.level !== "note").length}
+        <button class="imported" class:warn={n > 0} onclick={() => (ui.importReport = true)}
+          title="What came in from {app.design.importReport.file}, what was left out and what to check">
+          {app.design.importReport.format === "OpenRocket" ? "Opened with changes" : `Imported from ${app.design.importReport.format}`}{n ? ` · ${n} to check` : ""}
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -262,5 +269,29 @@
     padding: 0 3px;
     margin-left: -4px;
     min-width: 0;
+  }
+  .title .name {
+    flex: 0 1 auto;
+    min-width: 9ch;
+  }
+  .imported {
+    flex: 0 2 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--ink-2);
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .imported.warn {
+    border-color: transparent;
+    background: var(--warn-soft);
+    color: var(--warn);
   }
 </style>

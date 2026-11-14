@@ -63,6 +63,9 @@ final class AppDesign {
 		if (!d.loadWarnings.isEmpty()) {
 			out.put("loadWarnings", d.loadWarnings);
 		}
+		if (d.importReport != null) {
+			out.put("importReport", d.importReport.render());
+		}
 		return out;
 	}
 

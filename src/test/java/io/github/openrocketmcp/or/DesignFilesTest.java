@@ -74,4 +74,32 @@ class DesignFilesTest {
 			assertTrue(same.contains("imported from"), same);
 		}
 	}
+
+	/** A file from another program opens with a list of what to look at; the design's own .ork opens with none. */
+	@Test
+	void importsSayWhatToCheck(@TempDir Path dir) throws Exception {
+		Designs designs = new Designs();
+		Designs.Design d = designs.openExample("A simple model rocket");
+		Path own = designs.save(d, dir.resolve("rocket.ork"));
+		assertEquals(null, designs.open(own).importReport, "an .ork that reads cleanly has nothing to report");
+
+		Designs.Design rkt = designs.open(designs.save(d, dir.resolve("rocket.rkt")));
+		assertEquals("RockSim", rkt.importReport.format());
+		assertTrue(rkt.importReport.findings().stream().anyMatch(f -> f.level().equals("note") && f.text().contains("No motors came in")),
+				rkt.importReport.findings().toString());
+		assertTrue(rkt.importReport.findings().stream().anyMatch(f -> f.text().contains("No simulations came in")));
+
+		Designs.Design ras = designs.open(designs.save(d, dir.resolve("rocket.CDX1")));
+		assertEquals("RASAero II", ras.importReport.format());
+		assertTrue(ras.importReport.findings().stream().anyMatch(f -> f.text().contains("outside of the rocket only")),
+				ras.importReport.findings().toString());
+
+		// OpenRocket's own warnings are shown as sentences, without Java class names.
+		assertEquals("Body Tube cannot be attached to a Nose Cone: it was left out.",
+				ImportCheck.plain("info.openrocket.core.rocketcomponent.BodyTube can not be attached to Nose Cone, ignoring component."));
+		assertEquals("Trapezoidal Fin Set cannot be attached to an Inner Tube: it was left out.",
+				ImportCheck.plain("Trapezoidal Fin Set can not be attached to Inner Tube, ignoring component."));
+		assertTrue(ImportCheck.plain("Could not find motor 'A6Q' in the OpenRocket motors database. Please add it manually.")
+				.contains("OpenRocket motors database. Import its file on the Motors page"));
+	}
 }
