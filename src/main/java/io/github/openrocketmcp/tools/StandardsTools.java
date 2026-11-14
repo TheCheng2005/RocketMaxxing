@@ -36,11 +36,18 @@ public final class StandardsTools {
 		s.tool(new ToolDef("update_standards", "Change team standards",
 				"Merge a JSON patch into the team standards, e.g. {\"launchSite\": {\"altitudeMsl\": \"300 m\"}}, "
 						+ "{\"recovery\": {\"shearPins\": {\"2-56 nylon\": {\"strength\": \"35 lbf\", \"source\": \"test 2026-03\"}}}} or "
-						+ "{\"units\": \"imperial\"}. Pass saveTo to write the result (commit it so the team shares it).",
+						+ "{\"units\": \"imperial\"}. Pass saveTo to write the result (commit it so the team shares it). For targets, use "
+						+ "the targets tool's set: it saves them and checks the flight in one call.",
 				Schema.object().obj("patch", "JSON object merged into the standards (null removes a key).", true)
 						.str("saveTo", "Write the merged standards to this file (e.g. openrocket-mcp.json).", false).build(),
 				false, a -> {
 					JsonObject patch = a.obj("patch").raw();
+					if (patch.has("targets") && patch.get("targets").isJsonObject()) {
+						// The same checks as the targets tool: a typo here would otherwise only show when the targets are read.
+						JsonObject merged = io.github.openrocketmcp.or.Targets.targetsOf(ctx.standards()).deepCopy();
+						TeamFile.apply(merged, patch.getAsJsonObject("targets"));
+						io.github.openrocketmcp.or.Targets.validate(patch.getAsJsonObject("targets"), merged);
+					}
 					Standards next = ctx.standards().patched(patch);
 					ctx.setStandards(next);
 					Map<String, Object> out = new LinkedHashMap<>();

@@ -469,7 +469,9 @@ final class Assistant {
 		return "You are the assistant inside RocketMaxxing, a desktop app for designing, simulating and checking "
 				+ "competition rockets. The team sees the same design you work on: every change you make with the tools "
 				+ "shows in the app at once and can be undone with Ctrl+Z. Each message starts with what the app is "
-				+ "showing (the open design and its id); use that designId. Keep answers short and concrete, with the "
+				+ "showing (the open design and its id, and often the page the team is on with its latest numbers); use "
+				+ "that designId, and answer from those numbers when they are enough rather than running the tool again. "
+				+ "Target changes go through the targets tool's set, which saves them where the Targets page reads them. Keep answers short and concrete, with the "
 				+ "numbers that matter; say what you changed. Ask before large changes to the design.\n\n" + Main.INSTRUCTIONS;
 	}
 
@@ -582,7 +584,9 @@ final class Assistant {
 		e.put("title", def == null ? name : def.title());
 		e.put("input", input.length() > 400 ? input.substring(0, 400) + "..." : input);
 		e.put("ok", ok);
-		e.put("changed", lastState != null && !now.equals(lastState));
+		// The design part of the state, and the standards part (targets, rule set): the page reloads what changed.
+		e.put("changed", lastState != null && !designs(now).equals(designs(lastState)));
+		e.put("standards", lastState != null && !standards(now).equals(standards(lastState)));
 		e.put("result", result.length() > 1500 ? result.substring(0, 1500) + "..." : result);
 		if (!images.isEmpty()) {
 			e.put("images", images);
@@ -597,7 +601,18 @@ final class Assistant {
 		for (io.github.openrocketmcp.or.Designs.Design d : ctx.designs.all()) {
 			b.append(d.id).append(':').append(d.doc.getRocket().getModID()).append(':').append(d.doc.getSimulations().size()).append(' ');
 		}
-		return b.toString();
+		// Every change to the standards makes a new Standards object.
+		return b.append("| std ").append(System.identityHashCode(ctx.standards())).toString();
+	}
+
+	private static String designs(String state) {
+		int bar = state.indexOf("| std ");
+		return bar < 0 ? state : state.substring(0, bar);
+	}
+
+	private static String standards(String state) {
+		int bar = state.indexOf("| std ");
+		return bar < 0 ? "" : state.substring(bar);
 	}
 
 	private synchronized void event(String kind, String text, Map<String, Object> extra) {
@@ -612,13 +627,31 @@ final class Assistant {
 		events.add(e);
 	}
 
+	/** The longest page summary sent with a message: what the team is looking at, not a copy of the page. */
+	static final int PAGE_LIMIT = 900;
+
 	/** One line of what the app shows, sent with each message so Claude works on the same design. */
 	static String context(io.github.openrocketmcp.or.Designs.Design d) {
+		return context(d, null);
+	}
+
+	/**
+	 * What the app shows, sent with each message: the open design, and what is on the page the team is looking at
+	 * (the Targets page's latest results, say), so a question about it needs no tool call to see the same numbers.
+	 */
+	static String context(io.github.openrocketmcp.or.Designs.Design d, String page) {
+		String design;
 		if (d == null) {
-			return "No design open; units " + Units.system().name().toLowerCase();
+			design = "No design open; units " + Units.system().name().toLowerCase();
+		} else {
+			var r = d.doc.getRocket();
+			design = "Open design: " + d.name() + " (designId " + d.id + "), configuration "
+					+ r.getSelectedConfiguration().getName() + "; units " + Units.system().name().toLowerCase();
 		}
-		var r = d.doc.getRocket();
-		return "Open design: " + d.name() + " (designId " + d.id + "), configuration "
-				+ r.getSelectedConfiguration().getName() + "; units " + Units.system().name().toLowerCase();
+		if (page == null || page.isBlank()) {
+			return design;
+		}
+		String p = page.replaceAll("\\s+", " ").trim();
+		return design + "\n" + (p.length() > PAGE_LIMIT ? p.substring(0, PAGE_LIMIT) + "..." : p);
 	}
 }

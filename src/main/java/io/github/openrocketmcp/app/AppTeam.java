@@ -20,6 +20,7 @@ import io.github.openrocketmcp.or.FlightLog;
 import io.github.openrocketmcp.or.Library;
 import io.github.openrocketmcp.or.Sims;
 import io.github.openrocketmcp.or.Targets;
+import io.github.openrocketmcp.tools.TeamFile;
 import io.github.openrocketmcp.standards.Standards;
 import io.github.openrocketmcp.tools.Context;
 import io.github.openrocketmcp.units.Dim;
@@ -100,75 +101,21 @@ final class AppTeam {
 	// ------------------------------------------------------------------------------------------- targets
 
 	static Map<String, Object> setTargets(Context ctx, JsonObject patch) throws IOException {
-		for (Map.Entry<String, JsonElement> e : patch.entrySet()) {
-			Targets.Metric m = Targets.metric(e.getKey());
-			if (m == null || !e.getValue().isJsonObject()) {
-				throw new ToolException("Unknown target '" + e.getKey() + "'.");
-			}
-			for (String k : e.getValue().getAsJsonObject().keySet()) {
-				if (!List.of("min", "max", "goal", "note").contains(k)) {
-					throw new ToolException("A target has min, max, goal and note, not '" + k + "'.");
-				}
-			}
-			Targets.bound(e.getValue().getAsJsonObject(), "min", m);
-			Targets.bound(e.getValue().getAsJsonObject(), "max", m);
-			Targets.bound(e.getValue().getAsJsonObject(), "goal", m);
-		}
-		JsonObject wrapped = new JsonObject();
-		wrapped.add("targets", patch);
-		Map<String, Object> out = new LinkedHashMap<>(setStandards(ctx, wrapped));
-		JsonObject targets = Targets.targetsOf(ctx.standards());
-		out.put("targets", targets.keySet());
+		Map<String, Object> out = new LinkedHashMap<>(io.github.openrocketmcp.tools.SimTools.setTargets(ctx, patch));
+		out.put("targets", Targets.targetsOf(ctx.standards()).keySet());
 		return out;
 	}
 
-	/** The team standards file: the one loaded, else openrocket-mcp.json in the designs folder. */
 	static Path standardsFile(Context ctx) {
-		return ctx.standards().source() != null ? ctx.standards().source()
-				: (ctx.workspace() != null ? ctx.workspace() : Path.of("").toAbsolutePath()).resolve(Standards.FILE_NAME);
+		return TeamFile.path(ctx);
 	}
 
 	static JsonObject teamFile(Path file) throws IOException {
-		return Files.exists(file) ? JsonParser.parseString(Files.readString(file)).getAsJsonObject() : new JsonObject();
+		return TeamFile.read(file);
 	}
 
-	/**
-	 * Merges a change into the team standards file and uses the result at once. The file keeps only what the team set
-	 * (the built-in defaults stay defaults, so later improvements to them still apply); null puts a value back to its
-	 * default. The change is checked before anything is written.
-	 */
 	static Map<String, Object> setStandards(Context ctx, JsonObject patch) throws IOException {
-		Path file = standardsFile(ctx);
-		JsonObject team = teamFile(file);
-		apply(team, patch);
-		Standards next = Standards.fromTeam(team, file);
-		Files.createDirectories(file.toAbsolutePath().getParent());
-		Files.writeString(file, Standards.pretty(team));
-		ctx.setStandards(next);
-		return Map.of("saved", file.toString());
-	}
-
-	/** Deep merge where null removes the key, and an object left empty goes too. */
-	static void apply(JsonObject target, JsonObject patch) {
-		for (Map.Entry<String, JsonElement> e : patch.entrySet()) {
-			JsonElement v = e.getValue();
-			if (v.isJsonNull()) {
-				target.remove(e.getKey());
-			} else if (v.isJsonObject() && target.has(e.getKey()) && target.get(e.getKey()).isJsonObject()) {
-				apply(target.getAsJsonObject(e.getKey()), v.getAsJsonObject());
-				if (target.getAsJsonObject(e.getKey()).size() == 0) {
-					target.remove(e.getKey());
-				}
-			} else if (v.isJsonObject()) {
-				JsonObject fresh = new JsonObject();
-				apply(fresh, v.getAsJsonObject());
-				if (fresh.size() > 0) {
-					target.add(e.getKey(), fresh);
-				}
-			} else {
-				target.add(e.getKey(), v.deepCopy());
-			}
-		}
+		return TeamFile.save(ctx, patch);
 	}
 
 	/** Values not set (null, such as the launch site's altitude) as "", so they reach the page as fields to fill in. */

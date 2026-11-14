@@ -505,9 +505,15 @@ The project side of a chief engineer's job. Reading notes and posting updates go
   (`"targets": {"apogee": {"min": "9500 ft", "max": "10500 ft", "goal": "10000 ft"}}`) on apogee, top speed and Mach,
   peak acceleration, rail exit speed, thrust to weight on the rail, lowest and highest ascent stability (cal, above
   100 ft/s), fin flutter margin, lift-off mass, time to apogee, drogue and main descent rates, landing speed and
-  distance, and flight time. It simulates and returns every number with its limits, the margin to the nearer one and
-  PASS, WARN (met by less than 5%) or FAIL. The flutter margin falls back to `structures.flutterMinMargin`. These are
-  design goals; `check_requirements` is the competition's rules.
+  distance, and flight time. It simulates and returns each target set with its limits, the margin to the nearer one and
+  PASS, WARN (met by less than 5%) or FAIL, and the other numbers as one line each in `otherValues` (`detail: true`
+  gives every number as a row with SI values, as the app's page uses). `set` changes targets in the same call
+  (`{"apogee": {"min": "9500 ft", "goal": "10000 ft"}}`, null clears) and saves them in the team standards file the
+  Targets page shows. A change is refused when it names an unknown target, cannot be read, is below zero, puts the
+  minimum at or above the maximum, or puts the goal outside the limits; a bad value already in the file is reported on
+  its own row (`invalid`) and the others are still checked. A drogue target on a rocket with one recovery device is
+  INFO, not missed. The flutter margin falls back to `structures.flutterMinMargin`. These are design goals;
+  `check_requirements` is the competition's rules.
 - `get_standards`, `update_standards`, `load_standards`, `set_units`: the team standards and units.
 
 ### LC 2027 advanced programmes

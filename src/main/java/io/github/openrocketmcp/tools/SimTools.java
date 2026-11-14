@@ -149,14 +149,44 @@ public final class SimTools {
 				}));
 
 		s.tool(new ToolDef("targets", "The team's targets and the margin to each",
-				"Simulate and compare the flight with the team's own targets (standards \"targets\", set with update_standards, "
-						+ "e.g. {\"targets\": {\"apogee\": {\"min\": \"9500 ft\", \"max\": \"10500 ft\", \"goal\": \"10000 ft\"}}}). "
-						+ "Targets can be set on apogee, maxVelocity, maxMach, maxAcceleration, railExitVelocity, thrustToWeight, "
-						+ "minStability and maxStability (cal, ascent above 100 ft/s), flutterMargin, liftoffMass, timeToApogee, "
-						+ "drogueDescentRate, mainDescentRate, groundHitVelocity, landingDistance and flightTime. Returns every number "
-						+ "with its target, the margin to the nearer limit and PASS/WARN (within 5%)/FAIL. Competition rules are "
-						+ "check_requirements; these are the team's design goals.",
-				simSelect(Schema.object()).build(), true, a -> Targets.evaluate(runSelected(ctx, a), ctx.standards())));
+				"Simulate and compare the flight with the team's own targets: PASS / WARN (met within 5%) / FAIL, the margin "
+						+ "to the nearer limit and the distance from the goal. Targets: apogee, maxVelocity, maxMach, "
+						+ "maxAcceleration, railExitVelocity, thrustToWeight, minStability and maxStability (cal, ascent above "
+						+ "100 ft/s), flutterMargin, liftoffMass, timeToApogee, drogueDescentRate, mainDescentRate, "
+						+ "groundHitVelocity, landingDistance, flightTime; each takes min, max, goal (with units) and note. "
+						+ "set changes them and checks in the same call, e.g. {\"apogee\": {\"min\": \"9500 ft\", \"goal\": "
+						+ "\"10000 ft\"}}; null clears a limit or a whole target. The change is saved in the team standards "
+						+ "file the app's Targets page shows. Rows are returned for the targets set; otherValues has the other "
+						+ "numbers. Competition rules are check_requirements; these are the team's design goals.",
+				simSelect(Schema.object())
+						.obj("set", "Targets to change before checking, e.g. {\"railExitVelocity\": {\"min\": \"100 ft/s\"}}; "
+								+ "null clears.", false)
+						.bool("detail", "Every number as a row with SI values (what the app's page uses). Default false.", false)
+						.build(),
+				true, a -> {
+					Map<String, Object> saved = null;
+					if (a.has("set")) {
+						saved = setTargets(ctx, a.obj("set").raw());
+					}
+					Map<String, Object> out = Targets.evaluate(runSelected(ctx, a), ctx.standards(), a.bool("detail", false));
+					if (saved != null) {
+						Map<String, Object> withSave = new LinkedHashMap<>();
+						withSave.put("saved", saved.get("saved"));
+						withSave.putAll(out);
+						return withSave;
+					}
+					return out;
+				}));
+	}
+
+	/** Checks a change to the targets, then writes it to the team standards file and uses it at once. */
+	public static Map<String, Object> setTargets(Context ctx, JsonObject change) throws java.io.IOException {
+		JsonObject merged = Targets.targetsOf(ctx.standards()).deepCopy();
+		TeamFile.apply(merged, change);
+		Targets.validate(change, merged);
+		JsonObject wrapped = new JsonObject();
+		wrapped.add("targets", change);
+		return TeamFile.save(ctx, wrapped);
 	}
 
 	private static Object sweep(Context ctx, Args a) {
