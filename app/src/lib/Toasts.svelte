@@ -7,7 +7,10 @@
   {#each app.toasts as t (t.id)}
     <div class="toast {t.kind} {t.issue ? 'k-' + t.issue.kind : ''}">
       {#if t.issue}<b class="tag">{KINDS[t.issue.kind].label}</b>{/if}
-      <span class="text">{t.text}</span>
+      <span class="text">
+        {t.text}
+        {#if t.issue && (t.issue.fix || t.issue.causes[0])}<span class="why">{t.issue.fix ?? "Likely cause: " + t.issue.causes[0]}</span>{/if}
+      </span>
       {#if t.issue}
         <button class="more" onclick={() => { openIssues(); app.toasts = app.toasts.filter((x) => x.id !== t.id); }}>Details</button>
       {/if}
@@ -49,6 +52,12 @@
   .text {
     flex: 1;
     min-width: 0;
+  }
+  .why {
+    display: block;
+    margin-top: 3px;
+    font-size: 12px;
+    opacity: 0.85;
   }
   .tag {
     flex: none;

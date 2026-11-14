@@ -12,6 +12,7 @@
   import { isOpen, toggle } from "../panels.svelte";
   import Panel from "../Panel.svelte";
   import Result from "./Result.svelte";
+  import RuleCheck from "../design/RuleCheck.svelte";
   import ResultPlot from "./ResultPlot.svelte";
   import RowsEditor from "./RowsEditor.svelte";
   import StartHere from "./StartHere.svelte";
@@ -20,6 +21,7 @@
   import RocketLoader from "../RocketLoader.svelte";
   import { firstSentence, label } from "./text";
   import { KINDS, openIssues } from "../issues/issues.svelte";
+  import { plain } from "../issues/explain";
   import Tip from "../Tip.svelte";
   import { MAC } from "../keys";
   import { GUIDES, needsFlight, type Guide } from "./guides";
@@ -174,6 +176,13 @@
     const out = inputs.main.filter((i) => i.required && !filled(i)).map((i) => label(i.key));
     const either = [...inputs.main, ...inputs.more].filter((i) => i.oneOf);
     if (either.length && !either.some(filled)) out.push(eitherList);
+    // Inputs a choice elsewhere in the form calls for (the file, when the mode is import).
+    const all = [...inputs.main, ...inputs.conditions, ...inputs.more];
+    for (const rule of entry.needIf ?? []) {
+      if (!rule.is.includes((values[rule.key] ?? "").trim())) continue;
+      const need = rule.need.map((k) => all.find((i) => i.key === k)).filter((i): i is Input => !!i);
+      if (need.length && !need.some(filled)) out.push(need.map((i) => label(i.key)).join(" or "));
+    }
     if (noMotor) out.push("a motor");
     return out;
   });
@@ -229,8 +238,10 @@
   function args(): Record<string, unknown> {
     const out: Record<string, unknown> = { designId: app.design?.designId };
     for (const i of [...inputs.main, ...inputs.conditions, ...inputs.more]) {
-      const raw = (values[i.key] ?? "").trim();
+      let raw = (values[i.key] ?? "").trim();
       if (raw === "") continue;
+      // A decimal comma (6,5) is read as a point; 1,000 could be either, so it is left for the engine to question.
+      if (i.kind === "number" || i.kind === "qty") raw = raw.replace(/^(-?\d+),(\d{1,2}|\d{4,})(?=$|\s)/, "$1.$2");
       if (i.kind === "rows") {
         const props = i.schema.items?.properties ?? {};
         const list = filledRows(raw).map((row) => {
@@ -288,6 +299,12 @@
   function noted(d: any) {
     if (!d || typeof d !== "object" || Array.isArray(d) || !outcome?.issues?.length) return d;
     const { PROBLEMS: _p, problems: _q, ...rest } = d;
+    return rest;
+  }
+
+  /** A rule check's result without what the rule list already shows. */
+  function unlisted(d: any) {
+    const { checks: _c, manualChecks: _m, summary: _s, ruleSet: _r, ...rest } = d;
     return rest;
   }
 
@@ -559,7 +576,7 @@
           {@render fold("analysis.more", "More options", inputs.more)}
           {@render fold("analysis.conditions", "Launch conditions for this run", inputs.conditions)}
           {#if [...inputs.main, ...inputs.more].some((i) => i.required || i.oneOf)}
-            <p class="legend"><b class="req">*</b> needed{#if entry.oneOf} (of {eitherList}, one is enough){/if} · ⓘ what to enter</p>
+            <p class="legend"><b class="req">*</b> needed{#if entry.oneOf}{" "}(of {eitherList}, one is enough){/if} · ⓘ what to enter</p>
           {:else}
             <p class="legend">Everything is optional: empty inputs use the design and the team standards · ⓘ what to enter</p>
           {/if}
@@ -582,19 +599,33 @@
             <div>
               {failure.text}
               {#if failure.field}<div class="sub">Check {label(failure.field)}, marked in the form above.</div>{/if}
+              {#if failure.causes?.length}
+                <div class="why">
+                  <span class="wh">What could be causing it</span>
+                  <ul>{#each failure.causes as c}<li>{c}</li>{/each}</ul>
+                </div>
+              {/if}
+              {#if failure.fix}<div class="sub"><b>Try:</b> {failure.fix}</div>{/if}
               {#if failure.bug}<div class="sub">A bug in RocketMaxxing. <button class="link" onclick={openIssues}>Report it</button></div>{/if}
             </div>
           </div>
         {/if}
         {#if outcome && !failure}
           {#each outcome.issues ?? [] as i, j (j)}
-            <div class="issue k-{i.kind} {i.severity}"><span class="tag">{KINDS[i.kind].label}</span><div>{i.text}</div></div>
+            <div class="issue k-{i.kind} {i.severity}"><span class="tag">{KINDS[i.kind].label}</span><div>{plain(i.text)}</div></div>
           {/each}
         {/if}
         {#if outcome}
           {#if entry.plot}<ResultPlot data={outcome.data} spec={entry.plot} name={entry.label} />{/if}
           {#each outcome.images as img}<img src={img.src} alt="Plot" />{/each}
-          <Result value={noted(outcome.data)} />
+          {#if entry.tool === "check_requirements" && Array.isArray(outcome.data?.checks)}
+            <!-- The same list as the Design page's panel, not a generic table. -->
+            {#if outcome.data.summary}<p class="verdict">{outcome.data.summary}</p>{/if}
+            <div class="rulebox"><RuleCheck data={outcome.data} tall /></div>
+            <Result value={noted(unlisted(outcome.data))} />
+          {:else}
+            <Result value={noted(outcome.data)} />
+          {/if}
         {:else}
           {#if !running && !failure}<p class="muted">Not run yet.</p>{/if}
         {/if}
@@ -881,6 +912,21 @@
     letter-spacing: 0.04em;
     color: var(--kind);
   }
+  .issue .why {
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .issue .why .wh {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+  }
+  .issue .why ul {
+    margin: 2px 0 2px;
+    padding-left: 18px;
+  }
   .issue .sub {
     margin-top: 2px;
     color: var(--ink-3);
@@ -955,5 +1001,15 @@
     margin: 4px 0 10px;
     border: 1px solid var(--line);
     background: #fff;
+  }
+  .verdict {
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .rulebox {
+    margin-bottom: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
   }
 </style>

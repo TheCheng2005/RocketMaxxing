@@ -10,6 +10,7 @@
   import Toasts from "./lib/Toasts.svelte";
   import RocketLoader from "./lib/RocketLoader.svelte";
   import AskDialog from "./lib/AskDialog.svelte";
+  import ImportReport from "./lib/ImportReport.svelte";
   import { issues, watchPageErrors } from "./lib/issues/issues.svelte";
   import { assistant, loadSettings } from "./lib/assistant/assistant.svelte";
   import { ui } from "./lib/search/ui.svelte";
@@ -141,6 +142,7 @@
       { label: "Undo", shortcut: keys("Z"), off: d?.canUndo ? false : "Nothing to undo", run: undo },
       { label: "Redo", shortcut: MAC ? keys("Z", true) : keys("Y"), off: d?.canRedo ? false : "Nothing to redo", run: redo },
       { label: "Save", shortcut: keys("S"), off: d ? false : "No design open", run: () => save(false) },
+      { label: "Save as…", shortcut: keys("S", true), off: d ? false : "No design open", run: () => save(true) },
       "-",
       { label: "About this page (Guide)", run: () => (ui.guide = "pages") },
       { label: "Problems", run: openIssues },
@@ -187,6 +189,7 @@
   </div>
   <Toasts />
   <AskDialog />
+  <ImportReport />
   {#if ui.search}{#await load(searchCode) then m}<m.default />{/await}{/if}
   {#if ui.guide !== null}{#await load(guideCode) then m}<m.default />{/await}{/if}
   {#if tour.name}<Tour />{/if}

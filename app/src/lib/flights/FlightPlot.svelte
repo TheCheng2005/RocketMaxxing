@@ -19,7 +19,8 @@
     status: string;
     results: Record<string, any>;
   }
-  let { sims, current, plotKey }: { sims: Sim[]; current: Sim; plotKey: number } = $props();
+  // `compare` (other simulations drawn on the same axes) is shared with the list's Plot column.
+  let { sims, current, plotKey, compare = $bindable([]) }: { sims: Sim[]; current: Sim; plotKey: number; compare?: number[] } = $props();
 
   interface Var {
     key: string;
@@ -42,14 +43,14 @@
   let axes = $state<Record<string, AxisChoice>>({});
   /** A unit for one variable on this plot only (feet for altitude) in place of the app's unit. */
   let unitNames = $state<Record<string, string>>({});
-  /** Other simulations drawn on the same axes. */
-  let compare = $state<number[]>([]);
   /** Stages of a staged rocket left off the plot (all are drawn until one is unticked). */
   let hidden = $state<number[]>([]);
   /** The measured altitude from the Flight data page, drawn with the simulation. */
   let withLog = $state(false);
-  /** The plot editor stays open while the curves are refreshed. */
-  let customizing = $state(false);
+  /** The plot editor (quantities, units, which axis) is open unless it was folded away; that is remembered. */
+  const OPEN = "rocketmaxxing.plotSetup";
+  let customizing = $state((() => { try { return localStorage.getItem(OPEN) !== "0"; } catch { return true; } })());
+  $effect(() => { try { localStorage.setItem(OPEN, customizing ? "1" : "0"); } catch { /* not kept */ } });
 
   const ran = (s: Sim | undefined) => !!s && (s.status === "UPTODATE" || s.status === "LOADED" || s.status === "OUTDATED") && !!s.results?.apogee;
   let others = $derived(sims.filter((s) => s.index !== current.index && ran(s)));
@@ -369,7 +370,8 @@
   <div class="plotbody" use:context={plotItems}>
     {#if plot}
       <Plot x={plot.x} series={plot.series} xLabel={plot.xLabel} leftLabel={plot.left} rightLabel={plot.right} events={plot.events} height={300}
-        name={`${app.design?.name ?? "Rocket"} ${current.name} plot`} {title} />
+        name={`${app.design?.name ?? "Rocket"} ${current.name} plot`} {title}
+        pickAxis={(i, side) => { const n = plot!.series[i]?.label.split(" (")[0].split(" · ")[0]; if (n && chosen.includes(n)) axes = { ...axes, [n]: side }; }} />
       {#if stages.length > 1}
         <div class="pickrow" id="plot-stages">
           <span class="clabel">Stages</span>
@@ -382,7 +384,7 @@
         </div>
       {/if}
       <details class="custom" bind:open={customizing}>
-        <summary>Customize the plot</summary>
+        <summary>Plot setup: quantities, units and which axis each is on</summary>
         <div class="cfg">
           <div class="crow"><label class="clabel" for="plot-x">X axis</label>
             <select class="select small" bind:value={xVar} id="plot-x">

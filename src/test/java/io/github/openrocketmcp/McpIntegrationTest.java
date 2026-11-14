@@ -311,7 +311,7 @@ class McpIntegrationTest {
 		assertTrue(Double.parseDouble(drivers.get("motorThrust").getAsString()) > 0, "more thrust, more apogee");
 		assertTrue(Double.parseDouble(drivers.get("airframeDrag").getAsString()) < 0, "more drag, less apogee");
 		String bad = callExpectError("monte_carlo", "{\"designId\":\"" + id + "\",\"runs\":4,\"massSd\":5}");
-		assertTrue(bad.contains("between 0 and 0.5"), bad);
+		assertTrue(bad.contains("from 0 to 0.5") && bad.contains("massSd"), bad);
 	}
 
 	@Test
@@ -480,5 +480,33 @@ class McpIntegrationTest {
 			}
 		}
 		return Double.NaN;
+	}
+
+	/** Every row of the rule check can be told from the others: parts carry their stage, same-named rows are numbered. */
+	@Test
+	void ruleCheckRowsAreTellable() {
+		for (String example : new String[] { "Two stage high power", "Three stage low power", "Parallel booster staging" }) {
+			String id = JsonParser.parseString(call("open_design", "{\"example\":\"" + example + "\"}")).getAsJsonObject().get("designId").getAsString();
+			JsonObject r = JsonParser.parseString(call("check_requirements", "{\"designId\":\"" + id + "\",\"includeWindCase\":false}")).getAsJsonObject();
+			java.util.Set<String> names = new java.util.HashSet<>();
+			int fail = 0, warn = 0;
+			for (com.google.gson.JsonElement e : r.getAsJsonArray("checks")) {
+				JsonObject c = e.getAsJsonObject();
+				assertTrue(names.add(c.get("item").getAsString()), example + ": two rows named " + c.get("item"));
+				fail += c.get("status").getAsString().equals("FAIL") ? 1 : 0;
+				warn += c.get("status").getAsString().equals("WARN") ? 1 : 0;
+			}
+			String summary = r.get("summary").getAsString();
+			assertTrue(fail == 0 ? summary.startsWith("No failures") || summary.startsWith("All checks") : summary.startsWith(fail + " failure(s), " + warn + " warning(s)"),
+					example + ": " + summary + " against " + fail + " / " + warn);
+			if (example.startsWith("Two stage")) {
+				assertTrue(names.stream().anyMatch(n -> n.startsWith("Fin flutter margin (") && n.contains(" in Sustainer")), names.toString());
+				assertTrue(names.stream().anyMatch(n -> n.startsWith("Fin flutter margin (") && n.contains(" in Booster")), names.toString());
+			}
+			if (example.startsWith("Three stage")) {
+				assertTrue(names.contains("Booster stage: recovery (1 of 2)") && names.contains("Booster stage: recovery (2 of 2)"), names.toString());
+			}
+			call("close_design", "{\"designId\":\"" + id + "\"}");
+		}
 	}
 }

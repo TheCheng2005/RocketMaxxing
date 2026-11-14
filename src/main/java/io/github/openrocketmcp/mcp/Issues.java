@@ -85,8 +85,26 @@ public final class Issues {
 			}
 		}
 		Matcher lead = LEADING.matcher(message);
-		return lead.find() && props.contains(lead.group(1)) ? lead.group(1) : null;
+		if (lead.find() && props.contains(lead.group(1))) {
+			return lead.group(1);
+		}
+		// A complaint about a file's content is about the one file (or pasted text) that was given.
+		if (args != null && FILE_CONTENT.matcher(message).find()) {
+			String given = null;
+			for (String key : new String[] { "path", "csv", "baselinePath", "file", "url", "pageText" }) {
+				if (props.contains(key) && args.has(key) && !args.get(key).isJsonNull()) {
+					given = given == null ? key : "";
+				}
+			}
+			if (given != null && !given.isEmpty()) {
+				return given;
+			}
+		}
+		return null;
 	}
+
+	private static final java.util.regex.Pattern FILE_CONTENT = java.util.regex.Pattern
+			.compile("(?i)\\brows?\\b|columns?|header|could not read|could not tell|not found:|is empty|is a folder|the (flight )?log\\b|table needs");
 
 	/** Physics, or output when the problem is that the model is used beyond what it is valid for. */
 	public static Kind kindOf(String problem) {

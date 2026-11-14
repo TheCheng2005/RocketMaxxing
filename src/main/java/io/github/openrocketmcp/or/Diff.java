@@ -47,10 +47,7 @@ public final class Diff {
 	public static Designs.Design load(Path path, String label) throws Exception {
 		OrRuntime.init();
 		Path p = path.toAbsolutePath().normalize();
-		if (!Files.exists(p)) {
-			throw new ToolException("File not found: " + p);
-		}
-		OpenRocketDocument doc = new GeneralRocketLoader(p.toFile()).load();
+		OpenRocketDocument doc = Designs.read(p);
 		for (FlightConfiguration fc : doc.getRocket().getFlightConfigurations()) {
 			Analysis.settle(fc);
 		}

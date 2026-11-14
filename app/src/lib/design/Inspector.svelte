@@ -9,7 +9,7 @@
     "Cross section": Spline, "Fin tabs": Ruler, Outline: PenTool, Canopy: Umbrella, Streamer: Umbrella, "Packed size": Package,
     "Shock cord": Link, Mass: Weight, Pods: Layers, Boosters: Layers, Shoulder: Ruler, Shoulders: Ruler,
   };
-  import { app, editField, act } from "../state.svelte";
+  import { app, editField, act, toast } from "../state.svelte";
   import { fmt } from "../units.svelte";
   import { isOpen, toggle, setOpen } from "../panels.svelte";
   import { context, type MenuItem } from "../menu/menu.svelte";
@@ -111,7 +111,12 @@
       <input
         class="name"
         bind:value={name}
-        onblur={() => name !== ed.name && editField("name", name)}
+        onblur={() => {
+          if (!name.trim()) {
+            name = ed.name;
+            toast("A part needs a name: the old one was kept.", "error");
+          } else if (name !== ed.name) editField("name", name);
+        }}
         onkeydown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
         aria-label="Name"
       />

@@ -107,10 +107,10 @@ async function rpc(method: string, params: unknown, keepalive = false): Promise<
       body: JSON.stringify({ jsonrpc: "2.0", id: nextId++, method, params }),
     });
   } catch {
-    throw new ToolError("Lost the connection to the RocketMaxxing engine. Restart the app.");
+    throw new ToolError("Lost the connection to the RocketMaxxing engine.");
   }
   if (res.status === 401) {
-    throw new ToolError("This window is not connected. Restart RocketMaxxing.");
+    throw new ToolError("This window is not connected to the RocketMaxxing engine.");
   }
   if (!res.ok) {
     throw new ToolError(`The engine answered ${res.status}.`, { kind: "system", severity: "error", text: `The engine answered ${res.status}.`, bug: true });

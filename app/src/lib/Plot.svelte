@@ -51,14 +51,17 @@
   import { onMount, untrack } from "svelte";
   import uPlot from "uplot";
   import "uplot/dist/uPlot.min.css";
-  import { Download, ZoomOut } from "@lucide/svelte";
+  import { Download, ZoomIn, ZoomOut, Maximize2, SlidersHorizontal } from "@lucide/svelte";
+  import { context, type MenuItem } from "./menu/menu.svelte";
   import { call, connected } from "./api";
   import { toast } from "./state.svelte";
   import { num } from "./units.svelte";
 
   // A line plot: one x column, any number of y series on up to two axes (left and right), event lines.
-  // Drag a box to zoom in (a mostly sideways drag zooms along x only); the wheel zooms about the pointer (with Ctrl or
-  // a pinch, both ways); Shift-drag or the middle button moves the view; double-click or "Reset zoom" shows it all again.
+  // Zooming: drag a box, turn the wheel (about the pointer), or use the + and - buttons; "Zoom" picks whether that
+  // changes both directions, x only or y only. The wheel over one axis zooms that axis alone and a double-click on it
+  // resets it; Shift-drag or the middle button moves the view; "Fit" or a double-click on the plot shows it all again.
+  // "Ranges" takes typed limits for each axis.
   // When x goes backwards (altitude against velocity, a ground track) the curve is drawn in the order of the samples.
 
   let {
@@ -72,6 +75,7 @@
     name = "plot",
     title = "",
     tools = true,
+    pickAxis,
   }: {
     x: (number | null)[];
     series: Series[];
@@ -87,6 +91,8 @@
     title?: string;
     /** The zoom and export buttons above the plot. */
     tools?: boolean;
+    /** When given, a right-click on a curve's name offers to move it to the left or right axis. */
+    pickAxis?: (index: number, side: "left" | "right") => void;
   } = $props();
 
   let host: HTMLDivElement;
@@ -103,6 +109,26 @@
   let off = $state<string[]>([]);
   /** The scales showing everything, to stop the wheel zooming out past the data. */
   let full: [string, number, number][] = [];
+  /** Set while the plot is showing all of its data for the first time since it was made or reset. */
+  let fresh = true;
+  /** Which directions a box, the wheel and the zoom buttons change. */
+  type Mode = "both" | "x" | "y";
+  let mode = $state<Mode>("both");
+  /** The limits on screen, for the Ranges editor. */
+  let limits = $state<Record<string, [number, number]>>({});
+  let ranging = $state(false);
+  /** Y ranges set by hand (a typed limit, a zoom along y): kept when x is zoomed or moved, until that axis is fitted again. */
+  let held: Record<string, [number, number]> = {};
+  const isZoomed = (u: uPlot) => ranges(u).some(([k, a, b]) => { const w = full.find(([q]) => q === k); return !!w && (a !== w[1] || b !== w[2]); });
+  /** Sets scales together: x first, then y, so a y range set by hand is not replaced by the fit that follows a change of x. */
+  function setScales(u: uPlot, want: Record<string, [number, number]>) {
+    for (const [k, r] of Object.entries(want)) if (k !== "x") held[k] = r;
+    u.batch(() => {
+      if (want.x) u.setScale("x", { min: want.x[0], max: want.x[1] });
+      for (const [k, r] of Object.entries({ ...held, ...want })) if (k !== "x") u.setScale(k, { min: r[0], max: r[1] });
+    });
+  }
+  const AXIS_NAME: Record<string, string> = { x: "X axis", left: "Left axis", right: "Right axis" };
 
   const css = (n: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
@@ -110,6 +136,7 @@
     plot?.destroy();
     plot = null;
     zoomed = false;
+    held = {};
     if (!host || x.length === 0) return;
     const ink = css("--ink-2");
     const grid = css("--grid");
@@ -126,7 +153,7 @@
       scales: { x: { time: false } },
       legend: { show: false },
       // A box zooms both ways; a drag that stays within 30 px of level (or of upright) zooms along that direction only.
-      cursor: { drag: { x: true, y: true, uni: 30 } },
+      cursor: { drag: untrack(() => mode) === "both" ? { x: true, y: true, uni: 30 } : { x: untrack(() => mode) === "x", y: untrack(() => mode) === "y" } },
       series: [
         xy ? {} : { label: xLabel },
         ...series.map((s) =>
@@ -143,8 +170,28 @@
       ],
       hooks: {
         // A finished drag leaves a selection behind for a moment: that is the zoom.
-        setSelect: [(u: uPlot) => { if (u.select.width > 0 || u.select.height > 0) zoomed = true; }],
+        // A finished box: its y ranges are now set by hand, and the ones set before stay.
+        setSelect: [(u: uPlot) => {
+          if (!(u.select.width > 0 || u.select.height > 0)) return;
+          const m = untrack(() => mode);
+          zoomed = true;
+          // After uPlot has applied the box (it does that a moment later).
+          setTimeout(() => {
+            if (plot !== u) return;
+            const now = Object.fromEntries(ranges(u).filter(([k]) => k !== "x").map(([k, a, b]) => [k, [a, b] as [number, number]]));
+            setScales(u, m === "x" ? {} : now);
+          }, 0);
+        }],
         setCursor: [(u: uPlot) => point(u)],
+        // uPlot applies scale changes a moment after they are asked for: what is on screen is read here.
+        setScale: [(u: uPlot) => {
+          limits = Object.fromEntries(ranges(u).map(([k, a, b]) => [k, [a, b]]));
+          if (fresh) {
+            // The first ranges after the data is set are the whole curve.
+            full = ranges(u);
+            queueMicrotask(() => (fresh = false));
+          } else zoomed = isZoomed(u);
+        }],
       },
       plugins: [
         {
@@ -205,13 +252,100 @@
       return col.some((v) => v === null) ? [col.map((v) => v ?? 0), s.values.map((v, k) => (col[k] === null ? null : v))] : [col, s.values];
     };
     const data = xy ? [null, ...series.map(pair)] : [x, ...series.map((s) => s.values)];
+    fresh = true;
     plot = new uPlot(opts, data as unknown as uPlot.AlignedData, host);
-    full = ranges(plot);
+    if (ranges(plot).length) full = ranges(plot);
     const over = plot.over;
     over.addEventListener("dblclick", reset);
     over.addEventListener("wheel", wheel, { passive: false });
     over.addEventListener("mousedown", grab, true);
     over.addEventListener("mouseleave", () => (readout = null));
+    // Each axis by itself: the wheel over it zooms it, a double-click fits it again.
+    const keys = ["x", "left", ...(hasRight ? ["right"] : [])];
+    plot.root.querySelectorAll<HTMLElement>(".u-axis").forEach((el, i) => {
+      const key = keys[i];
+      if (!key) return;
+      el.style.pointerEvents = "auto";
+      el.title = `${AXIS_NAME[key]}: scroll here to zoom it alone, double-click to fit it again`;
+      el.addEventListener("wheel", (e) => {
+        if (!e.deltaY) return;
+        e.preventDefault();
+        const box = el.getBoundingClientRect();
+        const f = key === "x" ? (e.clientX - box.left) / box.width : 1 - (e.clientY - box.top) / box.height;
+        zoomBy(Math.exp(Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60) * 0.004), [key], f, f);
+      }, { passive: false });
+      el.addEventListener("dblclick", () => fit(key));
+    });
+    limits = Object.fromEntries(full.map(([k, a, b]) => [k, [a, b]]));
+  }
+
+  /** The scales a zoom changes in this mode. */
+  function scalesFor(m: Mode): string[] {
+    return ranges(plot!).map(([k]) => k).filter((k) => m === "both" || (m === "x") === (k === "x"));
+  }
+
+  /** Zooms the named scales by k (under 1 is closer) about the point at fractions fx, fy of the plot; never out past the data. */
+  function zoomBy(k: number, keys: string[], fx = 0.5, fy = 0.5) {
+    const u = plot;
+    if (!u) return;
+    const want: Record<string, [number, number]> = {};
+    for (const [key, min, max] of ranges(u)) {
+      if (!keys.includes(key)) continue;
+      const whole = full.find(([q]) => q === key);
+      const span = (max - min) * k;
+      if (whole && k < 1 && span < (whole[2] - whole[1]) * 1e-6) continue; // the numbers run out of digits
+      if (whole && k > 1 && span >= whole[2] - whole[1]) {
+        if (key === "x") want.x = [whole[1], whole[2]];
+        else fitY(key);
+        continue;
+      }
+      const f = key === "x" ? fx : fy, at = min + f * (max - min);
+      want[key] = [at - (at - min) * k, at + (max - at) * k];
+    }
+    setScales(u, want);
+  }
+
+  /** A y axis goes back to fitting what is on screen. */
+  function fitY(key: string) {
+    delete held[key];
+  }
+
+  /** One axis back to showing all of its data. */
+  function fit(key: string) {
+    const u = plot, w = full.find(([q]) => q === key);
+    if (!u || !w) return;
+    if (key === "x") return setScales(u, { x: [w[1], w[2]] });
+    fitY(key);
+    // With all of x on screen that is the whole curve; zoomed in along x, it is what is in view.
+    const x = ranges(u).find(([q]) => q === "x"), wx = full.find(([q]) => q === "x");
+    if (x && wx && x[1] === wx[1] && x[2] === wx[2]) u.setScale(key, { min: w[1], max: w[2] });
+    else if (x) u.setScale("x", { min: x[1], max: x[2] }); // uPlot fits the y axes that are not held
+    setScales(u, {});
+  }
+
+  /** A typed limit for one end of an axis. A refused one is put back as it was. */
+  function setLimit(key: string, end: 0 | 1, el: HTMLInputElement) {
+    const u = plot, now = limits[key];
+    const text = el.value.trim();
+    const v = Number(text.replace(",", "."));
+    if (!u || !now) return;
+    const back = (why: string) => {
+      el.value = num(now[end], 5).replace(/,/g, "");
+      toast(why, "error");
+    };
+    if (!Number.isFinite(v) || text === "") return back("An axis limit is a number.");
+    const next: [number, number] = end === 0 ? [v, now[1]] : [now[0], v];
+    if (!(next[0] < next[1])) return back(`${AXIS_NAME[key] ?? key}: the lower limit has to be below the upper one.`);
+    setScales(u, { [key]: next });
+  }
+
+  /** Changing what zooming does keeps the view: the plot is rebuilt for the new kind of box, then put back where it was. */
+  function setMode(m: Mode) {
+    if (m === mode) return;
+    const was = plot ? ranges(plot) : [], z = zoomed;
+    mode = m;
+    make();
+    if (plot && z) setScales(plot, Object.fromEntries(was.map(([k, a, b]) => [k, [a, b] as [number, number]])));
   }
 
   /** The value range of every scale, to zoom or move them together. */
@@ -219,7 +353,7 @@
     return Object.entries(u.scales).flatMap(([k, sc]) => (sc.min == null || sc.max == null ? [] : [[k, sc.min, sc.max] as [string, number, number]]));
   }
 
-  /** The wheel zooms about the pointer: along x, and with Ctrl, Cmd or a pinch along y as well. */
+  /** The wheel zooms about the pointer in the chosen directions; Ctrl, Cmd or a pinch always zooms both. */
   function wheel(e: WheelEvent) {
     const u = plot;
     if (!u || !e.deltaY) return;
@@ -227,23 +361,7 @@
     const box = u.over.getBoundingClientRect();
     const fx = (e.clientX - box.left) / box.width, fy = 1 - (e.clientY - box.top) / box.height;
     const k = Math.exp(Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60) * 0.004);
-    const both = e.ctrlKey || e.metaKey;
-    // Zooming out stops at the whole curve, and zooming in before the numbers run out of digits.
-    const whole = full.find(([key]) => key === "x");
-    const now = ranges(u).find(([key]) => key === "x");
-    if (whole && now && k > 1 && (now[2] - now[1]) * k >= whole[2] - whole[1]) {
-      reset();
-      return;
-    }
-    if (whole && now && k < 1 && (now[2] - now[1]) * k < (whole[2] - whole[1]) * 1e-6) return;
-    u.batch(() => {
-      for (const [key, min, max] of ranges(u)) {
-        if (key !== "x" && !both) continue;
-        const f = key === "x" ? fx : fy, at = min + f * (max - min);
-        u.setScale(key, { min: at - (at - min) * k, max: at + (max - at) * k });
-      }
-    });
-    zoomed = true;
+    zoomBy(k, scalesFor(e.ctrlKey || e.metaKey ? "both" : mode), fx, fy);
   }
 
   /** Shift-drag, or the middle button, moves the view without changing its size. */
@@ -257,13 +375,10 @@
     const move = (m: MouseEvent) => {
       if (plot !== u) return up(); // redrawn with new data while being moved
       const dx = (m.clientX - x0) / box.width, dy = (m.clientY - y0) / box.height;
-      u.batch(() => {
-        for (const [key, min, max] of start) {
-          const d = (key === "x" ? -dx : dy) * (max - min);
-          u.setScale(key, { min: min + d, max: max + d });
-        }
-      });
-      zoomed = true;
+      setScales(u, Object.fromEntries(start.map(([key, min, max]) => {
+        const d = (key === "x" ? -dx : dy) * (max - min);
+        return [key, [min + d, max + d] as [number, number]];
+      })));
     };
     function up() {
       removeEventListener("mousemove", move);
@@ -332,9 +447,23 @@
   /** Shows the whole curve again. */
   function reset() {
     if (!plot) return;
+    held = {};
+    fresh = true;
     plot.setData(plot.data);
-    full = ranges(plot);
     zoomed = false;
+  }
+
+  /** Right-click on a curve's name: hide it, or move it to the other axis. */
+  function legendItems(i: number): MenuItem[] {
+    const s = series[i], hiddenNow = off.includes(s.label), side = s.axis ?? "left";
+    return [
+      { header: s.label },
+      { label: hiddenNow ? "Show" : "Hide", run: () => toggle(i) },
+      { label: "Show only this one", off: series.length < 2 && "The only curve", run: () => series.forEach((x, k) => off.includes(x.label) !== (k !== i) && toggle(k)) },
+      ...(pickAxis ? ["-" as const,
+        { label: "Left axis", checked: side === "left", run: () => pickAxis!(i, "left") },
+        { label: "Right axis", checked: side === "right", run: () => pickAxis!(i, "right") }] : []),
+    ];
   }
 
   /** Hides or shows one curve (a click on its name in the legend). */
@@ -453,11 +582,35 @@
 
 {#if tools && x.length > 0}
   <div class="bar">
-    <span class="hint" title="Drag a box to zoom in. The mouse wheel zooms about the pointer (hold Ctrl to zoom both ways). Hold Shift and drag to move the view. Double-click to see it all again.">{zoomed ? "Zoomed in · Shift-drag to move" : "Drag or scroll on the plot to zoom"}</span>
-    {#if zoomed}<button class="pbtn" onclick={reset} title="Show the whole curve again (or double-click the plot)"><ZoomOut size={13} /> Reset zoom</button>{/if}
+    <span class="hint" title="Drag a box to zoom in. The mouse wheel zooms about the pointer; over one axis it zooms that axis alone. Hold Shift and drag to move the view. Double-click the plot to see it all again, or an axis to fit that axis.">{zoomed ? "Zoomed in · Shift-drag to move" : "Drag or scroll on the plot to zoom"}</span>
+    <div class="seg" role="group" aria-label="What zooming changes" title="What a dragged box, the wheel and the + and − buttons change">
+      {#each [["both", "X and Y"], ["x", "X only"], ["y", "Y only"]] as [m, label] (m)}
+        <button class="pbtn" class:on={mode === m} aria-pressed={mode === m} onclick={() => setMode(m as Mode)}>{label}</button>
+      {/each}
+    </div>
+    <button class="pbtn sq" onclick={() => zoomBy(0.7, scalesFor(mode))} title="Zoom in" aria-label="Zoom in"><ZoomIn size={13} /></button>
+    <button class="pbtn sq" onclick={() => zoomBy(1 / 0.7, scalesFor(mode))} disabled={!zoomed} title="Zoom out" aria-label="Zoom out"><ZoomOut size={13} /></button>
+    <button class="pbtn" onclick={reset} disabled={!zoomed} title="Show the whole curve again (or double-click the plot)"><Maximize2 size={12} /> Fit</button>
+    <button class="pbtn" class:on={ranging} aria-pressed={ranging} onclick={() => (ranging = !ranging)} title="Type the limits of each axis"><SlidersHorizontal size={12} /> Ranges</button>
+    <span class="gap"></span>
     <button class="pbtn" onclick={() => save("png")} disabled={busy} title="Save this plot as a picture, as it is shown now"><Download size={13} /> PNG</button>
     <button class="pbtn" onclick={() => save("csv")} disabled={busy} title="Save the plotted numbers as a spreadsheet file"><Download size={13} /> CSV</button>
   </div>
+  {#if ranging}
+    <div class="ranges">
+      {#each Object.entries(limits) as [key, [lo, hi]] (key)}
+        <div class="range">
+          <span class="rname" title={key === "x" ? xLabel : key === "left" ? leftLabel : rightLabel}>{AXIS_NAME[key] ?? key}</span>
+          <input class="rin" aria-label="{AXIS_NAME[key] ?? key} from" value={num(lo, 5).replace(/,/g, "")} onchange={(e) => setLimit(key, 0, e.target as HTMLInputElement)}
+            onkeydown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+          <span class="to">to</span>
+          <input class="rin" aria-label="{AXIS_NAME[key] ?? key} to" value={num(hi, 5).replace(/,/g, "")} onchange={(e) => setLimit(key, 1, e.target as HTMLInputElement)}
+            onkeydown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
+          <button class="pbtn" onclick={() => fit(key)} title="Fit this axis to its data">Auto</button>
+        </div>
+      {/each}
+    </div>
+  {/if}
 {/if}
 <div class="wrap">
   <div class="plot" bind:this={host}></div>
@@ -467,8 +620,8 @@
   <div class="legend">
     <span class="head">{readout?.head ?? ""}</span>
     {#each series as s, i (i)}
-      <button class="item" class:off={off.includes(s.label)} onclick={() => toggle(i)} aria-pressed={!off.includes(s.label)}
-        title={off.includes(s.label) ? "Show this curve" : "Hide this curve"}>
+      <button class="item" class:off={off.includes(s.label)} onclick={() => toggle(i)} aria-pressed={!off.includes(s.label)} use:context={() => legendItems(i)}
+        title={(off.includes(s.label) ? "Show this curve" : "Hide this curve") + (pickAxis ? ". Right-click to choose its axis." : "")}>
         <svg width="20" height="8" aria-hidden="true"><line x1="0" y1="4" x2="20" y2="4" stroke={s.color} stroke-width="2.5" stroke-dasharray={(s.dash ?? []).join(" ")} /></svg>
         {s.label}{#if readout?.values[i] && !off.includes(s.label)}: <b>{readout.values[i]}</b>{/if}
       </button>
@@ -535,6 +688,7 @@
   }
   .bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 4px;
@@ -562,6 +716,61 @@
   .pbtn:hover:not(:disabled) {
     color: var(--ink);
     background: color-mix(in srgb, var(--ink-3) 12%, transparent);
+  }
+  .pbtn.on {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--select) 16%, transparent);
+    border-color: color-mix(in srgb, var(--select) 55%, transparent);
+  }
+  .pbtn.sq {
+    padding: 0 5px;
+  }
+  .seg {
+    display: inline-flex;
+  }
+  .seg .pbtn {
+    border-radius: 0;
+    margin-left: -1px;
+  }
+  .seg .pbtn:first-child {
+    border-radius: 5px 0 0 5px;
+    margin-left: 0;
+  }
+  .seg .pbtn:last-child {
+    border-radius: 0 5px 5px 0;
+  }
+  .gap {
+    width: 8px;
+  }
+  .ranges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    padding: 4px 0 2px;
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+  .range {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .rname {
+    min-width: 58px;
+  }
+  .rin {
+    width: 78px;
+    height: 22px;
+    padding: 0 5px;
+    font: inherit;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line, color-mix(in srgb, var(--ink-3) 35%, transparent));
+    border-radius: 5px;
+  }
+  .to {
+    color: var(--ink-3);
   }
   .pbtn:disabled {
     opacity: 0.5;

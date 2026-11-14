@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import { Plus, Trash2 } from "@lucide/svelte";
   import { call } from "../api";
-  import { app, act, select } from "../state.svelte";
+  import { app, act, select, quietly } from "../state.svelte";
   import { num, toShown, toSi, unitOf, pretty } from "../units.svelte";
 
   // A fin set's outline. Freeform fins are edited here: drag a point, double-click an edge to add one, select a point
@@ -16,6 +16,8 @@
   }
 
   let outline = $state<Outline | null>(null);
+  /** Why the outline is not shown, when it could not be read. */
+  let failed = $state("");
   let pts = $state<[number, number][]>([]);
   let picked = $state(-1);
   let drag = $state<{ i: number; moved: boolean } | null>(null);
@@ -34,8 +36,10 @@
       outline = o;
       pts = o.points.map((p) => [p[0], p[1]]);
       if (picked >= pts.length) picked = -1;
-    } catch {
+      failed = "";
+    } catch (e) {
       outline = null;
+      failed = quietly(e, "Fin shape");
     }
   }
 
@@ -206,6 +210,8 @@
       </div>
     {/if}
   </div>
+{:else if failed}
+  <p class="muted">The fin outline could not be read: {failed}</p>
 {/if}
 
 <style>

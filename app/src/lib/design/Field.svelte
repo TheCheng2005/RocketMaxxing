@@ -31,15 +31,24 @@
 
   let materials = $derived(app.session?.materials?.[f.materialType ?? "BULK"] ?? []);
 
-  function commitText() {
-    if (text !== String(f.value ?? "")) editField(f.key, text);
+  /** The engine refused the last value typed here: said under the field, where it happened. */
+  let bad = $derived(app.fieldError && app.fieldError.component === app.selected && app.fieldError.key === f.key ? app.fieldError : null);
+
+  /** What the field showed before a value that was refused. */
+  function restore(el?: HTMLInputElement) {
+    text = f.value == null ? "" : String(f.value);
+    if (el) el.value = f.kind === "number" ? plain : text;
   }
 
-  function commitNumber(t: string) {
+  async function commitText() {
+    if (text !== String(f.value ?? "") && (await editField(f.key, text)) === undefined) restore();
+  }
+
+  async function commitNumber(t: string, el?: HTMLInputElement) {
     t = t.trim().replace(/,/g, "");
-    if (t === "" || t === plain || Number(t) === f.value) return;
+    if (t === "" || t === plain || Number(t) === f.value) return restore(el);
     const v = Number(t);
-    editField(f.key, Number.isFinite(v) ? v : t);
+    if ((await editField(f.key, Number.isFinite(v) ? v : t)) === undefined) restore(el);
   }
 
   function enter(e: KeyboardEvent) {
@@ -47,7 +56,7 @@
   }
 </script>
 
-<div class="field" class:wide={f.kind === "longtext"} class:off use:context={items}>
+<div class="field" class:wide={f.kind === "longtext"} class:off class:bad={!!bad} use:context={items}>
   {#if f.kind === "bool"}
     <span class="label"></span>
     <label class="check">
@@ -83,12 +92,12 @@
       {:else if f.kind === "count"}
         <div class="count">
           <button class="btn" disabled={off} onclick={() => editField(f.key, Math.max(0, (f.value ?? 0) - 1))} aria-label="Fewer">−</button>
-          <input id={"f-" + f.key} class="input num" disabled={off} bind:value={text} onblur={() => commitNumber(text)} onkeydown={enter} />
+          <input id={"f-" + f.key} class="input num" disabled={off} bind:value={text} onblur={(e) => commitNumber(text, e.target as HTMLInputElement)} onkeydown={enter} />
           <button class="btn" disabled={off} onclick={() => editField(f.key, (f.value ?? 0) + 1)} aria-label="More">+</button>
         </div>
       {:else if f.kind === "number"}
         <input id={"f-" + f.key} class="input num right" value={plain} disabled={off || f.isAuto}
-          onblur={(e) => commitNumber((e.target as HTMLInputElement).value)} onkeydown={enter} />
+          onblur={(e) => commitNumber((e.target as HTMLInputElement).value, e.target as HTMLInputElement)} onkeydown={enter} />
       {:else if f.kind === "longtext"}
         <textarea id={"f-" + f.key} rows="3" bind:value={text} onblur={commitText}></textarea>
       {:else}
@@ -96,9 +105,33 @@
       {/if}
     </div>
   {/if}
+  {#if bad}
+    <div class="err" role="alert">
+      {bad.text}
+      {#if bad.hint}<span class="hint">{bad.hint}</span>{/if}
+    </div>
+  {/if}
 </div>
 
 <style>
+  .err {
+    grid-column: 1 / -1;
+    padding: 5px 8px;
+    border-radius: var(--radius);
+    background: var(--bad-soft);
+    color: var(--ink);
+    font-size: 12.5px;
+    line-height: 1.35;
+  }
+  .err .hint {
+    display: block;
+    margin-top: 2px;
+    color: var(--ink-2);
+  }
+  .field.bad :global(.input),
+  .field.bad :global(.select) {
+    border-color: var(--bad);
+  }
   .field {
     display: grid;
     grid-template-columns: 44% 1fr;

@@ -4,6 +4,8 @@ export const ui = $state({
   search: false,
   settings: null as string | null,
   guide: null as string | null,
+  /** The import check of the open design is on screen. */
+  importReport: false,
   /**
    * Something for a page to do once it is on screen (its code loads when first shown): open the video, a view mode,
    * a team standard, a part's setting... The page that handles it clears it.

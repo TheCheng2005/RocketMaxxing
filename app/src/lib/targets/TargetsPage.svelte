@@ -15,6 +15,7 @@
   import { fmt, num, toShown, unitOf, pretty, type Dim } from "../units.svelte";
   import Panel from "../Panel.svelte";
   import RuleCheck from "../design/RuleCheck.svelte";
+  import { plain } from "../issues/explain";
   import RuleCheckStatus from "../design/RuleCheckStatus.svelte";
   import Gauge from "./Gauge.svelte";
   import RocketLoader from "../RocketLoader.svelte";
@@ -154,7 +155,7 @@
         {#if !t}
           <RocketLoader text="Flying the design to measure it against the targets" />
         {:else if t.error}
-          <p class="muted pad">{t.error}</p>
+          <p class="muted pad">{plain(t.error)}</p>
         {:else}
           {#if t.PROBLEMS?.length}
             <div class="problems">{#each t.PROBLEMS as p}<div>{p}</div>{/each}</div>
@@ -198,7 +199,7 @@
                   <td class="label">
                     {r.label}
                     {#if r.from}<div class="sub">team default</div>{/if}
-                    {#if r.note}<div class="sub">{r.note}</div>{/if}
+                    {#if r.note}<div class="sub note">{plain(r.note)}</div>{/if}
                   </td>
                   <td class="n now">{shown(r, r.valueSI)}</td>
                   {#each ["min", "goal", "max"] as const as key (key)}
@@ -439,5 +440,9 @@
   .foot {
     margin: 6px 10px 10px;
     font-size: 12px;
+  }
+  .sub.note {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 </style>

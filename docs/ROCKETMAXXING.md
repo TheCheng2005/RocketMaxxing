@@ -118,8 +118,8 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 | RocketMaxxing | OpenRocket | Notes |
 |---|---|---|
 | Design | Rocket design | Parts list on the left, the rocket in the middle, the selected part's properties on the right (no pop-up dialog). The add-part buttons are below the view; the ones that can't go where you are pointing are greyed out. Summary shows stability against your rule set's minimum, mass, length and a quick flight of the active configuration. Fins show their outline (freeform fins are drawn and edited there); parts with a catalogue have a Catalogue button; every part can be given a paint colour. Parts move by dragging in the list or along the rocket in the view (lining up with their neighbours), and the view has an exploded mode (see below). Picture makes an exploded, cut-away or outside 3-D image with a numbered parts list, or the side drawing with CG and CP. The Avionics bay button lays out a whole electronics bay between two tubes. |
-| Motors | Motors & Configuration | Motors, recovery and stages as three tables on one page, a row per flight configuration. The motor list is OpenRocket's own database (the thrustcurve.org motors that come with OpenRocket 24.12, offline): it can be searched, filtered to motors that fit the mount, and shows the thrust curve. Import file adds a .eng, .rse or zipped motor file; Your own motor makes one from static-fire data (a thrust curve to paste or load from CSV, or the test stand's raw log as it was written: the load cell's offset is removed, the burn found and the noise averaged; or an average thrust and burn time) with its masses, delays and CG. Both are kept in the designs folder's `motors/` and load whenever the app starts, so a design keeps its motor. |
-| Flights | Flight simulations | The simulations, the launch conditions of the selected one, and its plot. Pick one of the ready-made plots or open **Customize the plot** to choose what goes on the X axis (time, or any other variable, such as altitude against distance) and which variables go on the left and right axes; each quantity can have its own unit on this plot (feet for altitude) without changing the app's units, and **Save as my plot** keeps a setup under a name for next time. **Compare** draws other simulations on the same axes (one colour per quantity, one line pattern per simulation; with a single quantity, one colour per simulation). A staged rocket's sustainer and booster are drawn as separate curves, each stage with its own tick box. With an altimeter log loaded on the Flight data page, **Flight log** adds the measured altitude. Video turns the selected flight into an animation (a chase camera, the separations and canopies, the numbers on screen): an MP4 saved to your Downloads folder (Open video and Show in folder once it is made; nothing plays inside the app), with the key-moment stills beside it and a GIF for chat if you ask. |
+| Motors | Motors & Configuration | Motors, recovery and stages as three tables on one page, a row per flight configuration. Under the motors, **Position in the mount** sets each mount's overhang (how far the motor sticks out behind the mount; negative sets it inside) and says where the selected configuration's motor ends up in the tube. The motor list is OpenRocket's own database (the thrustcurve.org motors that come with OpenRocket 24.12, offline): it can be searched, filtered to motors that fit the mount, and shows the thrust curve. Import file adds a .eng, .rse or zipped motor file; Your own motor makes one from static-fire data (a thrust curve to paste or load from CSV, or the test stand's raw log as it was written: the load cell's offset is removed, the burn found and the noise averaged; or an average thrust and burn time) with its masses, delays and CG. Both are kept in the designs folder's `motors/` and load whenever the app starts, so a design keeps its motor. |
+| Flights | Flight simulations | The simulations, the launch conditions of the selected one, and its plot. The arrow at the start of a row opens that simulation's launch conditions and results under it, for as many rows as you like (the arrow in the heading opens them all), and the **Plot** tick draws that simulation on the plot with the selected one. Pick one of the ready-made plots or use **Plot setup** under the plot to choose what goes on the X axis (time, or any other variable, such as altitude against distance) and which variables go on the left and right axes; each quantity can have its own unit on this plot (feet for altitude) without changing the app's units, and **Save as my plot** keeps a setup under a name for next time. **Compare** (the same ticks as the list's Plot column) draws other simulations on the same axes (one colour per quantity, one line pattern per simulation; with a single quantity, one colour per simulation). A staged rocket's sustainer and booster are drawn as separate curves, each stage with its own tick box. With an altimeter log loaded on the Flight data page, **Flight log** adds the measured altitude. Video turns the selected flight into an animation (a chase camera, the separations and canopies, the numbers on screen): an MP4 saved to your Downloads folder (Open video and Show in folder once it is made; nothing plays inside the app), with the key-moment stills beside it and a GIF for chat if you ask. |
 | Standards | (not in OpenRocket) | The team's standards, which every check uses: the competition rule set, the launch site, recovery and structures safety factors, shear pin ratings, material data, altimeter, battery and radio settings. Only what the team changes goes into its file (`openrocket-mcp.json`); a dot marks those values, and each can go back to its default. |
 | Targets | (not in OpenRocket) | The team's targets: a minimum, goal and maximum for apogee, speeds, rail exit, stability, flutter margin, mass, descent rates, landing and more, each with the margin to the nearer limit (met, close within 5%, missed), checked again after each edit. The competition rules sit beside them. |
 | Flight data | (not in OpenRocket) | After a flight: load the altimeter log and see it against the simulation flown in the day's conditions, with the drag factor that matches the measured apogee (and, when the log has an accelerometer, thrust and drag fitted separately). Read a folder of past rockets and logs to see how well apogee was predicted over the years, and open or compare any of them. |
@@ -127,6 +127,24 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 
 Every panel and section folds (click its title). The Parts and Properties panels fold to a strip at the side to give
 the view more room. What is folded is remembered.
+
+### Opening files from other programs
+
+RocketMaxxing opens OpenRocket `.ork`, RockSim `.rkt` and RASAero II `.CDX1` files. An `.ork` is its own format and
+comes in whole: parts, materials, motors, flight configurations, simulations and their results. The other two are read
+by OpenRocket's importers and carry less, so a design opened from one comes with an **import check**:
+
+- **Left out**: parts OpenRocket could not place (fins on an inner tube, pods on a nose cone, ring tails), motors it does
+  not know, and a count when the file has more parts than came in.
+- **Check these**: a length that differs from the one the other program wrote in its file, part masses that add up
+  differently, masses or CGs typed in by hand, a stability figure that cannot be right (a sign that a fin or body part
+  came in at the wrong size or place), and shapes OpenRocket's aerodynamics handle roughly.
+- **To set up next**: what that kind of file never carries. RockSim files come in without motors or simulations;
+  RASAero files describe the outside of the rocket only, so masses come from default materials.
+
+The check opens once when the file is opened, and the **Imported from …** mark beside the design's name opens it again.
+The original file is never written over: Save writes an `.ork`. An `.ork` that OpenRocket had to change while reading
+(written by an older version, or using a motor that is not in the database) shows the same check.
 
 ### RASAero beside OpenRocket
 
@@ -236,11 +254,15 @@ the Monte Carlo landing map and the flight log against the simulation.
 
 ![Stability and drag vs Mach](rocketmaxxing/aero-plot.png)
 
-**Every plot zooms and exports.** Drag a box on a plot to zoom into it, as in OpenRocket; a drag that stays level zooms
-along X only. The mouse wheel zooms about the pointer (with Ctrl, Cmd or a pinch, both ways), and Shift-drag or the
-middle button moves the view. Double-click, or **Reset zoom**, shows the whole curve again. Under the pointer the legend
+**Every plot zooms and exports.** Drag a box on a plot to zoom into it, as in OpenRocket, turn the mouse wheel to zoom
+about the pointer, or use the **+** and **−** buttons. **X and Y / X only / Y only** chooses which directions those
+change. The wheel over one axis zooms that axis alone, and a double-click on an axis fits it to its data again.
+**Ranges** shows the limits of each axis as numbers you can type over, with **Auto** to fit one again; a Y range set
+by hand stays while you zoom or move along X. Shift-drag or the middle button moves the view. Double-click the plot,
+or **Fit**, shows the whole curve again. Under the pointer the legend
 shows every curve's value; on a plot against something other than time it shows the nearest point and when it happened. Click a
-curve's name in the legend to hide or show it. **PNG** saves the plot as a picture exactly
+curve's name in the legend to hide or show it; on the Flights plot a right-click on the name moves that quantity to
+the left or right axis. **PNG** saves the plot as a picture exactly
 as it is shown (zoom included, with its legend) and **CSV** saves the plotted numbers; both go to your Downloads folder
 under a name that replaces nothing.
 
@@ -292,10 +314,28 @@ Every error and warning says whose problem it is:
 
 | Kind | Means | Where it shows |
 |---|---|---|
-| Input | Something in what was asked can't be used: a value, a unit, a name. | The pop-up, the field in the Analysis form (marked red), the result. |
+| Input | Something in what was asked can't be used: a value, a unit, a name. | The pop-up, the field it was typed in (marked red, with the reason under it on the Design page and in the Analysis form), the result. |
 | Physics | The rocket or its flight: it doesn't lift off, tumbles, never reaches apogee; OpenRocket's own warnings (large angle of attack, a gap in the airframe, fins too thick for its model). | Under the Design summary after every edit, the result, the Flights table (a warning sign on the run), the rule check. |
 | Output | A result to treat with care: a value that could not be computed, or one from beyond where the model is valid (past Mach 3; OpenRocket's body calculations past Mach 1). | Under the Design summary, the result, the rule check ("Within the models' range"). |
 | System | Something on this computer or in RocketMaxxing failed, not the design: no internet, a file that can't be written, a program not installed, or a bug. | The pop-up and the result. |
+
+**An error says what could be behind it.** The pop-up gives the message and what to try; the Problems list adds what
+could be causing it, likeliest first. A file that will not open lists the usual reasons (not a design file, a download
+or cloud sync that did not finish, written by a newer OpenRocket); a save that fails lists a read-only folder, a file
+open in another program and a full disk; a lost connection to the engine says the app was closed or crashed and what
+is and is not saved. On the Design page a value the engine refuses stays out of the design: the field goes back to
+what it was, and when OpenRocket limits a value (1 to 8 fins) a note says what it was set to. If an assistant or
+another window deletes a part or closes the design, the page catches up instead of showing what is no longer there.
+
+On the Analysis page the Run button stays off until the analysis has what it needs, and says what that is (a file
+when the mode is import, a parachute or a mass to size a canopy). A value of the wrong kind (words where a number goes,
+a mass where a speed goes, a percentage where a fraction goes) is refused before the analysis runs, marked at its
+input, and explained under the result with what could be causing it. Messages name inputs as the form does.
+
+The rule check (the panel on the Design page and the analysis of the same name) names each row so it can be told from
+the others: a part carries its stage on a staged rocket ("Fins in Booster"), and rows that still share a name are
+numbered. Under the rows, **To check by hand** lists what the rules ask that no simulation can show. When there is
+nothing to check yet (no motor chosen), the panel says why and offers the way there.
 
 The warning sign at the top right opens the Problems list: what to watch in the current design's flight, then
 every error since the app started, newest first, with where it happened. It is red when there are errors you haven't
@@ -365,7 +405,7 @@ OpenAI (Codex).
 |---|---|
 | Ctrl+K | Search for anything: an analysis, a page, a part, a setting |
 | Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z | Undo, redo |
-| Ctrl+S, Ctrl+Shift+S | Save, save as |
+| Ctrl+S, Ctrl+Shift+S | Save, save as (the arrow beside Save also writes a copy for RockSim, .rkt, or RASAero II, .CDX1) |
 | Ctrl+O | Open |
 | Delete | Delete the selected part |
 | Ctrl+C, Ctrl+V, Ctrl+D | Copy a part, paste it into the selected part, duplicate |

@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import { FileUp, Trash2, ChartLine, Info } from "@lucide/svelte";
   import { call } from "../api";
-  import { app, act, ask } from "../state.svelte";
+  import { app, act, ask, quietly } from "../state.svelte";
   import { fmt, num, type Dim } from "../units.svelte";
   import { analysis } from "../analysis/store.svelte";
   import { context, copyText, type MenuItem } from "../menu/menu.svelte";
@@ -43,6 +43,8 @@
   }
 
   let data = $state<Cmp | null>(null);
+  /** Why there is nothing to show, when the comparison could not be made. */
+  let failed = $state("");
   let loading = $state(false);
   let seq = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -65,8 +67,12 @@
     try {
       const r = await call<Cmp>("app_aero_compare", { designId: id });
       if (s === seq) data = r;
-    } catch {
-      if (s === seq) data = null;
+      if (s === seq) failed = "";
+    } catch (e) {
+      if (s === seq) {
+        data = null;
+        failed = quietly(e, "RASAero comparison");
+      }
     } finally {
       if (s === seq) loading = false;
     }
@@ -139,7 +145,7 @@
 
 <div class="ac" class:stale={loading} use:context={items}>
   {#if !data}
-    <p class="muted pad">Comparing…</p>
+    <p class="muted pad">{failed ? "The comparison could not be made: " + failed : "Comparing…"}</p>
   {:else if !data.hasTable}
     <div class="ask">
       <Info size={16} />

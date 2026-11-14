@@ -115,8 +115,8 @@ public final class AnalysisTools {
 							a.qty("windSpeedSd", Dim.VELOCITY, 2.0), a.qtyOrNaN("windDirection", Dim.ANGLE),
 							a.qty("windDirectionSd", Dim.ANGLE, Math.toRadians(30)), a.qtyOrNaN("launchAngle", Dim.ANGLE),
 							a.qty("launchAngleSd", Dim.ANGLE, Math.toRadians(1)), a.qty("launchDirectionSd", Dim.ANGLE, Math.toRadians(5)),
-							a.num("turbulence", Double.NaN), a.integer("seed", 1), frac(a.num("massSd", 0)), frac(a.num("dragSd", 0)),
-							frac(a.num("thrustSd", 0)), frac(a.num("chuteCdSd", 0)));
+							a.num("turbulence", Double.NaN), a.integer("seed", 1), frac("massSd", a.num("massSd", 0)), frac("dragSd", a.num("dragSd", 0)),
+							frac("thrustSd", a.num("thrustSd", 0)), frac("chuteCdSd", a.num("chuteCdSd", 0)));
 					long t0 = System.nanoTime();
 					double[] site = a.has("siteLatitude") && a.has("siteLongitude")
 							? new double[] { a.num("siteLatitude"), a.num("siteLongitude") } : null;
@@ -191,9 +191,10 @@ public final class AnalysisTools {
 		return cons;
 	}
 
-	private static double frac(double v) {
+	private static double frac(String name, double v) {
 		if (v < 0 || v > 0.5) {
-			throw new ToolException("Fractional standard deviations must be between 0 and 0.5 (e.g. 0.05 for 5%).");
+			throw new ToolException("'" + name + "' = " + v + " is not a usable spread: it is a fraction of the value, from 0 to 0.5 "
+					+ "(0.05 for 5%), not a percentage.").field(name);
 		}
 		return v;
 	}
