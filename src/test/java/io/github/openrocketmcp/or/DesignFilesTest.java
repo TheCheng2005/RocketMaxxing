@@ -55,4 +55,23 @@ class DesignFilesTest {
 		designs.save(d, dir.resolve("new folder").resolve("rocket.ork"));
 		assertTrue(Files.size(dir.resolve("new folder").resolve("rocket.ork")) > 0, "a folder that is not there yet is made");
 	}
+
+	/** A copy for RockSim or RASAero is written beside the design, which stays tied to its own .ork, and reads back. */
+	@Test
+	void copiesForOtherPrograms(@TempDir Path dir) throws Exception {
+		Designs designs = new Designs();
+		Designs.Design d = designs.openExample("A simple model rocket");
+		Path own = designs.save(d, dir.resolve("rocket.ork"));
+		for (String name : new String[] { "rocket.rkt", "rocket.CDX1" }) {
+			java.util.List<String> notes = new java.util.ArrayList<>();
+			Path copy = designs.save(d, dir.resolve(name), notes);
+			assertTrue(Files.size(copy) > 0, name);
+			assertEquals(own, d.path, "the design keeps its .ork after writing " + name);
+			Designs.Design back = designs.open(copy);
+			assertTrue(back.doc.getRocket().getChildCount() > 0, name + " reads back as a rocket");
+			assertEquals(copy, back.importedFrom, name + " is an import: it is never written over");
+			String same = refused(() -> designs.save(back, copy));
+			assertTrue(same.contains("imported from"), same);
+		}
+	}
 }

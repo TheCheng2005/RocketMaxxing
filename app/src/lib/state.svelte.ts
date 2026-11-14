@@ -406,7 +406,7 @@ export async function openDialog() {
     const r = await call<{ path: string | null }>("app_choose_file", { mode: "open" });
     if (r.path) await openPath(r.path);
   } catch {
-    const p = await ask("Open", "File (.ork or .rkt)");
+    const p = await ask("Open", "File (.ork, .rkt or .CDX1)");
     if (p) await openPath(p.trim());
   }
 }
@@ -421,24 +421,46 @@ export async function newDesign() {
   });
 }
 
-export async function save(as = false) {
+/** The formats a design can be written in: its own, and copies for the other programs teams use. */
+export const SAVE_FORMATS = { ork: "OpenRocket", rkt: "RockSim", cdx1: "RASAero II" } as const;
+export type SaveFormat = keyof typeof SAVE_FORMATS;
+
+/**
+ * Saves the design. `as` true asks where (Save as); "rkt" or "cdx1" writes a copy for RockSim or RASAero and leaves
+ * the design tied to its own .ork. A name typed with one of those endings in the Save as dialog does the same.
+ */
+export async function save(as: boolean | SaveFormat = false) {
   const d = app.design;
   if (!d) return;
+  const want: SaveFormat = typeof as === "string" ? as : "ork";
+  const ending = want === "cdx1" ? ".CDX1" : "." + want;
   await run(async () => {
     let path = as || !d.path ? null : d.path;
     if (!path) {
+      const base = (d.path ? d.path.split(/[\\/]/).pop()!.replace(/\.[^.]+$/, "") : d.name) + ending;
       try {
-        const r = await call<{ path: string | null }>("app_choose_file", { mode: "save", name: d.name + ".ork" });
+        const r = await call<{ path: string | null }>("app_choose_file", { mode: "save", name: base, types: want === "ork" ? "ork,rkt,cdx1" : want });
         path = r.path;
       } catch {
-        path = await ask("Save as", "File (.ork)", (d.path ?? d.name) + (d.path ? "" : ".ork"));
+        path = await ask(want === "ork" ? "Save as" : `Save a copy for ${SAVE_FORMATS[want]}`, `File (${ending})`,
+          want === "ork" ? (d.path ?? d.name) + (d.path ? "" : ".ork") : (d.path ?? d.name).replace(/\.ork$/i, "") + ending);
       }
       if (!path) return;
-      if (!/\.ork$/i.test(path)) path += ".ork";
+      path = path.trim();
+      // A copy keeps the ending asked for; a save takes the one typed (.rkt, .CDX1) or .ork.
+      if (want !== "ork") {
+        if (!new RegExp(`\\.${want}$`, "i").test(path)) path = path.replace(/\.(ork|rkt|cdx1)$/i, "") + ending;
+      } else if (!/\.(ork|rkt|cdx1)$/i.test(path)) path += ".ork";
     }
-    const r = await call("save_design", { designId: d.designId, path });
-    toast("Saved " + r.saved);
-    remember(r.saved);
+    const r = await call<{ saved: string; format?: string; copy?: boolean; notes?: string[] }>("save_design", { designId: d.designId, path });
+    const file = r.saved.split(/[\\/]/).pop();
+    if (r.copy) {
+      toast(`Saved a copy for ${r.format}: ${file}. The design itself is still ${d.path ? d.path.split(/[\\/]/).pop() : "not saved as an .ork yet"}.`
+        + (r.notes?.length ? ` ${r.format} could not keep: ${r.notes.slice(0, 3).join("; ")}${r.notes.length > 3 ? `; and ${r.notes.length - 3} more` : ""}.` : ""));
+    } else {
+      toast("Saved " + r.saved);
+      remember(r.saved);
+    }
     await refresh();
   });
 }

@@ -130,9 +130,11 @@ export function entries(): Entry[] {
 
   out.push(
     { kind: "action", title: "New design", sub: "Start an empty rocket", keys: "create blank", run: newDesign },
-    { kind: "action", title: "Open design", sub: "An .ork or .rkt file", keys: "load file ork rkt rocksim", shortcut: keys("O"), run: openDialog },
+    { kind: "action", title: "Open design", sub: "An .ork, .rkt or .CDX1 file", keys: "load file ork rkt rocksim cdx1 rasaero import", shortcut: keys("O"), run: openDialog },
     { kind: "action", title: "Save", sub: "Save the design", keys: "write file", shortcut: keys("S"), off: noDesign, run: () => save(false) },
     { kind: "action", title: "Save as", sub: "Save under a new name", keys: "copy file", shortcut: keys("S", true), off: noDesign, run: () => save(true) },
+    { kind: "action", title: "Save a copy for RockSim", sub: "A .rkt file", keys: "export rkt rocksim file type format", off: noDesign, run: () => save("rkt") },
+    { kind: "action", title: "Save a copy for RASAero II", sub: "A .CDX1 file", keys: "export cdx1 rasaero file type format", off: noDesign, run: () => save("cdx1") },
     { kind: "action", title: "Undo", sub: "Undo the last edit", shortcut: keys("Z"), off: open && app.design?.canUndo ? undefined : "Nothing to undo", run: undo },
     { kind: "action", title: "Redo", sub: "Redo the edit undone", shortcut: MAC ? keys("Z", true) : keys("Y"), off: open && app.design?.canRedo ? undefined : "Nothing to redo", run: redo },
     { kind: "action", title: "Guide", sub: "How to use RocketMaxxing: getting started, the pages, which analysis", keys: "help how to instructions tutorial manual start", run: () => (ui.guide = "start") },

@@ -20,6 +20,9 @@
     name: string;
     stage: string;
     innerDiameter: number;
+    /** The mount tube's length, and how far the motor sticks out of its aft end (negative: recessed). */
+    length: number;
+    overhang: number;
     motors: Record<string, any>;
   }
   interface Recovery {
@@ -123,6 +126,17 @@
       { label: "New configuration…", run: newConfig },
     ];
   }
+  /** In words, where the motor of the selected configuration ends up in its mount with this overhang. */
+  function sits(m: Mount, mo: any): string {
+    const out = m.overhang > 1e-6 ? `sticks out ${fmt(m.overhang, "LENGTH")} behind the mount`
+      : m.overhang < -1e-6 ? `sits ${fmt(-m.overhang, "LENGTH")} inside the mount's aft end` : "is flush with the mount's aft end";
+    if (!mo?.length) return `A motor ${out}. Mount ${fmt(m.length, "LENGTH")} long.`;
+    const spare = m.length + m.overhang - mo.length;
+    const front = spare < -1e-6 ? `and reaches ${fmt(-spare, "LENGTH")} past the mount's forward end: check what is ahead of it`
+      : spare > 1e-6 ? `with ${fmt(spare, "LENGTH")} of the mount free ahead of it` : "and fills the mount";
+    return `${mo.designation} (${fmt(mo.length, "LENGTH")}) ${out}, ${front}. Mount ${fmt(m.length, "LENGTH")} long.`;
+  }
+
   function motorItems(m: Mount, cid: string): MenuItem[] {
     const mo = m.motors[cid];
     const c = data?.configurations.find((x) => x.id === cid);
@@ -242,6 +256,22 @@
             </tr>
           {/each}
         </tbody>
+        {#if data.mounts.length}
+          <tfoot>
+            <tr>
+              <th class="cfg" title="Where the motor sits along its mount. It is the same in every configuration, as in OpenRocket.">Position in the mount</th>
+              {#each data.mounts as m (m.id)}
+                {@const mo = m.motors[data.selected]}
+                <td class="cell pos">
+                  <label class="over" for="overhang-{m.id}">Overhang
+                    <QuantityInput id="overhang-{m.id}" value={m.overhang} dim="LENGTH" commit={(v) => act("app_edit", { component: m.id, key: "motorOverhang", value: v })} />
+                  </label>
+                  <div class="fit" class:warn={mo?.length && m.length + m.overhang - mo.length < -1e-6}>{sits(m, mo)}</div>
+                </td>
+              {/each}
+            </tr>
+          </tfoot>
+        {/if}
       </table>
     </Panel>
 
@@ -465,5 +495,34 @@
     display: flex;
     justify-content: flex-end;
     gap: 6px;
+  }
+  tfoot th,
+  tfoot td {
+    border-top: 1px solid var(--line-strong);
+    vertical-align: top;
+    text-align: left;
+  }
+  tfoot th {
+    font-weight: 600;
+    padding-top: 10px;
+  }
+  .over {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .over :global(input) {
+    width: 84px;
+  }
+  .fit {
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--ink-3);
+    max-width: 46ch;
+  }
+  .fit.warn {
+    color: var(--warn);
   }
 </style>

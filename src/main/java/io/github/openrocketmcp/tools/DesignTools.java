@@ -52,7 +52,7 @@ public final class DesignTools {
 						+ "used by every other tool. Edits stay in memory until save_design. Examples: "
 						+ String.join(", ", Designs.EXAMPLES) + ".",
 				Schema.object()
-						.str("path", "Path to an .ork file, or a RockSim .rkt file to import.", false)
+						.str("path", "Path to an .ork file, or a RockSim .rkt or RASAero .CDX1 file to import.", false)
 						.str("example", "Name of a bundled OpenRocket example (partial match).", false)
 						.str("newRocketName", "Create a new empty rocket with this name.", false)
 						.build(),
@@ -101,12 +101,28 @@ public final class DesignTools {
 
 		s.tool(new ToolDef("save_design", "Save a design",
 				"Write the design to an .ork file (OpenRocket's format, openable in the OpenRocket app). Without path, overwrites "
-						+ "the file it was opened from. Ask the user before overwriting their file.",
-				Schema.object().str("designId", DESIGN_ID, false).str("path", "Destination .ork path.", false).build(),
+						+ "the file it was opened from. Ask the user before overwriting their file. A path ending in .rkt "
+						+ "(RockSim) or .CDX1 (RASAero II) writes a copy for that program instead; the design stays tied to "
+						+ "its .ork, and notes lists what the other format could not hold.",
+				Schema.object().str("designId", DESIGN_ID, false).str("path", "Destination: .ork, or .rkt / .CDX1 for a copy.", false).build(),
 				false, a -> {
 					Designs.Design d = ctx.designs.get(a.str("designId", null));
-					Path p = ctx.designs.save(d, a.has("path") ? ctx.path(a.str("path")) : null);
-					return Map.of("saved", p.toString());
+					List<String> notes = new ArrayList<>();
+					Path p = ctx.designs.save(d, a.has("path") ? ctx.path(a.str("path")) : null, notes);
+					Map<String, Object> out = new LinkedHashMap<>();
+					out.put("saved", p.toString());
+					String n = p.getFileName().toString();
+					String format = Designs.FORMATS.get(n.substring(n.lastIndexOf('.') + 1).toLowerCase(java.util.Locale.ROOT));
+					out.put("format", format);
+					if (!"OpenRocket".equals(format)) {
+						out.put("copy", true);
+						out.put("note", "A copy for " + format + ": simulations, flight configurations and some parts are not kept "
+								+ "in that format. Keep the .ork as the design's own file.");
+						if (!notes.isEmpty()) {
+							out.put("notes", notes);
+						}
+					}
+					return out;
 				}));
 
 		s.tool(new ToolDef("close_design", "Close a design", "Close a design without saving.",

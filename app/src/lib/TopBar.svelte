@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FilePlus2, FolderOpen, Save, Undo2, Redo2, Settings as Gear, TriangleAlert, Search, Bot, CircleHelp } from "@lucide/svelte";
+  import { FilePlus2, FolderOpen, Save, Undo2, Redo2, Settings as Gear, TriangleAlert, Search, Bot, CircleHelp, ChevronDown } from "@lucide/svelte";
   import { app, newDesign, openDialog, save, undo, redo, selectConfig } from "./state.svelte";
   import Settings from "./Settings.svelte";
   import RocketLoader from "./RocketLoader.svelte";
@@ -7,6 +7,21 @@
   import { issues, openIssues, unseen } from "./issues/issues.svelte";
   import { keys, MAC } from "./keys";
   import { ui } from "./search/ui.svelte";
+
+  import { openMenu } from "./menu/menu.svelte";
+
+  /** Save as, and copies in the other programs' formats, under the arrow beside Save. */
+  function saveMenu(e: MouseEvent) {
+    const box = (e.currentTarget as HTMLElement).parentElement!.getBoundingClientRect();
+    openMenu(box.left, box.bottom + 2, [
+      { label: "Save", shortcut: keys("S"), run: () => save(false) },
+      { label: "Save as…", shortcut: keys("S", true), run: () => save(true) },
+      "-",
+      { header: "A copy for another program" },
+      { label: "RockSim (.rkt)…", run: () => save("rkt") },
+      { label: "RASAero II (.CDX1)…", run: () => save("cdx1") },
+    ]);
+  }
 
   let fresh = $derived(unseen());
   let watch = $derived(app.design ? app.flightIssues.length : 0);
@@ -21,9 +36,13 @@
   <div class="group">
     <button class="btn ghost" onclick={newDesign} title="New design"><FilePlus2 size={16} /> New</button>
     <button class="btn ghost" onclick={openDialog} title="Open ({keys('O')})"><FolderOpen size={16} /> Open</button>
-    <button class="btn ghost" onclick={() => save(false)} disabled={!app.design} title="Save ({keys('S')}), save as ({keys('S', true)})">
-      <Save size={16} /> Save
-    </button>
+    <div class="split">
+      <button class="btn ghost" onclick={() => save(false)} disabled={!app.design} title="Save ({keys('S')})">
+        <Save size={16} /> Save
+      </button>
+      <button class="btn ghost more" onclick={saveMenu} disabled={!app.design} aria-haspopup="menu" aria-label="Save as, and other file types"
+        title="Save as ({keys('S', true)}), or a copy for RockSim or RASAero"><ChevronDown size={14} /></button>
+    </div>
   </div>
   <span class="sep"></span>
   <div class="group">
@@ -234,5 +253,14 @@
     .config > span {
       display: none;
     }
+  }
+  .split {
+    display: flex;
+    align-items: center;
+  }
+  .split .more {
+    padding: 0 3px;
+    margin-left: -4px;
+    min-width: 0;
   }
 </style>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChartLine, CloudSun, Rocket, Plus, Play, PlayCircle, Trash2, Clapperboard, TriangleAlert } from "@lucide/svelte";
+  import { CloudSun, Rocket, Plus, Play, PlayCircle, Trash2, Clapperboard, TriangleAlert, ChevronRight } from "@lucide/svelte";
   import VideoDialog from "../media/VideoDialog.svelte";
   import RocketLoader from "../RocketLoader.svelte";
   import { untrack } from "svelte";
@@ -79,6 +79,16 @@
 
   let plotKey = $state(0);
 
+  /** Simulations drawn on the plot with the selected one (the Plot column's ticks). */
+  let compare = $state<number[]>([]);
+  /** Rows opened to show their launch conditions and every result, any number at once. */
+  let opened = $state<number[]>([]);
+  const flip = (list: number[], i: number) => (list.includes(i) ? list.filter((n) => n !== i) : [...list, i]);
+  const hasFlight = (s: Sim) => (s.status === "UPTODATE" || s.status === "LOADED" || s.status === "OUTDATED") && !!s.results?.apogee;
+  let allOpen = $derived(sims.length > 0 && sims.every((s) => opened.includes(s.index)));
+  const windText = (o: Record<string, any>) =>
+    `${fmt(o.windSpeed, "VELOCITY")} from ${fmt(o.windDirection, "ANGLE")}${o.windProfile ? " (profile by altitude)" : ""}, turbulence ${num((o.windTurbulence ?? 0) * 100, 3)} %`;
+
   // ------------------------------------------------------------------ right-click menus
   const toAnalysis = (tool: string) => () => {
     analysis.selected = tool;
@@ -95,6 +105,8 @@
     return [
       { header: s.name },
       { label: "Run", off: running && "Running", run: () => runSims(false) },
+      { label: opened.includes(s.index) ? "Hide details" : "Show details", run: () => (opened = flip(opened, s.index)) },
+      { label: allOpen ? "Hide all details" : "Show details of all", run: () => (opened = allOpen ? [] : sims.map((x) => x.index)) },
       { label: "Video…", off: running && "Running", run: () => (video = true) },
       { label: "Rename…", run: () => renameSim(s) },
       { label: "Make its configuration active", run: () => selectConfig(s.configuration) },
@@ -134,6 +146,11 @@
       <table class="grid">
         <thead>
           <tr>
+            <th class="exp">
+              <button class="chev" class:open={allOpen} disabled={!sims.length} onclick={() => (opened = allOpen ? [] : sims.map((x) => x.index))}
+                title={allOpen ? "Hide all details" : "Show the launch conditions and results of every simulation"} aria-label="Show or hide all details"><ChevronRight size={14} /></button>
+            </th>
+            <th class="pl" title="Tick simulations to draw them on the plot together. The selected one is always drawn.">Plot</th>
             <th></th><th>Name</th><th>Configuration</th><th>Apogee</th><th>Max speed</th><th>Max accel.</th><th>Time to apogee</th>
             <th>Flight time</th><th>Ground hit</th><th>Rail exit</th><th>Optimum delay</th>
           </tr>
@@ -141,7 +158,17 @@
         <tbody>
           {#each sims as s, i (s.index)}
             {@const st = STATUS[s.status] ?? ["none", s.status]}
-            <tr class:sel={i === sel} onclick={() => (sel = i)} use:context={() => simItems(i)}>
+            {@const isOpen = opened.includes(s.index)}
+            <tr class:sel={i === sel} class:open={isOpen} onclick={() => (sel = i)} use:context={() => simItems(i)}>
+              <td class="exp">
+                <button class="chev" class:open={isOpen} aria-expanded={isOpen} aria-label="Details of {s.name}" title={isOpen ? "Hide details" : "Show launch conditions and all results"}
+                  onclick={(e) => { e.stopPropagation(); opened = flip(opened, s.index); }}><ChevronRight size={14} /></button>
+              </td>
+              <td class="pl">
+                <input type="checkbox" aria-label="Plot {s.name}" checked={i === sel || compare.includes(s.index)} disabled={i === sel || !hasFlight(s)}
+                  title={i === sel ? "The selected simulation is always on the plot" : hasFlight(s) ? "Draw this simulation on the plot too" : "Run it first"}
+                  onclick={(e) => e.stopPropagation()} onchange={() => (compare = flip(compare, s.index))} />
+              </td>
               <td><span class="dot {st[0]}" title={st[1]}></span></td>
               <td>
                 {s.name}
@@ -159,6 +186,29 @@
               <td class="num">{fmt(s.results.railExitVelocity, "VELOCITY", 3)}</td>
               <td class="num">{fmt(s.results.optimumDelay, "TIME", 2)}</td>
             </tr>
+            {#if isOpen}
+              <tr class="detail" class:sel={i === sel} onclick={() => (sel = i)}>
+                <td colspan="13">
+                  <div class="dgrid">
+                    <div><span class="dk">Status</span>{st[1]}</div>
+                    <div><span class="dk">Wind</span>{windText(s.options)}</div>
+                    <div><span class="dk">Rail</span>{fmt(s.options.rodLength, "LENGTH")}, {fmt(s.options.rodAngle, "ANGLE")} from vertical{s.options.launchIntoWind ? ", into the wind" : `, towards ${fmt(s.options.rodDirection, "ANGLE")}`}</div>
+                    <div><span class="dk">Site</span>{fmt(s.options.launchAltitude, "DISTANCE")} above sea level, {num(s.options.latitude, 4)}° N {num(s.options.longitude, 4)}° E</div>
+                    <div><span class="dk">Air</span>{s.options.isaAtmosphere ? "Standard atmosphere" : `${fmt(s.options.temperature, "TEMPERATURE")}, ${fmt(s.options.pressure, "PRESSURE")}`}</div>
+                    {#if hasFlight(s)}
+                      <div><span class="dk">Flight</span>apogee {fmt(s.results.apogee, "DISTANCE")} at {fmt(s.results.timeToApogee, "TIME", 3)}, top speed {fmt(s.results.maxVelocity, "VELOCITY")}{s.results.maxMach ? ` (Mach ${s.results.maxMach.toFixed(2)})` : ""}, {fmt(s.results.maxAcceleration, "ACCELERATION")} peak</div>
+                      <div><span class="dk">Rail exit</span>{fmt(s.results.railExitVelocity, "VELOCITY", 3)}</div>
+                      <div><span class="dk">Landing</span>{fmt(s.results.groundHitVelocity, "VELOCITY", 3)} after {fmt(s.results.flightTime, "TIME", 3)}</div>
+                    {:else}
+                      <div><span class="dk">Flight</span>Not run yet</div>
+                    {/if}
+                  </div>
+                  {#if s.results.problems?.length}
+                    <ul class="dprobs">{#each s.results.problems as p}<li>{p}</li>{/each}</ul>
+                  {/if}
+                </td>
+              </tr>
+            {/if}
           {/each}
         </tbody>
       </table>
@@ -173,7 +223,7 @@
           <SimForm sim={current} {configs} />
         </Panel>
       </div>
-      <FlightPlot {sims} {current} {plotKey} />
+      <FlightPlot {sims} {current} {plotKey} bind:compare />
     </div>
   {/if}
 </div>
@@ -201,11 +251,66 @@
     gap: 4px;
   }
   .list {
-    max-height: 32vh;
+    max-height: 70vh;
+    height: auto;
     overflow: auto;
+  }
+  .list {
+    resize: vertical;
+    min-height: 64px;
   }
   .list tr {
     cursor: default;
+  }
+  .exp {
+    width: 22px;
+    padding-right: 0;
+  }
+  .pl {
+    width: 34px;
+    text-align: center;
+  }
+  .chev {
+    display: inline-flex;
+    padding: 2px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink-3);
+    cursor: pointer;
+    transition: transform 0.12s;
+  }
+  .chev:hover:not(:disabled) {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--ink-3) 15%, transparent);
+  }
+  .chev.open {
+    transform: rotate(90deg);
+  }
+  tr.open > td {
+    border-bottom-color: transparent;
+  }
+  .detail td {
+    padding: 2px 14px 10px 58px;
+    white-space: normal;
+  }
+  .dgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+    gap: 3px 24px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .dk {
+    display: inline-block;
+    min-width: 62px;
+    color: var(--ink-3);
+  }
+  .dprobs {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+    color: var(--warn);
   }
   .mach {
     margin-left: 6px;

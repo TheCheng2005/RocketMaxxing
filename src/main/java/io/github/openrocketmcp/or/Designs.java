@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import info.openrocket.core.document.OpenRocketDocument;
+import info.openrocket.core.document.StorageOptions;
 import info.openrocket.core.document.OpenRocketDocumentFactory;
 import info.openrocket.core.document.Simulation;
 import info.openrocket.core.file.GeneralRocketLoader;
@@ -74,7 +75,7 @@ public final class Designs {
 					+ "cloud folder that is not connected right now.");
 		}
 		if (Files.isDirectory(p)) {
-			throw new ToolException(p.getFileName() + " is a folder, not a design. Choose a .ork or .rkt file inside it.");
+			throw new ToolException(p.getFileName() + " is a folder, not a design. Choose a .ork, .rkt or .CDX1 file inside it.");
 		}
 		if (Files.size(p) == 0) {
 			throw new ToolException(p.getFileName() + " is empty (0 bytes): the save, download or cloud sync that made it did not "
@@ -92,7 +93,7 @@ public final class Designs {
 		} catch (RocketLoadException e) {
 			String why = e.getMessage() == null ? "" : e.getMessage().replaceAll("[.\\s]+$", "");
 			throw new ToolException("OpenRocket could not read " + p.getFileName() + (why.isEmpty() ? "" : " (" + why + ")")
-					+ ". Either it is not an OpenRocket (.ork) or RockSim (.rkt) design, or the file is damaged or incomplete, "
+					+ ". Either it is not an OpenRocket (.ork), RockSim (.rkt) or RASAero (.CDX1) design, or the file is damaged or incomplete, "
 					+ "for example a download or cloud sync that did not finish.", e);
 		}
 	}
@@ -228,7 +229,33 @@ public final class Designs {
 		Variants.forget(d.doc.getSimulations());
 	}
 
+	/** The formats a design can be written in, by file extension (lower case). */
+	public static final Map<String, String> FORMATS = formats();
+
+	private static Map<String, String> formats() {
+		Map<String, String> m = new java.util.LinkedHashMap<>();
+		m.put("ork", "OpenRocket");
+		m.put("rkt", "RockSim");
+		m.put("cdx1", "RASAero II");
+		return java.util.Collections.unmodifiableMap(m);
+	}
+
+	private static String extension(Path p) {
+		String n = p.getFileName() == null ? "" : p.getFileName().toString();
+		int dot = n.lastIndexOf('.');
+		return dot < 0 ? "" : n.substring(dot + 1).toLowerCase(Locale.ROOT);
+	}
+
 	public synchronized Path save(Design d, Path target) throws Exception {
+		return save(d, target, null);
+	}
+
+	/**
+	 * Writes the design. An .ork becomes the design's file; a RockSim .rkt or RASAero .CDX1 is a copy for that program
+	 * (it keeps less than an .ork does), so the design stays tied to its .ork and what was lost is added to
+	 * {@code notes}.
+	 */
+	public synchronized Path save(Design d, Path target, List<String> notes) throws Exception {
 		Path p = target != null ? target.toAbsolutePath().normalize() : d.path;
 		if (p == null) {
 			throw new ToolException(d.importedFrom != null
@@ -236,25 +263,54 @@ public final class Designs {
 							+ d.importedFrom.getFileName().toString().replaceAll("\\.[^.]+$", "") + ".ork\"."
 					: "This design has no file yet; pass a path ending in .ork.");
 		}
-		if (!p.toString().toLowerCase(Locale.ROOT).endsWith(".ork")) {
+		String ext = extension(p);
+		if (!FORMATS.containsKey(ext)) {
 			throw new ToolException(Files.isDirectory(p)
 					? p + " is a folder: give the design a file name ending in .ork inside it."
-					: "Designs are saved as OpenRocket files: the name must end in .ork (got " + p.getFileName() + ").");
+					: "Designs are saved as OpenRocket files: the name must end in .ork (got " + p.getFileName()
+							+ "). A copy for another program can end in .rkt (RockSim) or .CDX1 (RASAero II).");
+		}
+		boolean own = ext.equals("ork");
+		if (!own && d.importedFrom != null && p.equals(d.importedFrom.toAbsolutePath().normalize())) {
+			throw new ToolException("That is the file this design was imported from. Choose another name so the original is kept.");
 		}
 		try {
 			if (p.getParent() != null) {
 				Files.createDirectories(p.getParent());
 			}
-			new GeneralRocketSaver().save(p.toFile(), d.doc);
+			GeneralRocketSaver saver = new GeneralRocketSaver();
+			if (own) {
+				saver.save(p.toFile(), d.doc);
+			} else {
+				// A copy of the options: the document keeps saving itself as an .ork.
+				StorageOptions o = d.doc.getDefaultStorageOptions().clone();
+				o.setFileType(ext.equals("rkt") ? StorageOptions.FileType.ROCKSIM : StorageOptions.FileType.RASAERO);
+				saver.save(p.toFile(), d.doc, o);
+				if (notes != null) {
+					saver.getErrors().forEach(e -> notes.add(e.toString()));
+					saver.getWarnings().forEach(w -> notes.add(w.toString()));
+				}
+			}
 		} catch (IOException e) {
 			throw ToolException.system("Could not save to " + p + " (" + reason(e) + "). The folder may be "
 					+ "read-only or need administrator rights, the disk may be full, or the file may be open in another program. "
 					+ "The design is still open here: save it somewhere else.", e);
+		} catch (RuntimeException e) {
+			if (own) {
+				throw e;
+			}
+			// The other programs cannot hold every design (RASAero: one nose cone, fins on tubes only, and so on).
+			Files.deleteIfExists(p);
+			String why = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage().replaceAll("[.\\s]+$", "");
+			throw new ToolException("This design cannot be written as a " + FORMATS.get(ext) + " file (" + why + "). "
+					+ FORMATS.get(ext) + " holds fewer kinds of part and layout than OpenRocket does. Save it as .ork instead.", e);
 		}
-		d.doc.setFile(p.toFile());
-		d.doc.setSaved(true);
-		d.path = p;
-		saveAeroTable(d);
+		if (own) {
+			d.doc.setFile(p.toFile());
+			d.doc.setSaved(true);
+			d.path = p;
+			saveAeroTable(d);
+		}
 		return p;
 	}
 

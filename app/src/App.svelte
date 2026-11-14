@@ -141,6 +141,7 @@
       { label: "Undo", shortcut: keys("Z"), off: d?.canUndo ? false : "Nothing to undo", run: undo },
       { label: "Redo", shortcut: MAC ? keys("Z", true) : keys("Y"), off: d?.canRedo ? false : "Nothing to redo", run: redo },
       { label: "Save", shortcut: keys("S"), off: d ? false : "No design open", run: () => save(false) },
+      { label: "Save as…", shortcut: keys("S", true), off: d ? false : "No design open", run: () => save(true) },
       "-",
       { label: "About this page (Guide)", run: () => (ui.guide = "pages") },
       { label: "Problems", run: openIssues },

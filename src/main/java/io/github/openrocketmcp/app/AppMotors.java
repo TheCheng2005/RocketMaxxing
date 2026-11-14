@@ -53,6 +53,8 @@ final class AppMotors {
 				m.put("name", c.getName());
 				m.put("stage", c.getStage().getName());
 				m.put("innerDiameter", mm.getMotorMountDiameter());
+				m.put("length", c.getLength());
+				m.put("overhang", mm.getMotorOverhang());
 				Map<String, Object> per = new LinkedHashMap<>();
 				for (FlightConfigurationId id : r.getIds()) {
 					per.put(id.toString(), motor(mm.getMotorConfig(id)));

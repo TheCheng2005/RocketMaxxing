@@ -282,7 +282,7 @@ public final class AppTools {
 		add(s, new ToolDef("app_choose_file", "App: choose a file", "The system's open or save dialog; returns the chosen path.",
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)
 						.str("types", "File extensions to show, e.g. \"csv,txt\" (default: designs).", false).build(),
-				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rkt"))));
+				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rkt,cdx1"))));
 		add(s, new ToolDef("app_download_path", "App: where to save a download",
 				"A path for a file the user takes away (the flight video): in the Downloads folder (else the Desktop, else the "
 						+ "designs folder), numbered so it replaces nothing.",
