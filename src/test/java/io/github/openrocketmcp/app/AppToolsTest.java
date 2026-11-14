@@ -411,6 +411,37 @@ class AppToolsTest {
 		assertTrue(app.handleLine(bad).getAsJsonObject("result").get("isError").getAsBoolean());
 	}
 
+	/**
+	 * What an assistant does on the Targets page: one targets call with set changes the targets, saves them in the
+	 * same team file the page writes, and answers with the short form; update_standards refuses a target the page
+	 * could not read.
+	 */
+	@Test
+	void assistantSetsTargetsInOneCall(@TempDir Path ws) throws Exception {
+		Context c = new Context(Standards.defaults(), ws, false);
+		McpServer app = Main.build(c, s -> AppTools.register(s, c), false);
+		String open = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"open_design\",\"arguments\":"
+				+ "{\"example\": \"Dual parachute\"}}}";
+		String id = JsonParser.parseString(app.handleLine(open).getAsJsonObject("result").getAsJsonArray("content").get(0).getAsJsonObject()
+				.get("text").getAsString()).getAsJsonObject().get("designId").getAsString();
+		String call = "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"targets\",\"arguments\":"
+				+ "{\"designId\": \"" + id + "\", \"set\": {\"apogee\": {\"min\": \"1 m\", \"goal\": \"300 m\"}}}}}";
+		JsonObject r = app.handleLine(call).getAsJsonObject("result");
+		assertFalse(r.get("isError").getAsBoolean(), r.toString());
+		JsonObject out = JsonParser.parseString(r.getAsJsonArray("content").get(0).getAsJsonObject().get("text").getAsString()).getAsJsonObject();
+		assertTrue(out.get("saved").getAsString().endsWith(Standards.FILE_NAME), out.toString());
+		assertEquals("apogee", out.getAsJsonArray("targets").get(0).getAsJsonObject().get("id").getAsString());
+		assertFalse(out.getAsJsonArray("targets").get(0).getAsJsonObject().has("valueSI"), "the short form has no SI copies");
+		assertTrue(out.getAsJsonObject("otherValues").has("maxVelocity"), out.toString());
+		assertTrue(Files.readString(ws.resolve(Standards.FILE_NAME)).contains("\"goal\": \"300 m\""));
+
+		String refused = "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"update_standards\",\"arguments\":"
+				+ "{\"patch\": {\"targets\": {\"landingDistance\": {\"max\": \"far\"}}}}}}";
+		JsonObject bad = app.handleLine(refused).getAsJsonObject("result");
+		assertTrue(bad.get("isError").getAsBoolean(), bad.toString());
+		assertTrue(bad.toString().contains("Landing distance maximum"), bad.toString());
+	}
+
 	@Test
 	void finOutlineCatalogueAndPaint() {
 		String d = call("open_design", "{\"example\": \"A simple model rocket\"}").get("designId").getAsString();

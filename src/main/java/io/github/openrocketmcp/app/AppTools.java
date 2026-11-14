@@ -106,9 +106,10 @@ public final class AppTools {
 				a -> Map.of("connections", Assistant.connections())));
 		add(s, new ToolDef("app_assistant_send", "App: message the assistant",
 				"Send a message; Claude works in the background with the engine's tools (poll for what it does).",
-				Schema.object().str("text", "The message.", true).str("designId", DESIGN, false).build(), true, a -> {
+				Schema.object().str("text", "The message.", true).str("designId", DESIGN, false)
+						.str("page", "What the page the team is on shows, in a line or two (sent with the message).", false).build(), true, a -> {
 					Designs.Design d = a.has("designId") ? ctx.designs.get(a.str("designId")) : null;
-					assistant.send(a.str("text"), Assistant.context(d));
+					assistant.send(a.str("text"), Assistant.context(d, a.str("page", null)));
 					return Map.of("sent", true);
 				}));
 		add(s, new ToolDef("app_assistant_poll", "App: what the assistant did",

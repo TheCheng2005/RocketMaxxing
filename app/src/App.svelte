@@ -10,6 +10,7 @@
   import Toasts from "./lib/Toasts.svelte";
   import RocketLoader from "./lib/RocketLoader.svelte";
   import AskDialog from "./lib/AskDialog.svelte";
+  import { PAGE_NAMES } from "./lib/pageNames";
   import ImportReport from "./lib/ImportReport.svelte";
   import { issues, watchPageErrors } from "./lib/issues/issues.svelte";
   import { assistant, loadSettings } from "./lib/assistant/assistant.svelte";
@@ -124,10 +125,6 @@
     }
   }
 
-  const PAGE_NAMES: Record<Page, string> = {
-    home: "Start", design: "Design", motors: "Motors", flights: "Flights", flightdata: "Flight data", targets: "Targets",
-    standards: "Standards", analysis: "Analysis",
-  };
 
   // A right-click with no menu of its own where it landed: the page's quick commands, then the app's.
   function onContext(e: MouseEvent) {

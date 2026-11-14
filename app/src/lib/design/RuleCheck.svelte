@@ -74,7 +74,7 @@
       <div class="chips" role="group" aria-label="Show">
         {#each LEVELS as l (l.s)}
           {#if counts[l.s] || l.s === "fail"}
-            <button class="chip {l.s}" class:on={show[l.s]} class:none={!counts[l.s]} aria-pressed={show[l.s]} disabled={!counts[l.s]}
+            <button class="chip {l.s}" class:on={show[l.s]} class:empty={!counts[l.s]} aria-pressed={show[l.s]} disabled={!counts[l.s]}
               title={counts[l.s] ? `${show[l.s] ? "Hide" : "Show"} the ${counts[l.s]} ${l.label.toLowerCase()} row${counts[l.s] === 1 ? "" : "s"}` : "Nothing fails"}
               onclick={() => (show[l.s] = !show[l.s])}><b>{counts[l.s]}</b> {l.label}</button>
           {/if}
@@ -184,8 +184,8 @@
     background: var(--good-soft);
     color: var(--good);
   }
-  .chip.none,
-  .chip.none.on {
+  .chip.empty,
+  .chip.empty.on {
     background: transparent;
     border-color: var(--line);
     color: var(--ink-3);

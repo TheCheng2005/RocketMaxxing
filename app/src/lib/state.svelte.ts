@@ -222,11 +222,16 @@ export interface Target {
   fromGoal?: string;
   from?: string;
   note?: string;
+  /** The team's value for this target cannot be read (a typo in the standards file): what is wrong with it. */
+  invalid?: string;
   status?: string;
 }
 
 export interface TargetList {
   simulation?: string;
+  /** On a staged rocket, the stage the numbers are for (the one that reaches apogee). */
+  stage?: string;
+  unknownTargets?: string[];
   summary?: string;
   targets?: Target[];
   PROBLEMS?: string[];
@@ -269,19 +274,21 @@ export function checkTargets(delay = 0) {
   targetTimer = setTimeout(() => {
     if (seq !== targetSeq) return;
     app.targeting = true;
-    call<TargetList>("targets", { designId: d.designId })
+    call<TargetList>("targets", { designId: d.designId, detail: true })
       .then((t) => seq === targetSeq && (app.targets = { ...t, designId: d.designId }))
       .catch((e) => seq === targetSeq && (app.targets = { error: quietly(e, "Targets"), designId: d.designId }))
       .finally(() => seq === targetSeq && (app.targeting = false));
   }, delay);
 }
 
-/** Sets or clears target limits ("9500 ft", or null to clear) and checks them again. */
-export async function setTargets(patch: Record<string, Record<string, string | null>>) {
-  await run(async () => {
+/** Sets or clears target limits ("9500 ft", or null to clear) and checks them again; false when it was refused. */
+export async function setTargets(patch: Record<string, Record<string, string | null>>): Promise<boolean> {
+  const ok = await run(async () => {
     await call("app_set_targets", { targets: patch });
-    checkTargets();
-  });
+    return true;
+  }, "Targets");
+  if (ok) checkTargets();
+  return !!ok;
 }
 
 let checkSeq = 0;

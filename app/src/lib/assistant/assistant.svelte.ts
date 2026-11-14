@@ -2,7 +2,8 @@
 // conversation; the page sends messages and polls for what happened (Claude's words, each tool it used).
 
 import { call } from "../api";
-import { app, refresh, run } from "../state.svelte";
+import { app, autoCheck, checkRules, checkTargets, refresh, run } from "../state.svelte";
+import { pageContext } from "./context";
 
 export type Provider = "api" | "claude-code" | "codex";
 
@@ -27,6 +28,8 @@ export interface AssistantEvent {
   input?: string;
   ok?: boolean;
   changed?: boolean;
+  /** The tool changed the team standards (targets, rule set, launch site). */
+  standards?: boolean;
   result?: string;
   images?: string[];
 }
@@ -122,9 +125,12 @@ export async function configure(change: {
   });
 }
 
-export async function send(text: string) {
+/** Sends a message with what the page shows; opens the drawer first when asked from a page (a target's menu, say). */
+export async function send(text: string, open = false) {
+  if (open) assistant.open = true;
   const ok = await run(async () => {
-    await call("app_assistant_send", { text, ...(app.design ? { designId: app.design.designId } : {}) });
+    const page = pageContext();
+    await call("app_assistant_send", { text, ...(app.design ? { designId: app.design.designId } : {}), ...(page ? { page } : {}) });
     return true;
   });
   if (ok) {
@@ -162,8 +168,14 @@ async function poll() {
     next = r.next;
     assistant.events.push(...r.events);
     const changed = r.events.some((e) => e.changed);
+    const standards = r.events.some((e) => e.standards);
     assistant.running = r.running;
     if (changed || !r.running) await refresh().catch(() => {});
+    else if (standards && app.design && autoCheck()) {
+      // Targets or rules changed, the design did not: check again without reloading the design.
+      checkRules();
+      checkTargets();
+    }
   } catch {
     assistant.running = false;
   }
