@@ -9,6 +9,8 @@ import { units, setSystem as setUnitSystem } from "./units.svelte";
 import { MAC } from "./keys";
 
 import { ui } from "./search/ui.svelte";
+import { fd } from "./flightdata/store.svelte";
+import { projectSettings, sameAsHere } from "./sharedSettings";
 
 export interface TreeNode {
   id: string;
@@ -56,8 +58,38 @@ export interface Design {
   loadWarnings?: string[];
   /** What to look at after opening the file: what was left out, what may be wrong, what to set up next. */
   importReport?: ImportReport | null;
+  /** What a RocketMaxxing project brought besides the design: its standards, plots, units and flight logs. */
+  project?: ProjectExtras | null;
   /** The imported RASAero (or other) aero table for the whole vehicle: its source, or null. */
   aeroTable?: string | null;
+}
+
+export interface ProjectExtras {
+  manifest?: { name?: string; savedAt?: string; app?: string };
+  standards?: Record<string, unknown>;
+  standardsDiffer?: boolean;
+  standardsSummary?: string;
+  plots?: { name: string; vars: string[] }[];
+  settings?: import("./sharedSettings").Shared;
+  motors?: string[];
+  flightLogs?: string[];
+}
+
+/** What the project offers that is not in use here yet (each a button in the dialog). */
+export function projectOffers(p: ProjectExtras | null | undefined): string[] {
+  if (!p) return [];
+  const out: string[] = [];
+  if (p.standardsDiffer) out.push("standards");
+  let saved: { name: string }[] = [];
+  try {
+    saved = JSON.parse(localStorage.getItem("rocketmaxxing.plots") ?? "[]");
+  } catch {
+    /* none */
+  }
+  if (p.plots?.some((x) => !saved.some((y) => y.name === x.name))) out.push("plots");
+  if (p.settings && !sameAsHere(p.settings)) out.push("settings");
+  if (p.flightLogs?.length) out.push("logs");
+  return out;
 }
 
 export interface ImportReport {
@@ -426,7 +458,8 @@ export async function openPath(path: string) {
     const r = await call("open_design", { path });
     await load(r.designId);
     // A file from another program, or one OpenRocket had to change: say what to look at before the numbers are trusted.
-    if (r.importReport && (r.importReport.format !== "OpenRocket" || r.importReport.findings.length)) ui.importReport = true;
+    if (r.importReport && (!/^(OpenRocket|RocketMaxxing project)$/.test(r.importReport.format) || r.importReport.findings.length)) ui.importReport = true;
+    else if (projectOffers(app.design?.project).length) ui.importReport = true;
     else if (r.conversionWarnings?.length) toast("Converted on opening: " + r.conversionWarnings.join("; "));
   });
 }
@@ -436,7 +469,7 @@ export async function openDialog() {
     const r = await call<{ path: string | null }>("app_choose_file", { mode: "open" });
     if (r.path) await openPath(r.path);
   } catch {
-    const p = await ask("Open", "File (.ork, .rkt or .CDX1)");
+    const p = await ask("Open", "File (.rmx, .ork, .rkt or .CDX1)");
     if (p) await openPath(p.trim());
   }
 }
@@ -451,44 +484,66 @@ export async function newDesign() {
   });
 }
 
-/** The formats a design can be written in: its own, and copies for the other programs teams use. */
-export const SAVE_FORMATS = { ork: "OpenRocket", rkt: "RockSim", cdx1: "RASAero II" } as const;
+/** The formats a design can be written in: its own two, and copies for the other programs teams use. */
+export const SAVE_FORMATS = { ork: "OpenRocket", rmx: "RocketMaxxing project", rkt: "RockSim", cdx1: "RASAero II" } as const;
 export type SaveFormat = keyof typeof SAVE_FORMATS;
+const ENDING = /\.(ork|rmx|rkt|cdx1)$/i;
+
+/** What only the app knows, for a project: the saved plots, the units it reads numbers in, the flight log loaded. */
+function projectExtras(designId: string) {
+  let plots: unknown = [];
+  try {
+    plots = JSON.parse(localStorage.getItem("rocketmaxxing.plots") ?? "[]");
+  } catch {
+    /* none */
+  }
+  return {
+    plots: JSON.stringify(plots),
+    settings: JSON.stringify(projectSettings()),
+    flightLogs: fd.log && fd.log.designId === designId && fd.log.path ? [fd.log.path] : [],
+  };
+}
 
 /**
- * Saves the design. `as` true asks where (Save as); "rkt" or "cdx1" writes a copy for RockSim or RASAero and leaves
- * the design tied to its own .ork. A name typed with one of those endings in the Save as dialog does the same.
+ * Saves the design. `as` true asks where (Save as); "rmx" saves it as a RocketMaxxing project (the design with its
+ * standards, motors, aero table, logs and plots, to pass on); "rkt" or "cdx1" writes a copy for RockSim or RASAero and
+ * leaves the design tied to its own file. A name typed with one of those endings in the Save as dialog does the same.
  */
 export async function save(as: boolean | SaveFormat = false) {
   const d = app.design;
   if (!d) return;
-  const want: SaveFormat = typeof as === "string" ? as : "ork";
+  const own = d.path && /\.rmx$/i.test(d.path) ? "rmx" : "ork";
+  const want: SaveFormat = typeof as === "string" ? as : own;
+  const copy = want === "rkt" || want === "cdx1";
   const ending = want === "cdx1" ? ".CDX1" : "." + want;
   await run(async () => {
     let path = as || !d.path ? null : d.path;
     if (!path) {
       const base = (d.path ? d.path.split(/[\\/]/).pop()!.replace(/\.[^.]+$/, "") : d.name) + ending;
       try {
-        const r = await call<{ path: string | null }>("app_choose_file", { mode: "save", name: base, types: want === "ork" ? "ork,rkt,cdx1" : want });
+        const r = await call<{ path: string | null }>("app_choose_file", { mode: "save", name: base, types: copy ? want : `${want},${want === "rmx" ? "ork" : "rmx"},rkt,cdx1` });
         path = r.path;
       } catch {
-        path = await ask(want === "ork" ? "Save as" : `Save a copy for ${SAVE_FORMATS[want]}`, `File (${ending})`,
-          want === "ork" ? (d.path ?? d.name) + (d.path ? "" : ".ork") : (d.path ?? d.name).replace(/\.ork$/i, "") + ending);
+        const title = copy ? `Save a copy for ${SAVE_FORMATS[want]}` : want === "rmx" ? "Save as a RocketMaxxing project" : "Save as";
+        path = await ask(title, `File (${ending})`, (d.path ?? d.name).replace(ENDING, "") + ending);
       }
       if (!path) return;
       path = path.trim();
-      // A copy keeps the ending asked for; a save takes the one typed (.rkt, .CDX1) or .ork.
-      if (want !== "ork") {
-        if (!new RegExp(`\\.${want}$`, "i").test(path)) path = path.replace(/\.(ork|rkt|cdx1)$/i, "") + ending;
-      } else if (!/\.(ork|rkt|cdx1)$/i.test(path)) path += ".ork";
+      // A copy keeps the ending asked for; a save takes the one typed (.rmx, .ork, .rkt, .CDX1) or the one asked for.
+      if (copy) {
+        if (!new RegExp(`\\.${want}$`, "i").test(path)) path = path.replace(ENDING, "") + ending;
+      } else if (!ENDING.test(path)) path += ending;
     }
-    const r = await call<{ saved: string; format?: string; copy?: boolean; notes?: string[] }>("save_design", { designId: d.designId, path });
+    const project = /\.rmx$/i.test(path);
+    const r = await call<{ saved: string; format?: string; copy?: boolean; notes?: string[]; contains?: string[] }>("save_design", {
+      designId: d.designId, path, ...(project ? { project: projectExtras(d.designId) } : {}),
+    });
     const file = r.saved.split(/[\\/]/).pop();
     if (r.copy) {
-      toast(`Saved a copy for ${r.format}: ${file}. The design itself is still ${d.path ? d.path.split(/[\\/]/).pop() : "not saved as an .ork yet"}.`
+      toast(`Saved a copy for ${r.format}: ${file}. The design itself is still ${d.path ? d.path.split(/[\\/]/).pop() : "not saved yet"}.`
         + (r.notes?.length ? ` ${r.format} could not keep: ${r.notes.slice(0, 3).join("; ")}${r.notes.length > 3 ? `; and ${r.notes.length - 3} more` : ""}.` : ""));
     } else {
-      toast("Saved " + r.saved);
+      toast(project && r.contains ? `Saved the project ${file}: ${r.contains.join(", ")}.` : "Saved " + r.saved);
       remember(r.saved);
     }
     await refresh();

@@ -130,9 +130,10 @@ export function entries(): Entry[] {
 
   out.push(
     { kind: "action", title: "New design", sub: "Start an empty rocket", keys: "create blank", run: newDesign },
-    { kind: "action", title: "Open design", sub: "An .ork, .rkt or .CDX1 file", keys: "load file ork rkt rocksim cdx1 rasaero import", shortcut: keys("O"), run: openDialog },
+    { kind: "action", title: "Open design", sub: "A project (.rmx), .ork, .rkt or .CDX1 file", keys: "load file ork rmx project rkt rocksim cdx1 rasaero import", shortcut: keys("O"), run: openDialog },
     { kind: "action", title: "Save", sub: "Save the design", keys: "write file", shortcut: keys("S"), off: noDesign, run: () => save(false) },
     { kind: "action", title: "Save as", sub: "Save under a new name", keys: "copy file", shortcut: keys("S", true), off: noDesign, run: () => save(true) },
+    { kind: "action", title: "Save as a RocketMaxxing project", sub: "The design with its standards, motors, logs and plots (.rmx)", keys: "project rmx share pass on bundle package export zip team", off: noDesign, run: () => save("rmx") },
     { kind: "action", title: "Save a copy for RockSim", sub: "A .rkt file", keys: "export rkt rocksim file type format", off: noDesign, run: () => save("rkt") },
     { kind: "action", title: "Save a copy for RASAero II", sub: "A .CDX1 file", keys: "export cdx1 rasaero file type format", off: noDesign, run: () => save("cdx1") },
     { kind: "action", title: "Undo", sub: "Undo the last edit", shortcut: keys("Z"), off: open && app.design?.canUndo ? undefined : "Nothing to undo", run: undo },
@@ -326,6 +327,8 @@ export function entries(): Entry[] {
     { kind: "setting", title: "Decimal comma or point", sub: "Settings", keys: "number format decimal comma separator european", run: settings("Units") },
     { kind: "setting", title: "Significant figures", sub: "Settings", keys: "digits precision decimals number format rounding", run: settings("Units") },
     { kind: "setting", title: "Backups of unsaved work", sub: "Settings", keys: "autosave auto save backup recover crash", run: settings("Files") },
+    { kind: "setting", title: "Accent colour", sub: "A colour of your own", keys: "color colour accent team brand custom", run: settings("Appearance") },
+    { kind: "setting", title: "Export or import settings", sub: "A settings file", keys: "settings file share copy computer team export import", run: settings("Files") },
     { kind: "action", title: "Reset the layout", sub: "Panels, plot setup and 3-D view as they start", keys: "restore default panels folded", run: () => { resetLayout(); ui.settings = "Appearance"; } },
     { kind: "action", title: "Show the tours again", keys: "tour onboarding introduction help", run: () => resetTours() },
   );

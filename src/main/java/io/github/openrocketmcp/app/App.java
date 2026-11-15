@@ -297,7 +297,7 @@ public final class App {
 				}
 				continue;
 			}
-			if (s.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rkt)") && Files.isRegularFile(Path.of(s))) {
+			if (s.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rmx|rkt|cdx1)") && Files.isRegularFile(Path.of(s))) {
 				out.add(Path.of(s).toAbsolutePath().normalize().toString());
 			}
 		}

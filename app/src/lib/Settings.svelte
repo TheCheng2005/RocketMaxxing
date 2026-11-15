@@ -3,11 +3,34 @@
   import { isOpen, toggle, setOpen } from "./panels.svelte";
   import { app, setSystem, autoCheck, setAutoCheck } from "./state.svelte";
   import { units, choices, choose, unitOf, pretty, type Dim } from "./units.svelte";
-  import { prefs, setTheme, setScheme, SCHEMES, SIZES, setSize, setDensity, setMotion, setDigits, setMark, resetLayout, resetTours,
+  import { prefs, setTheme, setScheme, SCHEMES, SIZES, setSize, setDensity, setMotion, setDigits, setMark, resetLayout, resetTours, setAccent,
     type Theme, type Scheme, type Density, type Motion, type Mark } from "./prefs.svelte";
   import { call } from "./api";
-  import { run, toast } from "./state.svelte";
+  import { run, toast, ask } from "./state.svelte";
   import { onMount } from "svelte";
+  import { allSettings, applySettings, type Shared } from "./sharedSettings";
+
+  /** The settings (not recent files, panels or tours) as a file in Downloads, to set up another computer or a team. */
+  async function exportSettings() {
+    const r = await run(() => call<{ path: string; folderName: string }>("app_export", {
+      name: "RocketMaxxing settings.json", text: JSON.stringify(allSettings(), null, 2),
+    }));
+    if (r) toast(`Saved ${r.path.split(/[\\/]/).pop()} in ${r.folderName}`);
+  }
+  async function importSettings() {
+    let path: string | null = null;
+    try {
+      path = (await call<{ path: string | null }>("app_choose_file", { mode: "open", types: "json" })).path;
+    } catch {
+      path = await ask("Import settings", "Settings file (.json)");
+    }
+    if (!path) return;
+    const s = await run(() => call<Shared>("app_read_settings", { path: path!.trim() }), "Settings");
+    if (!s) return;
+    const n = await applySettings(s);
+    toast(n ? `Applied ${n} setting${n === 1 ? "" : "s"} from ${path.split(/[\\/]/).pop()}` : "That file has no settings this version knows.");
+    loadBackups();
+  }
   import { assistant, configure } from "./assistant/assistant.svelte";
   import AssistantSetup from "./assistant/AssistantSetup.svelte";
   import { updates, checkNow, checkEnabled, setCheckEnabled } from "./updates.svelte";
@@ -153,6 +176,15 @@
         {#each VISION as sc (sc.id)}{@render tile(sc)}{/each}
       </div>
       <div class="row">
+        <span>Accent colour</span>
+        <div class="accent">
+          <input type="color" aria-label="Accent colour" value={prefs.accent || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#d9480f"}
+            onchange={(e) => setAccent((e.target as HTMLInputElement).value)} />
+          {#if prefs.accent}<button class="link" onclick={() => setAccent("")}>Use the scheme's</button>{:else}<span class="muted">The scheme's</span>{/if}
+        </div>
+      </div>
+      <p class="note">A colour of your own (the team's, say) for buttons and highlights, over the scheme's. Text on it turns black or white to stay readable.</p>
+      <div class="row">
         <span>Text size</span>
         <div class="seg">
           {#each SIZES as [v, label] (v)}<button class:on={prefs.size === v} onclick={() => setSize(v)} title="{Math.round(v * 100)}%">{label}</button>{/each}
@@ -238,6 +270,14 @@
         Your own files are never touched. Recent backups are listed on the Start page.
         {#if backup?.backups.length}<button class="link" onclick={() => run(() => call("app_reveal", { path: backup!.folder }))}>Show the backups folder</button>{/if}
       </p>
+      <div class="row">
+        <span>Settings file</span>
+        <div class="acts">
+          <button class="btn" onclick={exportSettings} title="Units, number format, appearance, checks and backups as a file in Downloads">Export…</button>
+          <button class="btn" onclick={importSettings} title="Apply a settings file exported from RocketMaxxing">Import…</button>
+        </div>
+      </div>
+      <p class="note">To set up another computer the same way, or give the team the same units and look. Recent files and the layout stay yours.</p>
       <label class="row check">
         <span>Check for a newer version when RocketMaxxing starts</span>
         <input type="checkbox" checked={checkEnabled()} onchange={(e) => setCheckEnabled((e.target as HTMLInputElement).checked)} />
@@ -458,5 +498,20 @@
     flex-wrap: wrap;
     gap: 6px;
     justify-content: flex-end;
+  }
+  .accent {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .accent input[type="color"] {
+    width: 44px;
+    height: 28px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
   }
 </style>

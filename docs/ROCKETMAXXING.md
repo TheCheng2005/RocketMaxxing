@@ -128,6 +128,28 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 Every panel and section folds (click its title). The Parts and Properties panels fold to a strip at the side to give
 the view more room. What is folded is remembered.
 
+### RocketMaxxing projects (.rmx)
+
+An `.ork` holds the rocket and its simulations. Everything else RocketMaxxing knows about a design lives elsewhere: the
+team standards and targets, the motors you imported or made from a static fire, the RASAero aero table, the progress
+log, flight logs and saved plots. **Save as a RocketMaxxing project** (the arrow beside Save) puts them all in one
+`.rmx` file to keep or hand to another team:
+
+| In the project | When you open it |
+|---|---|
+| The design, as a whole `.ork` with its simulations | Opens; Save writes the project again |
+| Motors it flies that are not in OpenRocket's list | Join your motors, so the design flies them |
+| The RASAero aero table | In use, as it was |
+| Team standards and targets | Offered: **Use them** (yours are kept as `openrocket-mcp.json.bak`) |
+| Units and number format | Offered when they differ from yours |
+| Saved plots | Offered: **Add them** |
+| The flight log loaded on the Flight data page | Put in the designs folder's `flight logs`; **Compare it** opens it there |
+| The progress log | Put beside the project |
+
+Nothing personal travels: not your recent files, layout, theme or the assistant's settings. A project is a zip file
+with the `.ork` inside, so anyone without RocketMaxxing can still take the rocket out and open it in OpenRocket. Double-
+clicking a `.rmx` opens it in RocketMaxxing once the app is installed.
+
 ### Opening files from other programs
 
 RocketMaxxing opens OpenRocket `.ork`, RockSim `.rkt` and RASAero II `.CDX1` files. An `.ork` is its own format and
@@ -318,6 +340,8 @@ Also in Settings, to suit the screen and the team:
 | Reset the layout, Show the tours again | Appearance | Panels open or folded as they start, the plot setup and 3-D view mode forgotten (saved plots stay); each page's tour offered again. |
 | Significant figures | Units | 3, 4 or 5 in the numbers the app writes. |
 | Decimal mark | Units | 1,234.5 or 1 234,5, for the numbers the app writes and the boxes you type into (a decimal comma is always read in a box). Sentences the engine writes, such as rule check notes, keep the point. |
+| Accent colour | Appearance | A colour of your own (the team's) for buttons and highlights over the scheme's; text on it turns black or white to stay readable. |
+| Settings file | Files | Export saves units, number format, appearance, checks and backups as `RocketMaxxing settings.json` in Downloads; Import applies one, to set up another computer or give a team the same set-up. |
 | Back up unsaved work | Files | Every 2, 5 (the default), 10 or 15 minutes, or off: a copy of each open design with unsaved changes goes to the designs folder's `backups/`, ten kept per design. Your own files and the undo history are not touched. The Start page lists recent backups; one opens as a new, unsaved design, so Save asks where to keep it. |
 
 ### Problems
@@ -421,7 +445,7 @@ OpenAI (Codex).
 |---|---|
 | Ctrl+K | Search for anything: an analysis, a page, a part, a setting |
 | Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z | Undo, redo |
-| Ctrl+S, Ctrl+Shift+S | Save, save as (the arrow beside Save also writes a copy for RockSim, .rkt, or RASAero II, .CDX1) |
+| Ctrl+S, Ctrl+Shift+S | Save, save as (the arrow beside Save also saves a RocketMaxxing project, .rmx, or a copy for RockSim, .rkt, or RASAero II, .CDX1) |
 | Ctrl+O | Open |
 | Delete | Delete the selected part |
 | Ctrl+C, Ctrl+V, Ctrl+D | Copy a part, paste it into the selected part, duplicate |

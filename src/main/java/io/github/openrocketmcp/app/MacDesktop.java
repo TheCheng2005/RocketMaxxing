@@ -78,7 +78,7 @@ final class MacDesktop {
 			}
 			Runnable choose = () -> SwingUtilities.invokeLater(() -> {
 				FileDialog fd = new FileDialog((Frame) null, "Open a design", FileDialog.LOAD);
-				fd.setFilenameFilter((dir, n) -> n.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rkt)"));
+				fd.setFilenameFilter((dir, n) -> n.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rmx|rkt|cdx1)"));
 				fd.setVisible(true);
 				if (fd.getFile() != null) {
 					openFiles.accept(List.of(new File(fd.getDirectory(), fd.getFile()).getAbsolutePath()));

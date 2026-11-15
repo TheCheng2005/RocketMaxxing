@@ -78,7 +78,15 @@ export const prefs = $state({
   digits: loadDigits(),
   /** The decimal mark in numbers shown and typed: 1,234.5 or 1 234,5. */
   mark: pick<Mark>("rocketmaxxing.mark", ["point", "comma"], "point"),
+  /** A colour of the team's own for buttons and highlights, over the scheme's ("" for the scheme's). */
+  accent: /^#[0-9a-f]{6}$/i.test(read("rocketmaxxing.accent") ?? "") ? read("rocketmaxxing.accent")! : "",
 });
+
+/** Black or white, whichever reads better on the colour. */
+function inkOn(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? "#111111" : "#ffffff";
+}
 
 const motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
 
@@ -100,6 +108,13 @@ export function applyTheme() {
   if (prefs.scheme === "launch") delete root.dataset.scheme;
   else root.dataset.scheme = prefs.scheme;
   root.style.setProperty("--text", String(prefs.size));
+  if (prefs.accent) {
+    root.style.setProperty("--accent", prefs.accent);
+    root.style.setProperty("--accent-ink", inkOn(prefs.accent));
+    root.style.setProperty("--accent-soft", `color-mix(in srgb, ${prefs.accent} 16%, var(--surface))`);
+  } else {
+    for (const v of ["--accent", "--accent-ink", "--accent-soft"]) root.style.removeProperty(v);
+  }
   if (prefs.density === "normal") delete root.dataset.density;
   else root.dataset.density = prefs.density;
   if (reducedMotion()) root.dataset.motion = "reduce";
@@ -171,4 +186,11 @@ export function resetLayout() {
 /** The first-visit tours show again on each page. */
 export function resetTours() {
   keep("rocketmaxxing.tours", null);
+}
+
+/** A colour of the team's own over the scheme's accent, or "" to go back to the scheme's. */
+export function setAccent(hex: string) {
+  prefs.accent = /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : "";
+  keep("rocketmaxxing.accent", prefs.accent || null);
+  applyTheme();
 }
