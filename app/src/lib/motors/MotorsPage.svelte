@@ -376,7 +376,7 @@
   }
   .note {
     margin-left: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .sub {
     font-weight: 400;
@@ -422,7 +422,7 @@
     font-weight: 600;
   }
   .pick .muted {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .delay {
     width: 92px;
@@ -479,7 +479,7 @@
   }
   .dialog h3 {
     margin: 0;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
   }
   .dialog label {
     display: flex;
@@ -510,7 +510,7 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .over :global(input) {
@@ -518,7 +518,7 @@
   }
   .fit {
     margin-top: 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     max-width: 46ch;
   }

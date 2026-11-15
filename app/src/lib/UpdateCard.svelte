@@ -41,7 +41,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     line-height: 1.45;
   }
   .acts {

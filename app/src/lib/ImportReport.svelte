@@ -84,7 +84,7 @@
   }
   h4 {
     margin: 0 0 4px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .n {
     display: inline-block;
@@ -92,13 +92,13 @@
     padding: 0 5px;
     border-radius: 999px;
     background: var(--surface-3);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     text-align: center;
   }
   .sub {
     font-weight: 400;
     color: var(--ink-3);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   ul {
     margin: 0;
@@ -106,10 +106,10 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .foot {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .acts {

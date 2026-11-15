@@ -55,7 +55,8 @@
   import { context, type MenuItem } from "./menu/menu.svelte";
   import { call, connected } from "./api";
   import { toast } from "./state.svelte";
-  import { num } from "./units.svelte";
+  import { editNum, num, readNum } from "./units.svelte";
+  import { prefs } from "./prefs.svelte";
 
   // A line plot: one x column, any number of y series on up to two axes (left and right), event lines.
   // Zooming: drag a box, turn the wheel (about the pointer), or use the + and - buttons; "Zoom" picks whether that
@@ -142,7 +143,11 @@
     const grid = css("--grid");
     const hasRight = series.some((s) => s.axis === "right");
     readout = null;
-    const axisStyle = { stroke: ink, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid, width: 1 } };
+    // The axes are drawn on the canvas, outside CSS: their text follows Settings > Text size here.
+    const t = prefs.size;
+    const font = `${Math.round(12 * t)}px ${css("--font") || "sans-serif"}`;
+    const axisStyle = { stroke: ink, grid: { stroke: grid, width: 1 }, ticks: { stroke: grid, width: 1 }, font, labelFont: `600 ${font}`,
+      size: Math.round(50 * t), labelSize: Math.round(30 * t) };
     const scaleOf = (s: Series) => (s.axis === "right" ? "right" : "left");
     const hiddenNow = untrack(() => off);
     const show = (s: Series) => !hiddenNow.includes(s.label);
@@ -203,7 +208,7 @@
                 const inside = (px: number, py: number) =>
                   px >= u.bbox.left && px <= u.bbox.left + u.bbox.width && py >= u.bbox.top && py <= u.bbox.top + u.bbox.height;
                 ctx.save();
-                ctx.font = `${11 * r}px sans-serif`;
+                ctx.font = `${11 * r * prefs.size}px sans-serif`;
                 ctx.fillStyle = css("--ink-3");
                 ctx.strokeStyle = css("--ink-3");
                 const placed: [number, number][] = [];
@@ -327,10 +332,10 @@
   function setLimit(key: string, end: 0 | 1, el: HTMLInputElement) {
     const u = plot, now = limits[key];
     const text = el.value.trim();
-    const v = Number(text.replace(",", "."));
+    const v = Number(readNum(text));
     if (!u || !now) return;
     const back = (why: string) => {
-      el.value = num(now[end], 5).replace(/,/g, "");
+      el.value = editNum(now[end], 5);
       toast(why, "error");
     };
     if (!Number.isFinite(v) || text === "") return back("An axis limit is a number.");
@@ -601,10 +606,10 @@
       {#each Object.entries(limits) as [key, [lo, hi]] (key)}
         <div class="range">
           <span class="rname" title={key === "x" ? xLabel : key === "left" ? leftLabel : rightLabel}>{AXIS_NAME[key] ?? key}</span>
-          <input class="rin" aria-label="{AXIS_NAME[key] ?? key} from" value={num(lo, 5).replace(/,/g, "")} onchange={(e) => setLimit(key, 0, e.target as HTMLInputElement)}
+          <input class="rin" aria-label="{AXIS_NAME[key] ?? key} from" value={editNum(lo, 5)} onchange={(e) => setLimit(key, 0, e.target as HTMLInputElement)}
             onkeydown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
           <span class="to">to</span>
-          <input class="rin" aria-label="{AXIS_NAME[key] ?? key} to" value={num(hi, 5).replace(/,/g, "")} onchange={(e) => setLimit(key, 1, e.target as HTMLInputElement)}
+          <input class="rin" aria-label="{AXIS_NAME[key] ?? key} to" value={editNum(hi, 5)} onchange={(e) => setLimit(key, 1, e.target as HTMLInputElement)}
             onkeydown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
           <button class="pbtn" onclick={() => fit(key)} title="Fit this axis to its data">Auto</button>
         </div>
@@ -655,7 +660,7 @@
     flex-wrap: wrap;
     justify-content: center;
     gap: 2px 14px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
     padding: 2px 0 4px;
     min-height: 20px;
@@ -696,7 +701,7 @@
   }
   .hint {
     margin-right: auto;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .pbtn {
@@ -706,7 +711,7 @@
     height: 22px;
     padding: 0 7px;
     font: inherit;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-2);
     background: transparent;
     border: 1px solid var(--line, color-mix(in srgb, var(--ink-3) 35%, transparent));
@@ -747,7 +752,7 @@
     flex-wrap: wrap;
     gap: 4px 18px;
     padding: 4px 0 2px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-2);
   }
   .range {

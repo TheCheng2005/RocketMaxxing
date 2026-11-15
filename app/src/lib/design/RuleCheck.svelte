@@ -131,7 +131,7 @@
   .none .why {
     margin: 0;
     padding-left: 18px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .none .acts {
     display: flex;
@@ -161,7 +161,7 @@
     border-radius: 999px;
     background: transparent;
     color: var(--ink-3);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     white-space: nowrap;
   }
   .chip b {
@@ -192,13 +192,13 @@
     cursor: default;
   }
   .set {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .manual {
     padding: 8px 14px;
     border-top: 1px solid var(--line);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .manual summary {
@@ -239,7 +239,7 @@
     text-align: center;
     padding: 2px 0;
     border-radius: 999px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     font-weight: 700;
     letter-spacing: 0.03em;
     background: var(--surface-3);
@@ -268,7 +268,7 @@
     font-weight: 600;
   }
   .ref {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
     overflow-wrap: anywhere;
   }
@@ -280,11 +280,11 @@
   }
   .req {
     margin-top: 1px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .req span {
-    font-size: 10.5px;
+    font-size: calc(10.5px * var(--text));
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;

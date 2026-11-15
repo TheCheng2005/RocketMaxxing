@@ -176,7 +176,7 @@
 <style>
   .notes {
     margin: 0 0 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .notes summary {
@@ -188,7 +188,7 @@
   }
   .note {
     margin: 2px 0 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   :global([data-std].found) {
@@ -216,7 +216,7 @@
   tr.team .key::after {
     content: "●";
     color: var(--select);
-    font-size: 8px;
+    font-size: calc(8px * var(--text));
     margin-left: 5px;
     vertical-align: middle;
   }
@@ -226,7 +226,7 @@
     height: 16px;
   }
   .who {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
   }
   .block,
   .group {
@@ -256,7 +256,7 @@
   }
   .count {
     font-weight: 400;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--ink-3);
   }
   .title {
@@ -264,11 +264,11 @@
     align-items: center;
     gap: 6px;
     font-weight: 600;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     margin-bottom: 4px;
   }
   .small {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     font-weight: 400;
   }
   .scroll {
@@ -276,7 +276,7 @@
   }
   th {
     text-align: left;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     font-weight: 600;
     color: var(--ink-3);
     white-space: nowrap;
@@ -293,7 +293,7 @@
   }
   .key {
     white-space: nowrap;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .acts {
     width: 1%;

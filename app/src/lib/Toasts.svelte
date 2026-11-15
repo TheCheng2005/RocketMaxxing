@@ -39,7 +39,7 @@
     background: var(--ink);
     color: var(--surface);
     box-shadow: var(--shadow-pop);
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .toast.error {
     background: var(--bad);
@@ -56,12 +56,12 @@
   .why {
     display: block;
     margin-top: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     opacity: 0.85;
   }
   .tag {
     flex: none;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     text-transform: uppercase;
     letter-spacing: 0.04em;
     opacity: 0.85;
@@ -73,6 +73,6 @@
     color: inherit;
     text-decoration: underline;
     padding: 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
 </style>

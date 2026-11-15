@@ -89,7 +89,7 @@
     border-left: 0;
   }
   .gt {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
     margin: 0 2px 2px;
   }
@@ -108,7 +108,7 @@
     border: 1px solid transparent;
     border-radius: var(--radius);
     background: transparent;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--ink-2);
     line-height: 1.05;
     text-align: center;

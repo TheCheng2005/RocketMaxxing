@@ -35,7 +35,13 @@
   /* Spacing: between panels, inside them, and the height of a control. */
   --gap: 10px;
   --pad: 12px;
-  --control: 32px;
+  /* Settings > Text size scales every font by --text; controls grow with it so larger text still fits. */
+  --text: 1;
+  --control-base: 32px;
+  --control: calc(var(--control-base) + (var(--text) - 1) * 26px);
+  /* Table cells: Settings > Density moves these, and the control height and gap above. */
+  --cell-y: 8px;
+  --cell-x: 12px;
   /* The chrome (navigation rail and top bar): the page's own surfaces unless a colour scheme sets them. */
   --chrome: var(--surface);
   --chrome-2: var(--surface-2);
@@ -133,12 +139,36 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--ink);
-  font: 13px/1.45 var(--font);
+  font: calc(13px * var(--text))/1.45 var(--font);
   -webkit-font-smoothing: antialiased;
 }
 
 #app {
   height: 100%;
+}
+
+/* Settings > Density. */
+:root[data-density="compact"] {
+  --control-base: 26px;
+  --gap: 6px;
+  --cell-y: 4px;
+  --cell-x: 9px;
+}
+:root[data-density="comfortable"] {
+  --control-base: 36px;
+  --gap: 14px;
+  --cell-y: 11px;
+  --cell-x: 14px;
+}
+
+/* Settings > Motion: no animations (spinners stop, panels and menus appear at once). */
+:root[data-motion="reduce"] *,
+:root[data-motion="reduce"] *::before,
+:root[data-motion="reduce"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
 }
 
 button {
@@ -209,7 +239,7 @@ textarea {
 .btn.big {
   height: 38px;
   padding: 0 16px;
-  font-size: 14px;
+  font-size: calc(14px * var(--text));
 }
 
 .input,
@@ -258,16 +288,16 @@ table.grid th {
   background: var(--surface-2);
   color: var(--ink-2);
   font-weight: 600;
-  font-size: 11.5px;
+  font-size: calc(11.5px * var(--text));
   letter-spacing: 0.02em;
   text-align: left;
-  padding: 8px 12px;
+  padding: var(--cell-y) var(--cell-x);
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
 
 table.grid td {
-  padding: 8px 12px;
+  padding: var(--cell-y) var(--cell-x);
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }

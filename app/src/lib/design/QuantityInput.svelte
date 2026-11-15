@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { choices, choose, num, pretty, toShown, toSi, unitOf, type Dim } from "../units.svelte";
+  import { choices, choose, editNum, pretty, readNum, toShown, toSi, unitOf, type Dim } from "../units.svelte";
+  import { prefs } from "../prefs.svelte";
 
   // A number in the chosen unit, with the unit next to it (changing it changes that quantity's unit everywhere,
   // as in OpenRocket). Typing a unit ("3 in") also works; the engine reads it.
@@ -12,7 +13,7 @@
   }: { value: number | null; dim: Dim; disabled?: boolean; commit: (v: number | string) => void; id?: string } = $props();
 
   let unit = $derived(unitOf(dim));
-  let shown = $derived(value === null || value === undefined ? "" : num(Math.abs(value) < 1e-12 ? 0 : toShown(value, dim, unit), 4).replace(/,/g, "").replace(/^-0$/, "0"));
+  let shown = $derived(value === null || value === undefined ? "" : editNum(Math.abs(value) < 1e-12 ? 0 : toShown(value, dim, unit), 4).replace(/^-0$/, "0"));
   let text = $state("");
   let editing = $state(false);
 
@@ -24,34 +25,36 @@
   let sent = "";
   let nudgeTimer: ReturnType<typeof setTimeout> | undefined;
   function nudge(e: KeyboardEvent) {
-    const v = parseFloat(text);
-    if (!Number.isFinite(v) || !/^[-+]?(\d+\.?\d*|\.\d+)$/.test(text.trim())) return;
+    const plainText = readNum(text);
+    const v = parseFloat(plainText);
+    if (!Number.isFinite(v) || !/^[-+]?(\d+\.?\d*|\.\d+)$/.test(plainText)) return;
     e.preventDefault();
     let step = v === 0 ? 1 : Math.pow(10, Math.floor(Math.log10(Math.abs(v))) - 1);
     if (e.shiftKey) step *= 10;
     if (e.altKey) step /= 10;
     const digits = Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
     const next = v + (e.key === "ArrowUp" ? step : -step);
-    const decimals = Math.max(digits, (text.split(".")[1] ?? "").length);
-    text = (Math.abs(next) < step / 1000 ? 0 : next).toFixed(decimals);
+    const decimals = Math.max(digits, (plainText.split(".")[1] ?? "").length);
+    const stepped = (Math.abs(next) < step / 1000 ? 0 : next).toFixed(decimals);
+    text = prefs.mark === "comma" ? stepped.replace(".", ",") : stepped;
     editing = true;
     clearTimeout(nudgeTimer);
     nudgeTimer = setTimeout(() => {
-      sent = text;
-      commit(toSi(parseFloat(text), dim, unit));
+      sent = readNum(text);
+      commit(toSi(parseFloat(readNum(text)), dim, unit));
     }, 350);
   }
 
   function done() {
     editing = false;
     clearTimeout(nudgeTimer);
-    // A decimal comma (30,5) is read as a point; 1,000 could be either, so it is left for the engine to question.
-    const t = text.trim().replace(/^(-?\d+),(\d{1,2}|\d{4,})$/, "$1.$2");
+    // The chosen decimal mark, and a stray thousands separator, are read here; a unit typed after it goes to the engine.
+    const t = readNum(text);
     if (t === sent) {
       sent = "";
       return;
     }
-    if (t === shown || t === "") {
+    if (t === readNum(shown) || t === "") {
       text = shown;
       return;
     }
@@ -111,7 +114,7 @@
     border-radius: 0 var(--radius) var(--radius) 0;
     background: var(--surface-2);
     color: var(--ink-2);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     padding: 0 4px;
   }
   .disabled .input {

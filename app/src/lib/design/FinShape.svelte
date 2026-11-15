@@ -3,7 +3,7 @@
   import { Plus, Trash2 } from "@lucide/svelte";
   import { call } from "../api";
   import { app, act, select, quietly } from "../state.svelte";
-  import { num, toShown, toSi, unitOf, pretty } from "../units.svelte";
+  import { num, readNum, toShown, toSi, unitOf, pretty } from "../units.svelte";
 
   // A fin set's outline. Freeform fins are edited here: drag a point, double-click an edge to add one, select a point
   // and press Delete (or the bin) to remove it. Other fin sets show their outline and can be converted.
@@ -129,7 +129,7 @@
   }
 
   function typed(i: number, axis: 0 | 1, text: string) {
-    const v = Number(text.replace(/,/g, ""));
+    const v = Number(readNum(text));
     if (!Number.isFinite(v)) return;
     pts[i][axis] = toSi(v, "LENGTH");
     save();
@@ -255,14 +255,14 @@
   }
   .hint {
     margin: 0;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   table {
     border-collapse: collapse;
   }
   th {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     font-weight: 600;
     color: var(--ink-3);
     text-align: left;
@@ -275,7 +275,7 @@
   }
   .n {
     color: var(--ink-3);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     width: 1%;
   }
   .input {

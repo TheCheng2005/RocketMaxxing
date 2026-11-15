@@ -32,7 +32,7 @@
   .counts {
     display: flex;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
   }

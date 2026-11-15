@@ -320,7 +320,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
   }
   .form .wide {
@@ -341,7 +341,7 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .n {
     text-align: right;
@@ -349,30 +349,30 @@
   }
   th {
     text-align: left;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     font-weight: 600;
     color: var(--ink-3);
   }
   .fit {
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .notes {
     margin: 0;
     padding-left: 18px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .summary {
     margin: 0;
   }
   .lib td {
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   tr.err td {
     color: var(--ink-3);
   }
   .sub {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--bad);
   }
   .acts {
@@ -385,7 +385,7 @@
     padding: 0 4px;
   }
   .small {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     margin: 0;
   }
   p.muted {

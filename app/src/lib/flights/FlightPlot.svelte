@@ -463,7 +463,7 @@
   }
   .select.small {
     height: 24px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   details {
     margin-top: 4px;
@@ -493,7 +493,7 @@
   .clabel {
     flex: 0 0 64px;
     color: var(--ink-2);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .ys {
     display: flex;
@@ -529,7 +529,7 @@
   }
   .heads {
     color: var(--ink-3);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
   }
   .hu {
     flex: 0 0 76px;
@@ -551,7 +551,7 @@
     border-radius: 4px;
     background: transparent;
     color: var(--ink-2);
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
     line-height: 1;
     cursor: pointer;
   }

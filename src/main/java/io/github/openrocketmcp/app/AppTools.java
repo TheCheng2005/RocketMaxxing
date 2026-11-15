@@ -83,6 +83,33 @@ public final class AppTools {
 						+ "this computer. Asks GitHub at most once a day unless force is true; offline it says so.",
 				Schema.object().bool("force", "Ask GitHub now rather than use today's answer (default false).", false).build(), true,
 				a -> Updates.check(App.VERSION, updateCache, a.bool("force", false))));
+		add(s, new ToolDef("app_backups", "App: backups of the designs",
+				"The copies the app keeps of designs with unsaved changes (designs folder, backups/), newest first; with "
+						+ "designId, writes a copy of that design now.",
+				Schema.object().str("designId", DESIGN, false).build(), true, a -> {
+					Map<String, Object> out = new LinkedHashMap<>();
+					if (a.has("designId")) {
+						out.put("written", Backups.write(ctx, ctx.designs.get(a.str("designId"))).toString());
+					}
+					out.put("folder", Backups.folder(ctx).toString());
+					out.put("minutes", Backups.minutes(prefs));
+					out.put("keep", Backups.KEEP);
+					out.put("backups", Backups.list(ctx));
+					return out;
+				}));
+		add(s, new ToolDef("app_open_backup", "App: open a backup",
+				"Opens a backup as a new, unsaved design: Save asks where to put it, so the backup itself is never written over.",
+				Schema.object().str("path", "The backup file.", true).build(), false, a -> {
+					java.nio.file.Path p = ctx.path(a.str("path")).toAbsolutePath().normalize();
+					if (!p.startsWith(Backups.folder(ctx).toAbsolutePath().normalize())) {
+						throw new ToolException("Only files in the backups folder open this way; use Open for other designs.");
+					}
+					Designs.Design d = ctx.designs.open(p);
+					d.path = null;
+					d.doc.setFile(null);
+					d.doc.setSaved(false);
+					return Map.of("designId", d.id, "name", d.name());
+				}));
 		add(s, new ToolDef("app_prefs", "App: interface preferences",
 				"What the interface remembers between launches (recent designs, colour scheme, units, panels, tours seen): "
 						+ "returns them all; with set, changes some first (null removes one).",

@@ -26,6 +26,8 @@ export const SCHEMES: Scheme[] = [
   { id: "blueyellow", name: "Blue–yellow safe", swatch: ["#2b2b33", "#b8337a", "#0077bb"], vision: "Tritanopia: pass is blue, warnings orange, failures red." },
 ];
 
+import { resetPanels } from "./panels.svelte";
+
 const KEY = "rocketmaxxing.theme";
 const SCHEME_KEY = "rocketmaxxing.scheme";
 
@@ -47,7 +49,43 @@ function loadScheme(): string {
   return s && SCHEMES.some((x) => x.id === s) ? s : "launch";
 }
 
-export const prefs = $state({ theme: load(), scheme: loadScheme() });
+/** How big text is drawn, as a factor of the normal size (buttons and boxes grow with it so it still fits). */
+export const SIZES: [number, string][] = [[0.9, "Small"], [1, "Normal"], [1.12, "Large"], [1.25, "Larger"], [1.4, "Largest"]];
+export type Density = "compact" | "normal" | "comfortable";
+export type Motion = "system" | "reduce" | "full";
+export type Mark = "point" | "comma";
+
+const pick = <T extends string>(key: string, allowed: readonly T[], fallback: T): T => {
+  const v = read(key) as T | null;
+  return v && allowed.includes(v) ? v : fallback;
+};
+function loadSize(): number {
+  const v = Number(read("rocketmaxxing.size"));
+  return SIZES.some(([s]) => s === v) ? v : 1;
+}
+function loadDigits(): number {
+  const v = Number(read("rocketmaxxing.digits"));
+  return v === 3 || v === 5 ? v : 4;
+}
+
+export const prefs = $state({
+  theme: load(),
+  scheme: loadScheme(),
+  size: loadSize(),
+  density: pick<Density>("rocketmaxxing.density", ["compact", "normal", "comfortable"], "normal"),
+  motion: pick<Motion>("rocketmaxxing.motion", ["system", "reduce", "full"], "system"),
+  /** Significant figures in numbers the app writes (4 unless chosen). */
+  digits: loadDigits(),
+  /** The decimal mark in numbers shown and typed: 1,234.5 or 1 234,5. */
+  mark: pick<Mark>("rocketmaxxing.mark", ["point", "comma"], "point"),
+});
+
+const motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
+
+/** Whether animations are off: chosen in Settings, or asked for by the system. */
+export function reducedMotion(): boolean {
+  return prefs.motion === "reduce" || (prefs.motion === "system" && !!motionQuery?.matches);
+}
 
 const darkQuery = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
 
@@ -61,7 +99,15 @@ export function applyTheme() {
   else delete root.dataset.dark;
   if (prefs.scheme === "launch") delete root.dataset.scheme;
   else root.dataset.scheme = prefs.scheme;
+  root.style.setProperty("--text", String(prefs.size));
+  if (prefs.density === "normal") delete root.dataset.density;
+  else root.dataset.density = prefs.density;
+  if (reducedMotion()) root.dataset.motion = "reduce";
+  else delete root.dataset.motion;
 }
+
+motionQuery?.addEventListener("change", applyTheme);
+
 
 darkQuery?.addEventListener("change", applyTheme);
 
@@ -84,4 +130,45 @@ export function setScheme(id: string) {
   prefs.scheme = id;
   keep(SCHEME_KEY, id === "launch" ? null : id);
   applyTheme();
+}
+
+export function setSize(v: number) {
+  prefs.size = v;
+  keep("rocketmaxxing.size", v === 1 ? null : String(v));
+  applyTheme();
+  // Plots measure themselves when the window changes size: new text sizes change their axes' room too.
+  dispatchEvent(new Event("resize"));
+}
+
+export function setDensity(d: Density) {
+  prefs.density = d;
+  keep("rocketmaxxing.density", d === "normal" ? null : d);
+  applyTheme();
+}
+
+export function setMotion(m: Motion) {
+  prefs.motion = m;
+  keep("rocketmaxxing.motion", m === "system" ? null : m);
+  applyTheme();
+}
+
+export function setDigits(n: number) {
+  prefs.digits = n;
+  keep("rocketmaxxing.digits", n === 4 ? null : String(n));
+}
+
+export function setMark(m: Mark) {
+  prefs.mark = m;
+  keep("rocketmaxxing.mark", m === "point" ? null : m);
+}
+
+/** Forgets how the panels, plots' setup and 3-D view were left (not saved plots or anything about designs). */
+export function resetLayout() {
+  for (const k of ["rocketmaxxing.plotSetup", "rocketmaxxing.view"]) keep(k, null);
+  resetPanels();
+}
+
+/** The first-visit tours show again on each page. */
+export function resetTours() {
+  keep("rocketmaxxing.tours", null);
 }

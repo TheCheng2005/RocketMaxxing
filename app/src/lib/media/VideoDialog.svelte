@@ -107,7 +107,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
   }
   .form label.check {
@@ -120,7 +120,7 @@
     width: 80px;
   }
   .note {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     margin: 8px 0;
   }
   .warn {
@@ -145,7 +145,7 @@
     gap: 2px;
     flex: 1;
     min-width: 0;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .what > span {
     overflow: hidden;
@@ -158,7 +158,7 @@
   }
   th {
     text-align: left;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
 </style>

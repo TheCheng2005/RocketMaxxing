@@ -1,6 +1,8 @@
 // Units: the engine works in SI; the app shows and reads numbers in the unit chosen for each quantity
 // (metric or imperial by default, any unit per quantity like OpenRocket's preferences).
 
+import { prefs } from "./prefs.svelte";
+
 export type Dim =
   | "LENGTH" | "DISTANCE" | "VELOCITY" | "ACCELERATION" | "MASS" | "FORCE" | "AREA" | "VOLUME" | "PRESSURE"
   | "DENSITY" | "TIME" | "ANGLE" | "IMPULSE" | "TEMPERATURE";
@@ -78,13 +80,49 @@ export function toSi(v: number, dim: Dim | undefined | null, unit?: UnitDef): nu
 }
 
 /** A number for reading: about four significant digits, no trailing zeros. */
+/**
+ * A number as the app writes it: {@code digits} significant figures (moved by the Settings choice, 3 to 5), grouped in
+ * thousands, with the chosen decimal mark (1,234.5 or 1 234,5).
+ */
 export function num(v: number | null | undefined, digits = 4): string {
   if (v === null || v === undefined || !Number.isFinite(v)) return "–";
   if (v === 0) return "0";
+  const d = Math.max(2, digits + (prefs.digits - 4));
   const a = Math.abs(v);
-  if (a >= 10 ** digits) return Math.round(v).toLocaleString("en-US");
-  const decimals = Math.max(0, digits - 1 - Math.floor(Math.log10(a)));
-  return Number(v.toFixed(Math.min(decimals, 6))).toLocaleString("en-US", { maximumFractionDigits: 6 });
+  let t: string;
+  if (a >= 10 ** d) t = Math.round(v).toLocaleString("en-US");
+  else {
+    const decimals = Math.max(0, d - 1 - Math.floor(Math.log10(a)));
+    t = Number(v.toFixed(Math.min(decimals, 6))).toLocaleString("en-US", { maximumFractionDigits: 6 });
+  }
+  // A decimal comma groups thousands with a narrow space, so 1 234,5 cannot be read as two numbers.
+  return prefs.mark === "comma" ? t.replace(/,/g, " ").replace(".", ",") : t;
+}
+
+/** A number for a box the team types into: no thousands grouping, the chosen decimal mark (30.5 or 30,5). */
+export function editNum(v: number | null | undefined, digits = 4): string {
+  if (v === null || v === undefined || !Number.isFinite(v)) return "";
+  return num(v, digits).replace(/[, ]/g, (c) => (c === "," && prefs.mark === "comma" ? "," : ""));
+}
+
+/**
+ * A typed number made ready to read: with the decimal comma chosen, "1 234,5" or "1.234,5" is 1234.5; with the point,
+ * "1,234.5" is 1234.5 and a lone comma with one, two or four or more digits after it ("30,5") is still a decimal comma.
+ * Anything after the number (a unit: "3,5 in") is kept.
+ */
+export function readNum(text: string): string {
+  const t = text.trim();
+  const m = /^([-+]?[\d\s .,]*\d)(.*)$/s.exec(t);
+  if (!m) return t;
+  let n = m[1].replace(/[\s ]/g, "");
+  if (prefs.mark === "comma") {
+    n = n.includes(",") ? n.replace(/\./g, "").replace(",", ".") : n;
+  } else if (/^[-+]?\d+,(\d{1,2}|\d{4,})$/.test(n)) {
+    n = n.replace(",", ".");
+  } else {
+    n = n.replace(/,(?=\d{3}(\D|$))/g, "");
+  }
+  return n + m[2];
 }
 
 const PRETTY: Record<string, string> = { "m/s2": "m/s²", "ft/s2": "ft/s²", m2: "m²", cm2: "cm²", in2: "in²", ft2: "ft²",

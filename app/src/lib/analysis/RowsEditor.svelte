@@ -93,7 +93,7 @@
   }
   th {
     font-weight: 600;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
     text-align: left;
     padding: 2px 4px;

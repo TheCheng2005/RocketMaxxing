@@ -44,6 +44,11 @@ public final class DesignLocks implements McpServer.Guard {
 		} catch (RuntimeException e) {
 			return null; // the tool reports the unknown id
 		}
-		return locks.computeIfAbsent(d.id, k -> new ReentrantLock(true));
+		return lock(d.id);
+	}
+
+	/** The lock calls on this design take turns with (the app's backups take it too). */
+	public Lock lock(String designId) {
+		return locks.computeIfAbsent(designId, k -> new ReentrantLock(true));
 	}
 }

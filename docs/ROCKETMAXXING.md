@@ -308,6 +308,18 @@ change the pass, warning and failure colours to ones that stay apart.
 
 ![Colour schemes in Settings](rocketmaxxing/schemes.png)
 
+Also in Settings, to suit the screen and the team:
+
+| Setting | Where | What it does |
+|---|---|---|
+| Text size | Appearance | Small to Largest (90% to 140%): every font, with buttons and boxes growing to fit; plots' axes follow. |
+| Density | Appearance | Compact, Normal or Comfortable: how tightly tables, the parts tree and forms are packed. |
+| Animations | Appearance | System (the computer's own setting), Reduced or Full. Reduced stops moving loaders and sliding panels, and the 3-D view zooms and explodes at once. |
+| Reset the layout, Show the tours again | Appearance | Panels open or folded as they start, the plot setup and 3-D view mode forgotten (saved plots stay); each page's tour offered again. |
+| Significant figures | Units | 3, 4 or 5 in the numbers the app writes. |
+| Decimal mark | Units | 1,234.5 or 1 234,5, for the numbers the app writes and the boxes you type into (a decimal comma is always read in a box). Sentences the engine writes, such as rule check notes, keep the point. |
+| Back up unsaved work | Files | Every 2, 5 (the default), 10 or 15 minutes, or off: a copy of each open design with unsaved changes goes to the designs folder's `backups/`, ten kept per design. Your own files and the undo history are not touched. The Start page lists recent backups; one opens as a new, unsaved design, so Save asks where to keep it. |
+
 ### Problems
 
 Every error and warning says whose problem it is:

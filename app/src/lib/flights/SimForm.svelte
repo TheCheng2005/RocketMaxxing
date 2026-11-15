@@ -3,6 +3,7 @@
   import { act } from "../state.svelte";
   import { isOpen, toggle } from "../panels.svelte";
   import QuantityInput from "../design/QuantityInput.svelte";
+  import { editNum, readNum } from "../units.svelte";
 
   // OpenRocket's simulation dialog ("Launch conditions" and "Simulation options") as one form.
   let { sim, configs }: { sim: { index: number; name: string; configuration: string; options: Record<string, any> }; configs: { id: string; name: string }[] } =
@@ -52,8 +53,8 @@
         <div class="row"><span>Direction (from)</span><QuantityInput value={o.windDirection} dim="ANGLE" commit={(v) => set("windDirection", v)} /></div>
         <div class="row"><span>Turbulence intensity</span>
           <div class="pct">
-            <input class="input num" value={Math.round((o.windTurbulence ?? 0) * 1000) / 10}
-              onchange={(e) => set("windTurbulence", Number((e.target as HTMLInputElement).value) / 100)} />
+            <input class="input num" value={editNum(Math.round((o.windTurbulence ?? 0) * 1000) / 10, 6)}
+              onchange={(e) => set("windTurbulence", Number(readNum((e.target as HTMLInputElement).value)) / 100)} />
             <span class="muted">%</span>
           </div>
         </div>
@@ -67,10 +68,10 @@
       <div class="rows">
         <div class="row"><span>Altitude (sea level)</span><QuantityInput value={o.launchAltitude} dim="DISTANCE" commit={(v) => set("launchAltitude", v)} /></div>
         <div class="row"><span>Latitude (°N)</span>
-          <input class="input num" value={o.latitude} onchange={(e) => set("latitude", Number((e.target as HTMLInputElement).value))} />
+          <input class="input num" value={editNum(o.latitude, 8)} onchange={(e) => set("latitude", Number(readNum((e.target as HTMLInputElement).value)))} />
         </div>
         <div class="row"><span>Longitude (°E)</span>
-          <input class="input num" value={o.longitude} onchange={(e) => set("longitude", Number((e.target as HTMLInputElement).value))} />
+          <input class="input num" value={editNum(o.longitude, 8)} onchange={(e) => set("longitude", Number(readNum((e.target as HTMLInputElement).value)))} />
         </div>
         <label class="row check"><input type="checkbox" checked={o.isaAtmosphere} onchange={(e) => set("isaAtmosphere", (e.target as HTMLInputElement).checked)} /> International Standard Atmosphere</label>
         {#if !o.isaAtmosphere}
@@ -165,7 +166,7 @@
     align-items: center;
   }
   .note {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     margin: 0;
   }

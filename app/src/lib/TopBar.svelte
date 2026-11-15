@@ -120,7 +120,7 @@
     background: var(--chrome-2);
     color: var(--chrome-ink-2);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     text-align: left;
   }
   .find:hover {
@@ -132,7 +132,7 @@
   }
   .find kbd {
     font: inherit;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     padding: 0 4px;
     border: 1px solid var(--chrome-line);
     border-radius: 4px;
@@ -154,7 +154,7 @@
     padding: 0 7px;
   }
   .count {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     font-weight: 600;
     line-height: 16px;
     min-width: 16px;
@@ -285,7 +285,7 @@
     border-radius: 999px;
     background: transparent;
     color: var(--ink-2);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     white-space: nowrap;
     cursor: pointer;
   }

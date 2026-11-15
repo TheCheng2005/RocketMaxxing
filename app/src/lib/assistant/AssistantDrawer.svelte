@@ -155,7 +155,7 @@
   }
   .hello p {
     margin: 4px 0 0;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .bot {
@@ -174,7 +174,7 @@
     border-left: 3px solid var(--warn);
     border-radius: var(--radius);
     background: var(--warn-soft);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .start {
     margin-top: 10px;
@@ -208,7 +208,7 @@
     min-width: 0;
   }
   .who span {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
   }
   .tool {
     display: grid;
@@ -233,7 +233,7 @@
   }
   .intro {
     margin: 0;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .ideas {
     display: flex;
@@ -246,7 +246,7 @@
     border-radius: var(--radius);
     background: var(--surface-2);
     padding: 6px 8px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .idea:hover {
@@ -261,10 +261,10 @@
     padding: 6px 10px;
     border-radius: 10px 10px 2px 10px;
     white-space: pre-wrap;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .claude {
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     line-height: 1.45;
   }
   .claude :global(p) {
@@ -282,12 +282,12 @@
     background: var(--surface-3);
     padding: 0 3px;
     border-radius: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .claude :global(table) {
     border-collapse: collapse;
     margin: 4px 0 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .claude :global(th),
   .claude :global(td) {
@@ -296,7 +296,7 @@
     text-align: left;
   }
   .tool-call {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--surface-2);
@@ -317,7 +317,7 @@
   }
   .changed {
     margin-left: auto;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--select);
   }
   .io {
@@ -331,7 +331,7 @@
     max-height: 220px;
     overflow: auto;
     white-space: pre-wrap;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     border-top: 1px solid var(--line);
   }
   img {
@@ -340,14 +340,14 @@
     border-top: 1px solid var(--line);
   }
   .note {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .note.error {
     color: var(--bad);
   }
   .working {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   footer {
     display: flex;
@@ -360,7 +360,7 @@
     flex: 1;
     resize: none;
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     padding: 6px 8px;
     border: 1px solid var(--line);
     border-radius: var(--radius);

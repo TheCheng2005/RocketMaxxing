@@ -7,7 +7,7 @@ import { GUIDES } from "../analysis/guides";
 import { analysis } from "../analysis/store.svelte";
 import { PART_GROUPS } from "../design/parts";
 import { openIssues } from "../issues/issues.svelte";
-import { prefs, SCHEMES, setScheme, setTheme } from "../prefs.svelte";
+import { prefs, resetLayout, resetTours, SCHEMES, setScheme, setTheme } from "../prefs.svelte";
 import { assistant, who } from "../assistant/assistant.svelte";
 import { keys, MAC } from "../keys";
 import { ui, request } from "./ui.svelte";
@@ -320,6 +320,14 @@ export function entries(): Entry[] {
     { kind: "setting", title: "Theme follows the system", keys: "appearance mode auto", run: () => setTheme("system") },
     { kind: "setting", title: "Automatic rule check", sub: "Settings", keys: "checks auto", run: settings("Checks") },
     { kind: "setting", title: "AI assistant connection", sub: "Claude, ChatGPT or an API key", keys: "claude codex chatgpt api key connect agent", run: settings("AI assistant") },
+    { kind: "setting", title: "Text size", sub: "Settings", keys: "font bigger larger smaller zoom readable accessibility", run: settings("Appearance") },
+    { kind: "setting", title: "Density", sub: "Compact or comfortable rows", keys: "compact spacing padding rows tight", run: settings("Appearance") },
+    { kind: "setting", title: "Animations", sub: "Reduce motion", keys: "motion reduce animation accessibility", run: settings("Appearance") },
+    { kind: "setting", title: "Decimal comma or point", sub: "Settings", keys: "number format decimal comma separator european", run: settings("Units") },
+    { kind: "setting", title: "Significant figures", sub: "Settings", keys: "digits precision decimals number format rounding", run: settings("Units") },
+    { kind: "setting", title: "Backups of unsaved work", sub: "Settings", keys: "autosave auto save backup recover crash", run: settings("Files") },
+    { kind: "action", title: "Reset the layout", sub: "Panels, plot setup and 3-D view as they start", keys: "restore default panels folded", run: () => { resetLayout(); ui.settings = "Appearance"; } },
+    { kind: "action", title: "Show the tours again", keys: "tour onboarding introduction help", run: () => resetTours() },
   );
   for (const sc of SCHEMES) {
     out.push({

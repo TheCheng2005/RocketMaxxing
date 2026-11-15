@@ -411,6 +411,16 @@ export async function openExample(name: string) {
   });
 }
 
+/** Opens a backup as a new, unsaved design: Save asks where, so the backup is never written over. */
+export async function openBackup(path: string) {
+  await run(async () => {
+    const r = await call<{ designId: string; name: string }>("app_open_backup", { path });
+    await load(r.designId);
+    app.page = "design";
+    toast(`Opened a backup of ${r.name}. Save it (Save as) to keep it.`);
+  });
+}
+
 export async function openPath(path: string) {
   await run(async () => {
     const r = await call("open_design", { path });
