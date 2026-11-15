@@ -53,14 +53,14 @@
   }
   h3 {
     margin: 0 0 10px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
   }
   label {
     display: flex;
     flex-direction: column;
     gap: 6px;
     color: var(--ink-2);
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .input {
     height: 30px;

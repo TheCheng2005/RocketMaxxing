@@ -202,7 +202,7 @@
     background: var(--surface);
     padding: 3px 9px;
     color: var(--select);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .go:hover:not(:disabled) {
     border-color: var(--select);
@@ -245,16 +245,16 @@
   }
   h4 {
     margin: 4px 0 2px;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--text));
   }
   .small {
     margin: 0 0 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .qs ul {
     margin: 0;
     padding-left: 16px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .name {
     border: 0;
@@ -291,14 +291,14 @@
   }
   kbd {
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     padding: 1px 6px;
     border: 1px solid var(--line);
     border-radius: 4px;
     background: var(--surface-2);
   }
   code {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   @media (max-width: 700px) {
     .guide {

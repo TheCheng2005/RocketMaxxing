@@ -90,7 +90,13 @@ from the model by hosts that show views). Bold marks the main job of each tool.
 - `get_design`: the component tree, motors, and the **stability of every stage stack**.
 - `describe_component`, `edit_components`, `add_component`, `remove_component`: read and change parts.
 - `set_deployment`, `set_stage_separation`, `flight_configuration`: events and configurations.
-- `save_design`: writes the .ork (and the aero table next to it, if one is imported).
+- `save_design`: writes the .ork (and the aero table next to it, if one is imported). A path ending in `.rmx` writes a
+  RocketMaxxing project instead: one zip file with the whole .ork inside (`design.ork`, which OpenRocket opens once taken
+  out), the RASAero aero table, the team standards and targets, the motor files the design flies that are not in
+  OpenRocket's database, the progress log, and what only the app has (`project`: saved plots, the units and number
+  format, flight logs), with a `manifest.json` naming each part. `open_design` opens a project: its motors join the
+  team's first, then the design and its aero table; the project's standards are reported (`project.standards`) and
+  never put over the team's own.
 
 ### Parts and drawings
 

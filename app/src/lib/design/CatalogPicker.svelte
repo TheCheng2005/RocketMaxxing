@@ -128,7 +128,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
   }
   .bar {
     display: flex;
@@ -145,7 +145,7 @@
     gap: 5px;
     align-items: center;
     white-space: nowrap;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .list {
@@ -160,7 +160,7 @@
     top: 0;
     background: var(--surface-2);
     text-align: left;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     font-weight: 600;
     color: var(--ink-3);
   }
@@ -174,7 +174,7 @@
     background: var(--select-soft, var(--surface-3));
   }
   td {
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .part {
     white-space: nowrap;
@@ -193,6 +193,6 @@
   footer {
     padding: 6px 16px;
     border-top: 1px solid var(--line);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
 </style>

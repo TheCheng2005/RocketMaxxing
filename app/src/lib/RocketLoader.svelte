@@ -182,12 +182,12 @@
     padding: 12px;
   }
   .big .word {
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--text));
     font-weight: 600;
     color: var(--ink-2);
   }
   .text {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     text-align: center;
     max-width: 360px;
@@ -262,7 +262,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
   }

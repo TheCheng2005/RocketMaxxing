@@ -83,6 +83,37 @@ public final class AppTools {
 						+ "this computer. Asks GitHub at most once a day unless force is true; offline it says so.",
 				Schema.object().bool("force", "Ask GitHub now rather than use today's answer (default false).", false).build(), true,
 				a -> Updates.check(App.VERSION, updateCache, a.bool("force", false))));
+		add(s, new ToolDef("app_backups", "App: backups of the designs",
+				"The copies the app keeps of designs with unsaved changes (designs folder, backups/), newest first; with "
+						+ "designId, writes a copy of that design now.",
+				Schema.object().str("designId", DESIGN, false).build(), true, a -> {
+					Map<String, Object> out = new LinkedHashMap<>();
+					if (a.has("designId")) {
+						out.put("written", Backups.write(ctx, ctx.designs.get(a.str("designId"))).toString());
+					}
+					out.put("folder", Backups.folder(ctx).toString());
+					out.put("minutes", Backups.minutes(prefs));
+					out.put("keep", Backups.KEEP);
+					out.put("backups", Backups.list(ctx));
+					return out;
+				}));
+		add(s, new ToolDef("app_project_standards", "App: use a project's standards",
+				"Puts the team standards a project came with in place of the team's own (the old file is kept as .bak).",
+				Schema.object().str("designId", DESIGN, true).build(), false,
+				a -> io.github.openrocketmcp.tools.Projects.useStandards(ctx, ctx.designs.get(a.str("designId")))));
+		add(s, new ToolDef("app_open_backup", "App: open a backup",
+				"Opens a backup as a new, unsaved design: Save asks where to put it, so the backup itself is never written over.",
+				Schema.object().str("path", "The backup file.", true).build(), false, a -> {
+					java.nio.file.Path p = ctx.path(a.str("path")).toAbsolutePath().normalize();
+					if (!p.startsWith(Backups.folder(ctx).toAbsolutePath().normalize())) {
+						throw new ToolException("Only files in the backups folder open this way; use Open for other designs.");
+					}
+					Designs.Design d = ctx.designs.open(p);
+					d.path = null;
+					d.doc.setFile(null);
+					d.doc.setSaved(false);
+					return Map.of("designId", d.id, "name", d.name());
+				}));
 		add(s, new ToolDef("app_prefs", "App: interface preferences",
 				"What the interface remembers between launches (recent designs, colour scheme, units, panels, tours seen): "
 						+ "returns them all; with set, changes some first (null removes one).",
@@ -283,7 +314,7 @@ public final class AppTools {
 		add(s, new ToolDef("app_choose_file", "App: choose a file", "The system's open or save dialog; returns the chosen path.",
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)
 						.str("types", "File extensions to show, e.g. \"csv,txt\" (default: designs).", false).build(),
-				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rkt,cdx1"))));
+				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rmx,rkt,cdx1"))));
 		add(s, new ToolDef("app_download_path", "App: where to save a download",
 				"A path for a file the user takes away (the flight video): in the Downloads folder (else the Desktop, else the "
 						+ "designs folder), numbered so it replaces nothing.",
@@ -301,6 +332,26 @@ public final class AppTools {
 					Path folder = Downloads.folder(Path.of(System.getProperty("user.home")), ctx.workspace());
 					Path p = Downloads.export(folder, a.str("name"), a.str("text", null), a.str("base64", null));
 					return Map.of("path", p.toString(), "folder", folder.toString(), "folderName", folder.getFileName().toString());
+				}));
+		add(s, new ToolDef("app_read_settings", "App: read a settings file",
+				"Reads a RocketMaxxing settings file (JSON, at most 64 KB) for the page to apply.",
+				Schema.object().str("path", "The file.", true).build(), true, a -> {
+					Path p = ctx.path(a.str("path")).toAbsolutePath().normalize();
+					if (!Files.isRegularFile(p)) {
+						throw new ToolException("File not found: " + p);
+					}
+					if (Files.size(p) > 64 * 1024) {
+						throw new ToolException(p.getFileName() + " is too large to be a settings file.");
+					}
+					try {
+						JsonObject o = JsonParser.parseString(Files.readString(p)).getAsJsonObject();
+						if (!o.has("app") || !o.get("app").getAsString().equals("RocketMaxxing settings")) {
+							throw new ToolException(p.getFileName() + " is not a RocketMaxxing settings file (Settings > Files > Export settings makes one).");
+						}
+						return o;
+					} catch (IllegalStateException | com.google.gson.JsonParseException e) {
+						throw new ToolException(p.getFileName() + " is not a RocketMaxxing settings file: it is not readable JSON.");
+					}
 				}));
 		add(s, new ToolDef("app_reveal", "App: show a file",
 				"Show a file the engine wrote, or its folder, in the system's file manager; open: true opens the file itself in "

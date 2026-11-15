@@ -136,7 +136,7 @@
     justify-content: space-between;
   }
   .count {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .x {
@@ -154,7 +154,7 @@
   }
   h4 {
     margin: 2px 0 4px;
-    font-size: 14.5px;
+    font-size: calc(14.5px * var(--text));
   }
   p {
     margin: 0;
@@ -188,7 +188,7 @@
     background: transparent;
     padding: 0;
     color: var(--ink-3);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .skip:hover {
     color: var(--ink);

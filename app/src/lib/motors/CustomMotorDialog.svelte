@@ -217,7 +217,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
   }
   .wide {
@@ -238,7 +238,7 @@
     background: var(--surface);
     padding: 6px 10px;
     color: var(--ink-2);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .seg button.on {
     background: var(--select);
@@ -248,7 +248,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
     margin-bottom: 4px;
   }
@@ -265,7 +265,7 @@
   }
   textarea {
     width: 100%;
-    font: 12px/1.4 ui-monospace, monospace;
+    font: calc(12px * var(--text))/1.4 ui-monospace, monospace;
     padding: 6px 8px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -275,14 +275,14 @@
   }
   details summary {
     cursor: pointer;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 3px 10px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   dt {
     color: var(--ink-3);
@@ -296,14 +296,14 @@
     justify-content: space-between;
     gap: 12px;
     margin-top: 12px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .curve .check {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
     margin: 2px 0 6px;
   }

@@ -12,7 +12,7 @@
   ];
   import { untrack } from "svelte";
   import { app, checkTargets, setTargets, type Target } from "../state.svelte";
-  import { fmt, num, toShown, unitOf, pretty, type Dim } from "../units.svelte";
+  import { editNum, fmt, num, readNum, toShown, unitOf, pretty, type Dim } from "../units.svelte";
   import Panel from "../Panel.svelte";
   import RuleCheck from "../design/RuleCheck.svelte";
   import { plain } from "../issues/explain";
@@ -95,7 +95,7 @@
     const si = r[`${key}SI` as const];
     if (si === undefined || si === null) return "";
     const d = dimOf(r);
-    return num(d ? toShown(si, d) : si);
+    return editNum(d ? toShown(si, d) : si);
   }
 
   /** The box that was refused, so it shows as wrong until the next change. */
@@ -103,7 +103,7 @@
 
   async function change(r: Target, key: "min" | "max" | "goal", el: HTMLInputElement) {
     // 1,5 is a decimal comma; 9,500 a thousands separator (the box shows 10,000 for ten thousand).
-    const v = el.value.trim().replace(/^(-?\d+),(\d{1,2}|\d{4,})$/, "$1.$2").replace(/(\d),(\d{3})(?!\d)/g, "$1$2");
+    const v = readNum(el.value);
     const d = dimOf(r);
     const value = v === "" ? null : /[a-z]/i.test(v) || !d ? v : `${v} ${unitOf(d).unit}`;
     if (await setTargets({ [r.id]: { [key]: value } })) {
@@ -119,7 +119,7 @@
   function now(r: Target): string | null {
     if (r.valueSI === null || r.valueSI === undefined) return null;
     const d = dimOf(r);
-    return d ? `${num(toShown(r.valueSI, d)).replace(/,/g, "")} ${unitOf(d).unit}` : String(r.valueSI);
+    return d ? `${toShown(r.valueSI, d).toPrecision(6).replace(/\.?0+$/, "")} ${unitOf(d).unit}` : String(r.valueSI);
   }
   function targetItems(r: Target): MenuItem[] {
     const v = now(r);
@@ -338,7 +338,7 @@
   .counts {
     display: flex;
     gap: 8px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
   }
@@ -367,7 +367,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
     white-space: nowrap;
   }
@@ -376,7 +376,7 @@
   }
   th {
     text-align: left;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     font-weight: 600;
     color: var(--ink-3);
     white-space: nowrap;
@@ -420,7 +420,7 @@
     text-align: right;
   }
   .u {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
     padding-left: 0;
@@ -459,7 +459,7 @@
     flex: 1;
     display: flex;
     gap: 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .gc .bad {
@@ -486,10 +486,10 @@
   }
   .margin {
     white-space: nowrap;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .sub {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .g {
@@ -500,11 +500,11 @@
     padding: 6px 10px;
     border-radius: var(--radius);
     background: var(--warn-soft);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .foot {
     margin: 6px 10px 10px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .sub.note {
     white-space: normal;
@@ -512,7 +512,7 @@
   }
   .now .why {
     font-weight: 400;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: normal;
   }
@@ -535,7 +535,7 @@
   .none .why {
     margin: 0;
     padding-left: 18px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .none .acts {
     display: flex;
@@ -551,7 +551,7 @@
     border-radius: 6px;
     background: transparent;
     color: var(--ink-2);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     white-space: nowrap;
   }
   .ask:hover {

@@ -138,7 +138,7 @@ public final class ProjectTools {
 	static Path logFile(Context ctx, Designs.Design d) {
 		if (d.path != null) {
 			String n = d.path.getFileName().toString();
-			String stem = n.toLowerCase(Locale.ROOT).endsWith(".ork") ? n.substring(0, n.length() - 4) : n;
+			String stem = n.replaceFirst("(?i)\\.(ork|rmx)$", "");
 			return d.path.resolveSibling(stem + ".progress.jsonl");
 		}
 		return ctx.path("progress/" + d.name().replaceAll("[^A-Za-z0-9._-]+", "-") + ".progress.jsonl");

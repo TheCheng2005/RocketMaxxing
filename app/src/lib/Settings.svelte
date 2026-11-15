@@ -3,7 +3,34 @@
   import { isOpen, toggle, setOpen } from "./panels.svelte";
   import { app, setSystem, autoCheck, setAutoCheck } from "./state.svelte";
   import { units, choices, choose, unitOf, pretty, type Dim } from "./units.svelte";
-  import { prefs, setTheme, setScheme, SCHEMES, type Theme, type Scheme } from "./prefs.svelte";
+  import { prefs, setTheme, setScheme, SCHEMES, SIZES, setSize, setDensity, setMotion, setDigits, setMark, resetLayout, resetTours, setAccent,
+    type Theme, type Scheme, type Density, type Motion, type Mark } from "./prefs.svelte";
+  import { call } from "./api";
+  import { run, toast, ask } from "./state.svelte";
+  import { onMount } from "svelte";
+  import { allSettings, applySettings, type Shared } from "./sharedSettings";
+
+  /** The settings (not recent files, panels or tours) as a file in Downloads, to set up another computer or a team. */
+  async function exportSettings() {
+    const r = await run(() => call<{ path: string; folderName: string }>("app_export", {
+      name: "RocketMaxxing settings.json", text: JSON.stringify(allSettings(), null, 2),
+    }));
+    if (r) toast(`Saved ${r.path.split(/[\\/]/).pop()} in ${r.folderName}`);
+  }
+  async function importSettings() {
+    let path: string | null = null;
+    try {
+      path = (await call<{ path: string | null }>("app_choose_file", { mode: "open", types: "json" })).path;
+    } catch {
+      path = await ask("Import settings", "Settings file (.json)");
+    }
+    if (!path) return;
+    const s = await run(() => call<Shared>("app_read_settings", { path: path!.trim() }), "Settings");
+    if (!s) return;
+    const n = await applySettings(s);
+    toast(n ? `Applied ${n} setting${n === 1 ? "" : "s"} from ${path.split(/[\\/]/).pop()}` : "That file has no settings this version knows.");
+    loadBackups();
+  }
   import { assistant, configure } from "./assistant/assistant.svelte";
   import AssistantSetup from "./assistant/AssistantSetup.svelte";
   import { updates, checkNow, checkEnabled, setCheckEnabled } from "./updates.svelte";
@@ -31,6 +58,28 @@
     ["DENSITY", "Density"], ["TEMPERATURE", "Temperature"],
   ];
   const THEMES: [Theme, string][] = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
+  const DENSITIES: [Density, string][] = [["compact", "Compact"], ["normal", "Normal"], ["comfortable", "Comfortable"]];
+  const MOTIONS: [Motion, string][] = [["system", "System"], ["reduce", "Reduced"], ["full", "Full"]];
+  const MARKS: [Mark, string][] = [["point", "1,234.5"], ["comma", "1 234,5"]];
+  const BACKUP_MINUTES: [number, string][] = [[0, "Off"], [2, "2 min"], [5, "5 min"], [10, "10 min"], [15, "15 min"]];
+
+  // Backups: how often, and where (the engine keeps them; the interval is one of the stored preferences).
+  let backup = $state<{ folder: string; minutes: number; keep: number; backups: unknown[] } | null>(null);
+  async function loadBackups() {
+    backup = await call<{ folder: string; minutes: number; keep: number; backups: unknown[] }>("app_backups", {}).catch(() => null);
+  }
+  onMount(loadBackups);
+  function setBackupMinutes(m: number) {
+    try {
+      if (m === 5) localStorage.removeItem("rocketmaxxing.backupMinutes");
+      else localStorage.setItem("rocketmaxxing.backupMinutes", String(m));
+    } catch {
+      /* the engine is told below */
+    }
+    // The engine reads the stored preferences: send the change now rather than with the next batch.
+    call("app_prefs", { set: { "rocketmaxxing.backupMinutes": m === 5 ? null : String(m) } }).then(loadBackups).catch(() => {});
+    if (backup) backup.minutes = m;
+  }
   const COLOURS = SCHEMES.filter((x) => !x.vision);
   const VISION = SCHEMES.filter((x) => x.vision);
 </script>
@@ -86,6 +135,22 @@
         {/each}
       </div>
       {/if}
+      <div class="row">
+        <span>Significant figures</span>
+        <div class="seg">
+          {#each [3, 4, 5] as n (n)}<button class:on={prefs.digits === n} onclick={() => setDigits(n)}>{n}</button>{/each}
+        </div>
+      </div>
+      <div class="row">
+        <span>Decimal mark</span>
+        <div class="seg">
+          {#each MARKS as [m, label] (m)}<button class:on={prefs.mark === m} onclick={() => setMark(m)}>{label}</button>{/each}
+        </div>
+      </div>
+      <p class="note">
+        For the numbers the app writes and the boxes you type into. Sentences worked out by the engine (rule check notes,
+        analysis results) keep the point.
+      </p>
         </div>
         {/if}
       </section>
@@ -109,6 +174,44 @@
       <p class="note">For colour vision: pass, warning and failure colours that stay apart (PASS, WARN and FAIL are always written out too).</p>
       <div class="schemes" role="radiogroup" aria-label="Colour scheme for colour vision">
         {#each VISION as sc (sc.id)}{@render tile(sc)}{/each}
+      </div>
+      <div class="row">
+        <span>Accent colour</span>
+        <div class="accent">
+          <input type="color" aria-label="Accent colour" value={prefs.accent || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#d9480f"}
+            onchange={(e) => setAccent((e.target as HTMLInputElement).value)} />
+          {#if prefs.accent}<button class="link" onclick={() => setAccent("")}>Use the scheme's</button>{:else}<span class="muted">The scheme's</span>{/if}
+        </div>
+      </div>
+      <p class="note">A colour of your own (the team's, say) for buttons and highlights, over the scheme's. Text on it turns black or white to stay readable.</p>
+      <div class="row">
+        <span>Text size</span>
+        <div class="seg">
+          {#each SIZES as [v, label] (v)}<button class:on={prefs.size === v} onclick={() => setSize(v)} title="{Math.round(v * 100)}%">{label}</button>{/each}
+        </div>
+      </div>
+      <p class="note">Every font, with buttons and boxes growing to fit. Pictures and the 3-D view keep their size.</p>
+      <div class="row">
+        <span>Density</span>
+        <div class="seg">
+          {#each DENSITIES as [d, label] (d)}<button class:on={prefs.density === d} onclick={() => setDensity(d)}>{label}</button>{/each}
+        </div>
+      </div>
+      <p class="note">How tightly tables, the parts tree and forms are packed: compact shows more rows at once.</p>
+      <div class="row">
+        <span>Animations</span>
+        <div class="seg">
+          {#each MOTIONS as [m, label] (m)}<button class:on={prefs.motion === m} onclick={() => setMotion(m)}>{label}</button>{/each}
+        </div>
+      </div>
+      <p class="note">System follows the computer's own setting. Reduced turns off moving loaders, sliding panels and the 3-D view's eased zoom and explode.</p>
+      <div class="row">
+        <span>Layout</span>
+        <div class="acts">
+          <button class="btn" onclick={() => (resetLayout(), toast("Panels, the plot setup and the 3-D view are back as they start"))}
+            title="Opens or folds every panel as it starts, and forgets the plot setup and the 3-D view's mode (saved plots stay)">Reset the layout</button>
+          <button class="btn" onclick={() => (resetTours(), toast("Each page shows its tour again the next time you open it"))}>Show the tours again</button>
+        </div>
       </div>
         </div>
         {/if}
@@ -156,6 +259,25 @@
         {#if opened("Files")}
         <div class="sb">
       <div class="row"><span>Designs folder</span><code>{app.session?.workspace}</code></div>
+      <div class="row">
+        <span>Back up unsaved work</span>
+        <div class="seg">
+          {#each BACKUP_MINUTES as [m, label] (m)}<button class:on={(backup?.minutes ?? 5) === m} onclick={() => setBackupMinutes(m)}>{label}</button>{/each}
+        </div>
+      </div>
+      <p class="note">
+        A copy of each open design with unsaved changes, in the designs folder's backups ({backup?.keep ?? 10} kept per design).
+        Your own files are never touched. Recent backups are listed on the Start page.
+        {#if backup?.backups.length}<button class="link" onclick={() => run(() => call("app_reveal", { path: backup!.folder }))}>Show the backups folder</button>{/if}
+      </p>
+      <div class="row">
+        <span>Settings file</span>
+        <div class="acts">
+          <button class="btn" onclick={exportSettings} title="Units, number format, appearance, checks and backups as a file in Downloads">Export…</button>
+          <button class="btn" onclick={importSettings} title="Apply a settings file exported from RocketMaxxing">Import…</button>
+        </div>
+      </div>
+      <p class="note">To set up another computer the same way, or give the team the same units and look. Recent files and the layout stay yours.</p>
       <label class="row check">
         <span>Check for a newer version when RocketMaxxing starts</span>
         <input type="checkbox" checked={checkEnabled()} onchange={(e) => setCheckEnabled((e.target as HTMLInputElement).checked)} />
@@ -200,7 +322,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
   }
   .content {
     overflow: auto;
@@ -209,7 +331,7 @@
   h4 {
     flex: 1;
     margin: 0;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--text));
     text-align: left;
   }
   .sec {
@@ -318,7 +440,7 @@
     border: 1.5px solid rgb(255 255 255 / 85%);
   }
   .nm {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .seg {
     display: flex;
@@ -329,9 +451,21 @@
   .seg button {
     flex: 1;
     border: 0;
+    border-left: 1px solid var(--line);
     background: var(--surface);
-    padding: 5px 0;
+    padding: 5px 10px;
     color: var(--ink-2);
+    white-space: nowrap;
+  }
+  .seg button:first-child {
+    border-left: 0;
+  }
+  .seg button:hover:not(.on) {
+    background: var(--surface-2);
+  }
+  /* A row whose choices need more room than a select gets it; the label keeps at least its own line. */
+  .row:has(.seg) {
+    grid-template-columns: minmax(110px, 1fr) auto;
   }
   .seg button.on {
     background: var(--select);
@@ -339,11 +473,11 @@
   }
   .note {
     margin: 4px 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   code {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     overflow-wrap: anywhere;
   }
   .link {
@@ -358,5 +492,26 @@
   .link:disabled {
     color: var(--ink-3);
     cursor: default;
+  }
+  .acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .accent {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .accent input[type="color"] {
+    width: 44px;
+    height: 28px;
+    padding: 2px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    cursor: pointer;
   }
 </style>

@@ -215,7 +215,7 @@
   .loading {
     margin: auto;
     color: var(--ink-3);
-    font-size: 16px;
+    font-size: calc(16px * var(--text));
   }
   .offline {
     max-width: 520px;

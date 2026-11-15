@@ -66,6 +66,9 @@ final class AppDesign {
 		if (d.importReport != null) {
 			out.put("importReport", d.importReport.render());
 		}
+		if (d.project != null) {
+			out.put("project", d.project);
+		}
 		return out;
 	}
 

@@ -98,12 +98,12 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .tv {
     margin-top: 1px;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
@@ -112,7 +112,7 @@
   }
   .tv small {
     margin-left: 6px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     font-weight: 400;
     color: var(--ink-3);
   }
@@ -130,7 +130,7 @@
     color: var(--ink-3);
   }
   .ts {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
     overflow: hidden;
@@ -140,7 +140,7 @@
     list-style: none;
     margin: 0;
     padding: 0 12px 12px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--warn);
   }
   .notes li {
@@ -157,7 +157,7 @@
   }
   .notes b {
     flex: none;
-    font-size: 10.5px;
+    font-size: calc(10.5px * var(--text));
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }

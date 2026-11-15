@@ -70,7 +70,7 @@
     background: var(--surface);
     color: var(--ink);
     box-shadow: 0 6px 22px rgba(0, 0, 0, 0.18);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     font-weight: 400;
     line-height: 1.45;
     text-align: left;

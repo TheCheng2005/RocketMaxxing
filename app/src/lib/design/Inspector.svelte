@@ -252,7 +252,7 @@
   }
   .name {
     width: 100%;
-    font-size: 14px;
+    font-size: calc(14px * var(--text));
     font-weight: 600;
     border: 1px solid transparent;
     border-radius: var(--radius);
@@ -269,7 +269,7 @@
     background: var(--surface);
   }
   .type {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .warning {
@@ -279,7 +279,7 @@
     padding: 6px 10px;
     border-bottom: 1px solid var(--line);
     background: var(--warn-soft);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .warning :global(svg) {
     flex: none;
@@ -342,7 +342,7 @@
     gap: 8px;
     padding: 10px 14px;
     border-bottom: 1px solid var(--line);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .catalog .btn {
     flex: none;
@@ -377,7 +377,7 @@
     padding: 0;
   }
   .small {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .find {
     display: flex;
@@ -411,7 +411,7 @@
   }
   .from {
     margin-top: 4px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--ink-3);
     text-transform: uppercase;
     letter-spacing: 0.03em;

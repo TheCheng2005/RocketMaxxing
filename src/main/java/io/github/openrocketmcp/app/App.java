@@ -116,7 +116,11 @@ public final class App {
 		Context ctx = new Context(Standards.discover(ws), ws, false);
 		ctxRef.set(ctx);
 		McpServer server = Main.build(ctx, s -> AppTools.register(s, ctx), false);
-		server.guard(new DesignLocks(ctx));
+		DesignLocks locks = new DesignLocks(ctx);
+		server.guard(locks);
+		// Copies of designs with unsaved changes, every few minutes (Settings > Files chooses how often, or off).
+		UiPrefs backupPrefs = new UiPrefs(Assistant.defaultSettings().resolveSibling("ui-prefs.json"));
+		Backups.start(ctx, locks, () -> Backups.minutes(backupPrefs));
 		server.handleLine("{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\","
 				+ "\"capabilities\":{},\"clientInfo\":{\"name\":\"" + NAME + "\",\"version\":\"" + VERSION + "\"}}}");
 		Main.warmUp();
@@ -293,7 +297,7 @@ public final class App {
 				}
 				continue;
 			}
-			if (s.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rkt)") && Files.isRegularFile(Path.of(s))) {
+			if (s.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rmx|rkt|cdx1)") && Files.isRegularFile(Path.of(s))) {
 				out.add(Path.of(s).toAbsolutePath().normalize().toString());
 			}
 		}

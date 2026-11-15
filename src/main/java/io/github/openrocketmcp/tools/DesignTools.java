@@ -52,14 +52,15 @@ public final class DesignTools {
 						+ "used by every other tool. Edits stay in memory until save_design. Examples: "
 						+ String.join(", ", Designs.EXAMPLES) + ".",
 				Schema.object()
-						.str("path", "Path to an .ork file, or a RockSim .rkt or RASAero .CDX1 file to import.", false)
+						.str("path", "Path to an .ork file or a RocketMaxxing project (.rmx), or a RockSim .rkt or RASAero .CDX1 file to import.", false)
 						.str("example", "Name of a bundled OpenRocket example (partial match).", false)
 						.str("newRocketName", "Create a new empty rocket with this name.", false)
 						.build(),
 				false, a -> {
 					Designs.Design d;
 					if (a.has("path")) {
-						d = ctx.designs.open(ctx.path(a.str("path")));
+						Path file = ctx.path(a.str("path"));
+						d = Projects.is(file) ? Projects.open(ctx, file) : ctx.designs.open(file);
 					} else if (a.has("example")) {
 						d = ctx.designs.openExample(a.str("example"));
 					} else if (a.has("newRocketName")) {
@@ -79,6 +80,17 @@ public final class DesignTools {
 						out.put("conversionWarnings", d.loadWarnings);
 						out.put("checkConversion", "OpenRocket changed or dropped the items above while reading this file (an older "
 								+ "version or another program). Check them with get_design before trusting the numbers.");
+					}
+					if (d.project != null) {
+						// What a project brought that the team may want: offered, never put over their own.
+						Map<String, Object> pr = new LinkedHashMap<>();
+						if (d.project.has("standardsDiffer") && d.project.get("standardsDiffer").getAsBoolean()) {
+							pr.put("standards", "Its team standards (" + d.project.get("standardsSummary").getAsString() + ") differ from "
+									+ "yours; they are not in use. Ask the user before using them (app: Use the project's standards).");
+						}
+						pr.put("motors", d.project.get("motors"));
+						pr.put("flightLogs", d.project.get("flightLogs"));
+						out.put("project", pr);
 					}
 					if (d.importReport != null) {
 						out.put("importReport", d.importReport.render());
@@ -108,12 +120,19 @@ public final class DesignTools {
 
 		s.tool(new ToolDef("save_design", "Save a design",
 				"Write the design to an .ork file (OpenRocket's format, openable in the OpenRocket app). Without path, overwrites "
-						+ "the file it was opened from. Ask the user before overwriting their file. A path ending in .rkt "
-						+ "(RockSim) or .CDX1 (RASAero II) writes a copy for that program instead; the design stays tied to "
-						+ "its .ork, and notes lists what the other format could not hold.",
-				Schema.object().str("designId", DESIGN_ID, false).str("path", "Destination: .ork, or .rkt / .CDX1 for a copy.", false).build(),
+						+ "the file it was opened from. Ask the user before overwriting their file. A path ending in .rmx writes a "
+						+ "RocketMaxxing project: the .ork with the team standards and targets, the motor files it uses, the RASAero "
+						+ "aero table and the progress log, for the team to pass on (project adds what only the app has: plots, "
+						+ "units, flight logs). A path ending in .rkt (RockSim) or .CDX1 (RASAero II) writes a copy for that "
+						+ "program instead; the design stays tied to its own file, and notes lists what the other format could not hold.",
+				Schema.object().str("designId", DESIGN_ID, false).str("path", "Destination: .ork or .rmx, or .rkt / .CDX1 for a copy.", false)
+						.obj("project", "For an .rmx: plots and settings (JSON text) and flightLogs (paths) to put in it.", false).build(),
 				false, a -> {
 					Designs.Design d = ctx.designs.get(a.str("designId", null));
+					Path into = a.has("path") ? ctx.path(a.str("path")) : d.path;
+					if (Projects.is(into)) {
+						return Projects.save(ctx, d, into, a.has("project") ? a.obj("project").raw() : null);
+					}
 					List<String> notes = new ArrayList<>();
 					Path p = ctx.designs.save(d, a.has("path") ? ctx.path(a.str("path")) : null, notes);
 					Map<String, Object> out = new LinkedHashMap<>();

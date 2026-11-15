@@ -298,7 +298,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
     gap: 3px 24px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .dk {
@@ -309,7 +309,7 @@
   .dprobs {
     margin: 6px 0 0;
     padding-left: 18px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--warn);
   }
   .mach {

@@ -124,7 +124,7 @@
     background: transparent;
     color: var(--ink);
     font: inherit;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
   }
   .hits {
     overflow: auto;
@@ -151,7 +151,7 @@
   .kind {
     flex: none;
     width: 82px;
-    font-size: 10.5px;
+    font-size: calc(10.5px * var(--text));
     font-weight: 700;
     letter-spacing: 0.04em;
     text-transform: uppercase;
@@ -173,7 +173,7 @@
     font-weight: 500;
   }
   .s {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
     overflow: hidden;
@@ -182,7 +182,7 @@
   kbd {
     flex: none;
     font: inherit;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     padding: 1px 5px;
     border: 1px solid var(--line);
     border-radius: 4px;
@@ -199,7 +199,7 @@
     gap: 14px;
     padding: 6px 12px;
     border-top: 1px solid var(--line);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
 </style>

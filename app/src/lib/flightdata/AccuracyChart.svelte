@@ -56,11 +56,11 @@
     display: block;
   }
   text {
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     fill: var(--ink-3);
   }
   .axis {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     fill: var(--ink-2);
   }
   .grid {

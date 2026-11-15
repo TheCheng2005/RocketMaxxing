@@ -228,7 +228,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
   }
   .filters {
     display: flex;
@@ -284,14 +284,14 @@
   }
   h4 {
     margin: 0;
-    font-size: 16px;
+    font-size: calc(16px * var(--text));
   }
   dl {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 4px 12px;
     margin: 0;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   dt {
     color: var(--ink-3);
@@ -305,7 +305,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     color: var(--ink-2);
   }
 </style>

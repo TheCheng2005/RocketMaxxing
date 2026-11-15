@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Box, Gauge, ListTree, ShieldCheck, SlidersHorizontal, SquarePlus, ArrowUp, ArrowDown, Copy, Trash2, Image, Route, X, Wind } from "@lucide/svelte";
+  import { reducedMotion } from "../prefs.svelte";
   import { designTour } from "../tour/tours";
   import { seen, markSeen } from "../tour/session.svelte";
   import PictureDialog from "../media/PictureDialog.svelte";
@@ -29,7 +30,7 @@
     if (take("picture")) picture = true;
     if (take("aero")) {
       setOpen("design.aero", true);
-      setTimeout(() => document.querySelector('[data-panel="design.aero"]')?.scrollIntoView({ block: "start", behavior: "smooth" }), 100);
+      setTimeout(() => document.querySelector('[data-panel="design.aero"]')?.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }), 100);
     }
   });
 
@@ -190,13 +191,13 @@
     display: flex;
     gap: 4px;
     padding: 0 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .tool:disabled {
     opacity: 0.35;
   }
   .chip {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     padding: 2px 8px;
     border-radius: 999px;
     white-space: nowrap;
@@ -210,7 +211,7 @@
     color: var(--warn);
   }
   .to {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
     overflow: hidden;

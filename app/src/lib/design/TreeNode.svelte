@@ -156,7 +156,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 32px;
+    height: var(--control);
     padding-right: 6px;
     cursor: default;
     user-select: none;

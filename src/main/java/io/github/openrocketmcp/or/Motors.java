@@ -275,6 +275,13 @@ public final class Motors {
 		}
 	}
 
+	/** The motors in a file, without adding them to the database (to see which a design uses). */
+	public static List<ThrustCurveMotor> peek(Path path) throws IOException {
+		try (InputStream in = Files.newInputStream(path)) {
+			return load(in, path.getFileName().toString(), false);
+		}
+	}
+
 	private static List<ThrustCurveMotor> load(InputStream in, String filename) throws IOException {
 		return load(in, filename, true);
 	}

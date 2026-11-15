@@ -118,7 +118,7 @@
     margin: 2px 0 0;
   }
   .state {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     margin-top: 3px;
     color: var(--ink-3);
   }
@@ -149,7 +149,7 @@
   }
   .note {
     margin: 4px 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
 </style>

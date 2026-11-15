@@ -168,7 +168,7 @@
     border-radius: 999px;
     background: var(--surface);
     padding: 2px 9px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
   }
   .chip.on {
@@ -177,16 +177,16 @@
     color: var(--ink);
   }
   .n {
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--ink-3);
   }
   .why {
     margin-top: 6px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .why .wh {
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ink-3);
@@ -200,7 +200,7 @@
   }
   .about {
     margin: 2px 12px 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .list {
@@ -213,7 +213,7 @@
   }
   h3 {
     margin: 8px 0 0;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     font-weight: 600;
     color: var(--ink-2);
   }
@@ -223,7 +223,7 @@
   }
   .none {
     margin: 0;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .item {
     flex: none;
@@ -232,7 +232,7 @@
     border-radius: var(--radius);
     background: var(--surface-2);
     padding: 6px 8px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     --kind: var(--ink-3);
   }
   .item.k-input {
@@ -257,7 +257,7 @@
     margin-bottom: 2px;
   }
   .tag {
-    font-size: 10.5px;
+    font-size: calc(10.5px * var(--text));
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -266,14 +266,14 @@
   .where {
     flex: 1;
     min-width: 0;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .time {
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--ink-3);
   }
   .text {
@@ -282,7 +282,7 @@
   }
   .sub {
     margin-top: 2px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .bug {
@@ -290,7 +290,7 @@
     gap: 6px;
     align-items: flex-start;
     margin-top: 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
   }
   .bug :global(svg) {
@@ -309,7 +309,7 @@
     margin-top: 6px;
   }
   .acts .btn {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     height: 24px;
     text-decoration: none;
   }

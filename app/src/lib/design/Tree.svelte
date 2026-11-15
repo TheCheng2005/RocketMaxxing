@@ -61,7 +61,7 @@
     flex: none;
     padding: 4px 8px;
     border-top: 1px solid var(--line);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
 </style>

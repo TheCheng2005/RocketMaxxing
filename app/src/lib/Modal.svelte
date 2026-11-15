@@ -45,7 +45,7 @@
   }
   h3 {
     margin: 0;
-    font-size: 15px;
+    font-size: calc(15px * var(--text));
   }
   .content {
     overflow: auto;

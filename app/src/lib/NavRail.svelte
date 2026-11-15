@@ -81,7 +81,7 @@
     border-left: 3px solid transparent;
     background: transparent;
     color: var(--chrome-ink-2);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
   }
   button:hover:not(:disabled) {
     background: var(--chrome-2);

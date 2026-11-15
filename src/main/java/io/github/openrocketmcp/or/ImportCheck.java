@@ -63,12 +63,13 @@ public final class ImportCheck {
 	/** The format's name from the file's ending. */
 	public static String format(Path p) {
 		String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
-		return n.endsWith(".rkt") ? "RockSim" : n.endsWith(".cdx1") ? "RASAero II" : "OpenRocket";
+		return n.endsWith(".rkt") ? "RockSim" : n.endsWith(".cdx1") ? "RASAero II" : n.endsWith(".rmx") ? "RocketMaxxing project" : "OpenRocket";
 	}
 
 	public static Report check(Path file, OpenRocketDocument doc, List<String> loaderWarnings) {
 		String format = format(file);
-		boolean own = format.equals("OpenRocket");
+		// OpenRocket's own file, or a project with one inside: nothing about it is foreign.
+		boolean own = format.equals("OpenRocket") || format.equals("RocketMaxxing project");
 		Rocket r = doc.getRocket();
 		List<Finding> out = new ArrayList<>();
 

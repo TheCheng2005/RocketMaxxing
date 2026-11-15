@@ -82,11 +82,11 @@
     border: 1px solid var(--line-strong);
     border-radius: 8px;
     box-shadow: var(--shadow-pop);
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
   }
   .head {
     padding: 4px 8px 3px 26px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
     overflow: hidden;
@@ -121,7 +121,7 @@
   .key {
     margin-left: 16px;
     color: var(--ink-3);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     white-space: nowrap;
   }
   button:hover:not(:disabled),

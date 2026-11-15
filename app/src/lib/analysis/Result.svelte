@@ -162,7 +162,7 @@
   }
   .path {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .show {
     display: inline-flex;
@@ -173,6 +173,6 @@
     border-radius: var(--radius);
     background: var(--surface);
     padding: 0 6px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
 </style>

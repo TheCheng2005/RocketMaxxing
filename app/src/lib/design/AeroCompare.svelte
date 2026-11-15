@@ -260,7 +260,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .cmp td:first-child {
     font-weight: 500;
@@ -283,7 +283,7 @@
     padding: 4px 0;
   }
   .small {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .plot {
     min-height: 180px;

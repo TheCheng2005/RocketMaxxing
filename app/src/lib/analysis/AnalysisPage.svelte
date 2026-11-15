@@ -26,7 +26,7 @@
   import { MAC } from "../keys";
   import { GUIDES, needsFlight, type Guide } from "./guides";
   import { bareUnit, example, fieldHelp, type FieldHelp } from "./fields";
-  import { units } from "../units.svelte";
+  import { readNum, units } from "../units.svelte";
   import { search, type Entry } from "../search/search";
   import { ANALYSIS_KEYS, analysisText } from "../search/entries";
   import { context, pageMenu, copyText, type MenuItem } from "../menu/menu.svelte";
@@ -241,7 +241,7 @@
       let raw = (values[i.key] ?? "").trim();
       if (raw === "") continue;
       // A decimal comma (6,5) is read as a point; 1,000 could be either, so it is left for the engine to question.
-      if (i.kind === "number" || i.kind === "qty") raw = raw.replace(/^(-?\d+),(\d{1,2}|\d{4,})(?=$|\s)/, "$1.$2");
+      if (i.kind === "number" || i.kind === "qty") raw = readNum(raw);
       if (i.kind === "rows") {
         const props = i.schema.items?.properties ?? {};
         const list = filledRows(raw).map((row) => {
@@ -251,7 +251,7 @@
             if (!t) continue;
             const ty = props[k]?.type;
             if (ty === "boolean") o[k] = t === "true";
-            else if ((ty === "number" || ty === "integer" || Array.isArray(ty)) && NUMBER.test(t)) o[k] = Number(t);
+            else if ((ty === "number" || ty === "integer" || Array.isArray(ty)) && NUMBER.test(readNum(t))) o[k] = Number(readNum(t));
             else o[k] = t;
           }
           return o;
@@ -764,12 +764,12 @@
     flex-direction: column;
   }
   .grp {
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     color: var(--ink-3);
   }
   .none {
     margin: 6px 12px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   .ran {
@@ -822,7 +822,7 @@
   }
   .legend {
     margin: 8px 0 0;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .about p,
@@ -840,7 +840,7 @@
     display: inline-block;
     min-width: 62px;
     margin-right: 6px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.03em;
@@ -848,7 +848,7 @@
   }
   .guide h4 {
     margin: 8px 0 3px;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -888,7 +888,7 @@
     border-radius: var(--radius);
     border-left: 3px solid var(--kind);
     background: var(--surface-2);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     --kind: var(--ink-3);
   }
   .issue.k-input {
@@ -906,7 +906,7 @@
   }
   .issue .tag {
     flex: none;
-    font-size: 10.5px;
+    font-size: calc(10.5px * var(--text));
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -914,11 +914,11 @@
   }
   .issue .why {
     margin-top: 6px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink-2);
   }
   .issue .why .wh {
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--ink-3);
@@ -948,7 +948,7 @@
   .long {
     resize: vertical;
     font: inherit;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     padding: 4px 6px;
     border: 1px solid var(--line);
     border-radius: var(--radius);
@@ -985,7 +985,7 @@
     font-weight: 600;
   }
   .meta {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     white-space: nowrap;
   }

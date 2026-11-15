@@ -1,7 +1,7 @@
 <script lang="ts">
-  import { Clock, House, Shapes, FilePlus2, FolderOpen, FileText, CircleHelp } from "@lucide/svelte";
+  import { Clock, House, Shapes, FilePlus2, FolderOpen, FileText, CircleHelp, LifeBuoy } from "@lucide/svelte";
   import { ui } from "./search/ui.svelte";
-  import { app, newDesign, openDialog, openExample, openPath, recent } from "./state.svelte";
+  import { app, newDesign, openBackup, openDialog, openExample, openPath, recent } from "./state.svelte";
   import ComponentIcon from "./ComponentIcon.svelte";
   import Panel from "./Panel.svelte";
   import { call } from "./api";
@@ -9,6 +9,19 @@
   import { context, pageMenu, copyText, type MenuItem } from "./menu/menu.svelte";
 
   let recents = $state(recent());
+
+  // Copies the app made of unsaved work, newest first: after a crash, the work since the last save is here.
+  interface Backup { path: string; design: string; time: number }
+  let backups = $state<Backup[]>([]);
+  call<{ backups: Backup[] }>("app_backups", {}).then((r) => (backups = r.backups.slice(0, 6))).catch(() => {});
+  function ago(t: number): string {
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m} min ago`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h} h ago`;
+    return new Date(t).toLocaleDateString();
+  }
 
   // Right-click on a recent file: open, show it in its folder, copy its path, take it off the list.
   function forget(p: string) {
@@ -59,7 +72,7 @@
     <Panel id="home.start" icon={House} title="Start">
       <div class="actions">
         <button class="act" onclick={newDesign}><FilePlus2 size={22} /> <span><b>New design</b><small>An empty rocket</small></span></button>
-        <button class="act" onclick={openDialog}><FolderOpen size={22} /> <span><b>Open…</b><small>OpenRocket .ork, RockSim .rkt or RASAero .CDX1</small></span></button>
+        <button class="act" onclick={openDialog}><FolderOpen size={22} /> <span><b>Open…</b><small>RocketMaxxing project .rmx, OpenRocket .ork, RockSim .rkt or RASAero .CDX1</small></span></button>
         <button class="act" onclick={() => (ui.guide = "start")}><CircleHelp size={22} /> <span><b>Guide</b><small>How to use RocketMaxxing, step by step</small></span></button>
       </div>
     </Panel>
@@ -80,6 +93,23 @@
         <p class="empty">None yet.</p>
       {/if}
     </Panel>
+    {#if backups.length}
+      <Panel id="home.backups" icon={LifeBuoy} title="Backups of unsaved work">
+        <ul class="list">
+          {#each backups as b (b.path)}
+            <li>
+              <button onclick={() => openBackup(b.path)} title="Opens as a new design: Save asks where to keep it. {b.path}"
+                use:context={() => [{ header: b.design }, { label: "Open as a new design", run: () => openBackup(b.path) },
+                  { label: "Show in its folder", run: () => run(() => call("app_reveal", { path: b.path })) }]}>
+                <FileText size={16} />
+                <span class="file">{b.design}</span>
+                <span class="dir">{ago(b.time)}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+      </Panel>
+    {/if}
   </div>
   <div class="col wide">
     <Panel id="home.examples" icon={Shapes} title="Example designs">
@@ -146,7 +176,7 @@
   }
   .act small {
     color: var(--ink-3);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
   }
   .list {
     list-style: none;
@@ -173,7 +203,7 @@
     white-space: nowrap;
   }
   .dir {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
     overflow: hidden;
     text-overflow: ellipsis;

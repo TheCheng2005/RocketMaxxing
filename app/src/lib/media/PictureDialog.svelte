@@ -92,7 +92,7 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-2);
   }
   .form .input {
@@ -109,7 +109,7 @@
     background: var(--surface);
     padding: 6px 10px;
     color: var(--ink-2);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   .seg button.on {
     background: var(--select);
@@ -133,7 +133,7 @@
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     margin: 4px 0 8px;
     word-break: break-all;
   }
@@ -144,7 +144,7 @@
   }
   th {
     text-align: left;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
 </style>

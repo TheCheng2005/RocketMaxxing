@@ -42,6 +42,8 @@ public final class Designs {
 		public final History history = new History();
 		/** What OpenRocket reported while reading the file (older versions, RockSim imports); empty for most files. */
 		public final List<String> loadWarnings = new ArrayList<>();
+		/** What a RocketMaxxing project (.rmx) brought besides the design, for the app to offer: standards, plots, logs. */
+		public com.google.gson.JsonObject project;
 		/** The file it was imported from when that is not an .ork (a RockSim .rkt); it is saved as .ork elsewhere. */
 		public Path importedFrom;
 		/** What to look at after opening the file (parts left out, numbers that do not match the file); null when nothing. */
@@ -71,7 +73,7 @@ public final class Designs {
 	}
 
 	/** As {@link #read(Path)}, adding what OpenRocket warned about while reading to {@code warnings}. */
-	static OpenRocketDocument read(Path p, List<String> warnings) throws Exception {
+	public static OpenRocketDocument read(Path p, List<String> warnings) throws Exception {
 		if (!Files.exists(p)) {
 			throw new ToolException("File not found: " + p + ". It may have been moved, renamed or deleted, or be on a drive or "
 					+ "cloud folder that is not connected right now.");
@@ -161,6 +163,11 @@ public final class Designs {
 			doc.getRocket().setName(name);
 		}
 		return register(doc, null, "new");
+	}
+
+	/** Registers a design read some other way (a RocketMaxxing project), with the file it belongs to. */
+	public synchronized Design adopt(OpenRocketDocument doc, Path path, String origin) {
+		return register(doc, path, origin);
 	}
 
 	private Design register(OpenRocketDocument doc, Path path, String origin) {

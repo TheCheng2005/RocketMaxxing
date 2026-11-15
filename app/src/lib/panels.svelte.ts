@@ -28,3 +28,13 @@ export function setOpen(id: string, open: boolean) {
     /* not kept */
   }
 }
+
+/** Every panel and section back to how it starts (Settings > Reset the layout). */
+export function resetPanels() {
+  for (const k of Object.keys(panels)) delete panels[k];
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    /* nothing kept */
+  }
+}

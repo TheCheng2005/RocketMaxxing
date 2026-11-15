@@ -112,7 +112,7 @@
     align-items: center;
     gap: 8px;
     font-weight: 600;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--text));
     color: var(--ink);
     white-space: nowrap;
     min-width: 0;
@@ -180,7 +180,7 @@
     background: var(--surface);
     color: var(--ink-2);
     font-weight: 600;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     padding: 10px 0;
     display: flex;
     justify-content: center;

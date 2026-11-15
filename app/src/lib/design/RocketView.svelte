@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { reducedMotion } from "../prefs.svelte";
   import * as THREE from "three";
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   import { borrow, release, type ViewRenderer } from "./viewRenderer";
@@ -223,6 +224,7 @@
   /** Eases the explosion to {@code to} over a moment, keeping the whole rocket in view. */
   function explodeTo(to: number) {
     cancelAnimationFrame(explodeFrame);
+    if (reducedMotion()) return setExplode(to);
     const from = explode, t0 = performance.now(), T = 480;
     const step = () => {
       const k = Math.min(1, (performance.now() - t0) / T);
@@ -269,6 +271,7 @@
 
   function startPulse() {
     cancelAnimationFrame(pulseFrame);
+    if (reducedMotion()) return; // the selection's colour shows it; no flash
     const t0 = performance.now();
     const step = () => {
       const k = (performance.now() - t0) / PULSE;
@@ -525,7 +528,7 @@
 
   function zoomStep() {
     zoomFrame = 0;
-    let step = zoomLeft * 0.35;
+    let step = reducedMotion() ? zoomLeft : zoomLeft * 0.35;
     if (Math.abs(zoomLeft) < 0.003) step = zoomLeft;
     zoomLeft -= step;
     zoomBy(Math.exp(step), zoomPoint.x, zoomPoint.y);
@@ -1147,7 +1150,7 @@
     top: -20px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     font-weight: 700;
     padding: 0 4px;
     border-radius: 4px;
@@ -1177,7 +1180,7 @@
     background: var(--surface);
     border: 1px solid var(--line-strong);
     box-shadow: var(--shadow-pop);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     white-space: nowrap;
     z-index: 2;
   }
@@ -1188,14 +1191,14 @@
   }
   .readout span {
     color: var(--ink-3);
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
   }
   .hint {
     position: absolute;
     left: 8px;
     bottom: 6px;
     right: 8px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
     pointer-events: none;
     white-space: nowrap;

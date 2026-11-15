@@ -1,6 +1,6 @@
 <script lang="ts">
   import { app, editField, type FieldDef } from "../state.svelte";
-  import { fmt, num, type Dim } from "../units.svelte";
+  import { editNum, fmt, num, readNum, type Dim } from "../units.svelte";
   import QuantityInput from "./QuantityInput.svelte";
   import { context, copyText, type MenuItem } from "../menu/menu.svelte";
   import { toast } from "../state.svelte";
@@ -24,10 +24,10 @@
   let off = $derived(f.enabled === false);
   let text = $state("");
   $effect(() => {
-    text = f.value == null ? "" : String(f.value);
+    text = f.value == null ? "" : f.kind === "number" ? editNum(f.value, 6) : String(f.value);
   });
   // Plain numbers without thousands separators, so they read back as numbers.
-  let plain = $derived(f.value == null ? "" : num(f.value, 4).replace(/,/g, ""));
+  let plain = $derived(f.value == null ? "" : editNum(f.value, 4));
 
   let materials = $derived(app.session?.materials?.[f.materialType ?? "BULK"] ?? []);
 
@@ -36,7 +36,7 @@
 
   /** What the field showed before a value that was refused. */
   function restore(el?: HTMLInputElement) {
-    text = f.value == null ? "" : String(f.value);
+    text = f.value == null ? "" : f.kind === "number" ? editNum(f.value, 6) : String(f.value);
     if (el) el.value = f.kind === "number" ? plain : text;
   }
 
@@ -45,8 +45,8 @@
   }
 
   async function commitNumber(t: string, el?: HTMLInputElement) {
-    t = t.trim().replace(/,/g, "");
-    if (t === "" || t === plain || Number(t) === f.value) return restore(el);
+    t = readNum(t);
+    if (t === "" || t === readNum(plain) || Number(t) === f.value) return restore(el);
     const v = Number(t);
     if ((await editField(f.key, Number.isFinite(v) ? v : t)) === undefined) restore(el);
   }
@@ -120,7 +120,7 @@
     border-radius: var(--radius);
     background: var(--bad-soft);
     color: var(--ink);
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     line-height: 1.35;
   }
   .err .hint {
@@ -163,7 +163,7 @@
     border-radius: 50%;
     background: var(--surface-3);
     color: var(--ink-3);
-    font-size: 10px;
+    font-size: calc(10px * var(--text));
     cursor: help;
   }
   .control {
@@ -186,7 +186,7 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
   .count {

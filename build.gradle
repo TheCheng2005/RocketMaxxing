@@ -388,8 +388,9 @@ tasks.register('rocketmaxxingInstaller', Exec) {
                '--runtime-image', mcpbDir.get().dir('runtime').asFile.path,
                '--java-options', rocketmaxxingJvmOpts.join(' '), '--icon', icon.path, '--dest', out.get().asFile.path]
     if (type != 'app-image') {
-        // Double-clicking an OpenRocket or RockSim design opens it in RocketMaxxing.
+        // Double-clicking a RocketMaxxing project, or an OpenRocket or RockSim design, opens it in RocketMaxxing.
         cmd += ['--license-file', 'LICENSE',
+                '--file-associations', file('app/packaging/rmx.properties').path,
                 '--file-associations', file('app/packaging/ork.properties').path,
                 '--file-associations', file('app/packaging/rkt.properties').path]
     }

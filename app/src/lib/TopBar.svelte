@@ -1,6 +1,6 @@
 <script lang="ts">
   import { FilePlus2, FolderOpen, Save, Undo2, Redo2, Settings as Gear, TriangleAlert, Search, Bot, CircleHelp, ChevronDown } from "@lucide/svelte";
-  import { app, newDesign, openDialog, save, undo, redo, selectConfig } from "./state.svelte";
+  import { app, newDesign, openDialog, save, undo, redo, selectConfig, projectOffers } from "./state.svelte";
   import Settings from "./Settings.svelte";
   import RocketLoader from "./RocketLoader.svelte";
   import { assistant, who } from "./assistant/assistant.svelte";
@@ -16,6 +16,7 @@
     openMenu(box.left, box.bottom + 2, [
       { label: "Save", shortcut: keys("S"), run: () => save(false) },
       { label: "Save as…", shortcut: keys("S", true), run: () => save(true) },
+      { label: "Save as a RocketMaxxing project (.rmx)…", run: () => save("rmx") },
       "-",
       { header: "A copy for another program" },
       { label: "RockSim (.rkt)…", run: () => save("rkt") },
@@ -41,7 +42,7 @@
         <Save size={16} /> Save
       </button>
       <button class="btn ghost more" onclick={saveMenu} disabled={!app.design} aria-haspopup="menu" aria-label="Save as, and other file types"
-        title="Save as ({keys('S', true)}), or a copy for RockSim or RASAero"><ChevronDown size={14} /></button>
+        title="Save as ({keys('S', true)}), as a project to pass on, or a copy for RockSim or RASAero"><ChevronDown size={14} /></button>
     </div>
   </div>
   <span class="sep"></span>
@@ -54,11 +55,13 @@
     <div class="title" title={app.design.path ?? "Not saved yet"}>
       <span class="name">{app.design.name}</span>
       {#if !app.design.saved}<span class="edited">(edited)</span>{/if}
-      {#if app.design.importReport}
-        {@const n = app.design.importReport.findings.filter((f) => f.level !== "note").length}
+      {#if app.design.importReport || projectOffers(app.design.project).length}
+        {@const rep = app.design.importReport}
+        {@const n = (rep?.findings ?? []).filter((f) => f.level !== "note").length}
+        {@const isProject = !!app.design.project}
         <button class="imported" class:warn={n > 0} onclick={() => (ui.importReport = true)}
-          title="What came in from {app.design.importReport.file}, what was left out and what to check">
-          {app.design.importReport.format === "OpenRocket" ? "Opened with changes" : `Imported from ${app.design.importReport.format}`}{n ? ` · ${n} to check` : ""}
+          title={isProject ? "What came with this project, and what to check" : `What came in from ${rep?.file}, what was left out and what to check`}>
+          {isProject ? "Project" : rep?.format === "OpenRocket" ? "Opened with changes" : `Imported from ${rep?.format}`}{n ? ` · ${n} to check` : ""}
         </button>
       {/if}
     </div>
@@ -120,7 +123,7 @@
     background: var(--chrome-2);
     color: var(--chrome-ink-2);
     font: inherit;
-    font-size: 13px;
+    font-size: calc(13px * var(--text));
     text-align: left;
   }
   .find:hover {
@@ -132,7 +135,7 @@
   }
   .find kbd {
     font: inherit;
-    font-size: 11px;
+    font-size: calc(11px * var(--text));
     padding: 0 4px;
     border: 1px solid var(--chrome-line);
     border-radius: 4px;
@@ -154,7 +157,7 @@
     padding: 0 7px;
   }
   .count {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     font-weight: 600;
     line-height: 16px;
     min-width: 16px;
@@ -285,7 +288,7 @@
     border-radius: 999px;
     background: transparent;
     color: var(--ink-2);
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     white-space: nowrap;
     cursor: pointer;
   }

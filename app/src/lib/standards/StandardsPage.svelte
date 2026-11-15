@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Trophy, MapPin, Umbrella, Wrench, Cpu } from "@lucide/svelte";
+  import { reducedMotion } from "../prefs.svelte";
   const ICONS = { launchSite: MapPin, recovery: Umbrella, structures: Wrench, electronics: Cpu } as Record<string, any>;
   import { onMount } from "svelte";
   import { call } from "../api";
@@ -56,7 +57,7 @@
   /** Opens a section if it is folded and brings it into view. */
   function jump(key: string, initial: boolean) {
     if (!isOpen("std." + key, initial)) toggle("std." + key, initial);
-    requestAnimationFrame(() => document.getElementById("std-" + key)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    requestAnimationFrame(() => document.getElementById("std-" + key)?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" }));
   }
 
   // Asked for from the search: open the section and show the value ("recovery.shearPins").
@@ -73,7 +74,7 @@
       const el = document.querySelector(`[data-std="${r.detail}"]`) as HTMLElement | null;
       if (!el) return;
       if (el instanceof HTMLDetailsElement) el.open = true;
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      el.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" });
       document.querySelectorAll("[data-std].found").forEach((x) => x.classList.remove("found"));
       void el.offsetWidth;
       el.classList.add("found");
@@ -203,7 +204,7 @@
     border-radius: 12px;
     background: var(--surface-2);
     padding: 2px 10px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
     color: var(--ink);
   }
   .jump button:hover {
@@ -242,15 +243,15 @@
     height: 16px;
   }
   .small {
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     margin: 6px 0 0;
   }
   .dot {
     color: var(--select);
-    font-size: 9px;
+    font-size: calc(9px * var(--text));
   }
   code {
-    font-size: 11.5px;
+    font-size: calc(11.5px * var(--text));
     word-break: break-all;
   }
   .pad {

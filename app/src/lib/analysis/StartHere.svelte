@@ -68,18 +68,18 @@
   }
   h4 {
     margin: 0;
-    font-size: 13.5px;
+    font-size: calc(13.5px * var(--text));
   }
   .why {
     margin: 0 0 4px;
-    font-size: 12px;
+    font-size: calc(12px * var(--text));
     color: var(--ink-3);
   }
   ul,
   ol {
     margin: 0;
     padding-left: 16px;
-    font-size: 12.5px;
+    font-size: calc(12.5px * var(--text));
   }
   li {
     margin: 2px 0;

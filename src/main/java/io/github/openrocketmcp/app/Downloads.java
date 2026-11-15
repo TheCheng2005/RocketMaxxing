@@ -72,8 +72,8 @@ final class Downloads {
 	 * replaces nothing. Exactly one of {@code text} and {@code base64} carries the content.
 	 */
 	static Path export(Path folder, String name, String text, String base64) throws IOException {
-		if (name == null || !name.toLowerCase(Locale.ROOT).matches(".*\\.(png|csv|svg)$")) {
-			throw new ToolException("A plot is saved as .png, .csv or .svg; got: " + name);
+		if (name == null || !name.toLowerCase(Locale.ROOT).matches(".*\\.(png|csv|svg|json)$")) {
+			throw new ToolException("A plot is saved as .png, .csv or .svg (settings as .json); got: " + name);
 		}
 		if ((text == null) == (base64 == null)) {
 			throw new ToolException("Give the file's content as text or as base64, not both.");
