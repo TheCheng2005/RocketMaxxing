@@ -5,6 +5,7 @@
   import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
   import { borrow, release, type ViewRenderer } from "./viewRenderer";
   import { geometry, kept, trim, finPieces, disposeBuilt, type Built } from "./meshes";
+  import { addUv, decalTexture } from "./decals";
   import { Maximize, Scissors, Expand } from "@lucide/svelte";
   import { app, select, findNode, parentOf, editField, type Part, type TreeNode } from "../state.svelte";
   import { fmt } from "../units.svelte";
@@ -96,6 +97,17 @@
           polygonOffsetUnits: 1,
         });
         if (p.cutOpen) mat.clippingPlanes = clip;
+        if (p.decal?.image) {
+          // The picture on the part: texture coordinates made once per piece, the paint and picture as one texture.
+          addUv(b.geo, n > 0 || /FinSet$/.test(p.type) && p.type !== "TubeFinSet");
+          decalTexture(p.decal, p.color).then((t) => {
+            if (!t || !meshes.some((m) => m.mesh.material === mat)) return;
+            mat.map = t;
+            mat.color.set(0xffffff);
+            mat.needsUpdate = true;
+            render();
+          });
+        }
         const mesh = new THREE.Mesh(b.geo, mat);
         const edges = new THREE.LineSegments(b.edges, new THREE.LineBasicMaterial({ color: 0x334155 }));
         if (p.cutOpen) (edges.material as THREE.LineBasicMaterial).clippingPlanes = clip;

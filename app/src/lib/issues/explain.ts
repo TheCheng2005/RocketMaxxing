@@ -66,7 +66,7 @@ const PLACES: Record<string, string> = {
   set_stage_separation: "the stage's Separation settings", flight_configuration: "the Motors page", search_parts: "the part's Catalogue button",
   apply_preset: "the part's Catalogue button", open_design: "Open", save_design: "Save", list_files: "Open", update_standards: "the Standards page",
   get_standards: "the Standards page", load_standards: "the Standards page", targets: "the Targets page", render_3d: "Picture on the Design page",
-  draw_rocket: "Picture on the Design page", print_templates: "Templates on the Design page", scale_design: "Scale on the Design page", materials: "Your materials on the Standards page", import_fin_outline: "Import outline in the fin editor", export_fin_outline: "Export CSV in the fin editor", undo: "Undo", redo: "Redo",
+  draw_rocket: "Picture on the Design page", print_templates: "Templates on the Design page", scale_design: "Scale on the Design page", materials: "Your materials on the Standards page", simulation_extensions: "Extensions on the Flights page", import_fin_outline: "Import outline in the fin editor", export_fin_outline: "Export CSV in the fin editor", undo: "Undo", redo: "Redo",
 };
 const ANALYSES: Record<string, string> = Object.fromEntries(CATALOG.flatMap((g) => g.items.map((a) => [a.tool, a.label])));
 

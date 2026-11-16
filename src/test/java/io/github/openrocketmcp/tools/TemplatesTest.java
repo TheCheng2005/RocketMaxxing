@@ -26,6 +26,13 @@ class TemplatesTest {
 		}, false);
 	}
 
+	/** The tool's text, error or not. */
+	static String callText(McpServer s, String tool, String args) {
+		JsonObject r = s.handleLine("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"" + tool + "\",\"arguments\":" + args + "}}")
+				.getAsJsonObject("result");
+		return r.getAsJsonArray("content").get(0).getAsJsonObject().get("text").getAsString();
+	}
+
 	static JsonObject call(McpServer s, String tool, String args, boolean error) {
 		JsonObject r = s.handleLine("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"" + tool + "\",\"arguments\":" + args + "}}")
 				.getAsJsonObject("result");

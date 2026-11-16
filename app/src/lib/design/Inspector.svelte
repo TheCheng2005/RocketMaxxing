@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { fileUrl } from "../api";
   import { BookOpen, ChevronDown, TriangleAlert, Search, X, Shapes, Ruler, Flame, Layers, Move, Scale, MessageSquare, Palette, Triangle, Spline, Umbrella, Package, Link, Weight, PenTool, CircleDot, Cylinder } from "@lucide/svelte";
 
   /** An icon for each kind of section, so they can be told apart at a glance. */
@@ -9,7 +10,7 @@
     "Cross section": Spline, "Fin tabs": Ruler, Outline: PenTool, Canopy: Umbrella, Streamer: Umbrella, "Packed size": Package,
     "Shock cord": Link, Mass: Weight, Pods: Layers, Boosters: Layers, Shoulder: Ruler, Shoulders: Ruler,
   };
-  import { app, editField, act, toast } from "../state.svelte";
+  import { app, editField, act, toast, chooseFile } from "../state.svelte";
   import { fmt } from "../units.svelte";
   import { isOpen, toggle, setOpen } from "../panels.svelte";
   import { context, type MenuItem } from "../menu/menu.svelte";
@@ -26,6 +27,20 @@
   let catalog = $state(false);
   // The colour the 3-D view gives the part when it has no paint of its own.
   let shownColor = $derived(app.model?.parts.find((p) => p.id === ed?.id)?.color ?? "#bbbbbb");
+
+  /** The part's picture: added, changed, moved, sized, turned, or taken off (OpenRocket's decals). */
+  async function decal(args: Record<string, unknown>) {
+    await act("app_decal", { component: ed!.id, ...args });
+  }
+  async function pickDecal() {
+    const f = await chooseFile("Picture for the decal", "A .png or .jpg: a logo, stickers, a pattern or a texture", "png,jpg,jpeg,gif,bmp");
+    if (f) await decal({ path: f });
+  }
+  const pct = (v: number) => Math.round(v * 1000) / 10;
+  // OpenRocket keeps a decal's scale as how many pictures fit across, and its offset before scaling: shown here as
+  // the picture's size and where it starts, in % of the part.
+  const sizeOf = (scale: number) => pct(1 / (scale || 1));
+  const startOf = (offset: number) => pct(-offset);
 
   function paint(color: string, shine?: number) {
     act("app_appearance", { component: ed!.id, color, ...(shine === undefined ? {} : { shine }) });
@@ -236,6 +251,38 @@
     <input type="range" min="0" max="1" step="0.05" value={ed!.shine ?? 0.3} disabled={!ed!.paint}
       onchange={(e) => paint(ed!.paint!, Number(e.currentTarget.value))} aria-label="Shine" />
   </div>
+  <div class="row">
+    <span class="label">Decal</span>
+    <div class="control">
+      {#if ed!.decal}
+        {#if ed!.decal.image}<img class="thumb" src={fileUrl(ed!.decal.image)} alt="" />{/if}
+        <span class="small dname" title={ed!.decal.missing ?? ed!.decal.name}>{ed!.decal.missing ? "Picture missing" : ed!.decal.name}</span>
+        <button class="link" onclick={pickDecal}>Change…</button>
+        <button class="link" onclick={() => decal({ remove: true })}>Remove</button>
+      {:else}
+        <button class="btn small" onclick={pickDecal} title="A picture on this part: a logo, stickers, a pattern or a texture (OpenRocket's decals)">Add a picture…</button>
+      {/if}
+    </div>
+  </div>
+  {#if ed!.decal}
+    {@const d = ed!.decal}
+    <div class="decal">
+      <label title="How much of the way round (or along a fin) one picture covers; 100% = once round">Size round (%)
+        <input class="input" type="number" step="5" min="1" value={sizeOf(d.scaleU)} onchange={(e) => decal({ scaleU: 100 / Number(e.currentTarget.value) })} /></label>
+      <label title="How much of the part's length (or a fin's span) one picture covers">Size along (%)
+        <input class="input" type="number" step="5" min="1" value={sizeOf(d.scaleV)} onchange={(e) => decal({ scaleV: 100 / Number(e.currentTarget.value) })} /></label>
+      <label title="Moves the picture round the part">Shift round (%)
+        <input class="input" type="number" step="5" value={startOf(d.offsetU)} onchange={(e) => decal({ offsetU: -Number(e.currentTarget.value) / 100 })} /></label>
+      <label title="Moves the picture along the part, from its back end">Shift along (%)
+        <input class="input" type="number" step="5" value={startOf(d.offsetV)} onchange={(e) => decal({ offsetV: -Number(e.currentTarget.value) / 100 })} /></label>
+      <label title="Turns the picture">Turn (°)
+        <input class="input" type="number" step="15" value={Math.round(d.rotation * 10) / 10} onchange={(e) => decal({ rotation: Number(e.currentTarget.value) })} /></label>
+      <label title="What is shown past the picture's edge">Edges
+        <select class="select" value={d.edge} onchange={(e) => decal({ edge: e.currentTarget.value.toLowerCase() })}>
+          <option value="REPEAT">Repeat</option><option value="MIRROR">Mirror</option><option value="STICKER">Sticker (once)</option><option value="CLAMP">Stretch the edge</option>
+        </select></label>
+    </div>
+  {/if}
 {/snippet}
 
 <style>
@@ -438,5 +485,31 @@
   .sections > .fields {
     padding: 12px 14px;
     border-bottom: 1px solid var(--line);
+  }
+  .thumb {
+    width: 28px;
+    height: 20px;
+    object-fit: cover;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+  }
+  .dname {
+    max-width: 8em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .decal {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 10px;
+    padding: 4px 14px 10px;
+  }
+  .decal label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: calc(11.5px * var(--text));
+    color: var(--ink-2);
   }
 </style>

@@ -120,6 +120,7 @@ export interface Editor {
   label: string;
   paint?: string;
   shine?: number;
+  decal?: import("./design/decals").Decal | null;
   presetType?: string;
   preset?: string;
   sections: { title: string; fields: FieldDef[] }[];
@@ -147,6 +148,8 @@ export interface Part {
   /** Painted parts: 0 (matte) to 1 (glossy). */
   shine?: number;
   type: string;
+  /** A picture on the part (design/decals.ts). */
+  decal?: import("./design/decals").Decal;
   /** Left out when the window already has it (see design/meshes.ts). */
   mesh?: string;
   meshId?: string;

@@ -301,6 +301,22 @@ public final class AppTools {
 						.str("color", "#rrggbb, or empty to use the default look.", false).num("shine", "0 (matte) to 1 (glossy).", false)
 						.build(),
 				false, a -> AppDesign.appearance(ctx, a)));
+		add(s, new ToolDef("app_decal", "App: decal",
+				"Put a picture (logo, sticker, pattern, texture) on a part as OpenRocket's Appearance tab does, move, resize or turn "
+						+ "it, or remove it. u runs round the part (or along a fin's chord), v along it (or up the fin's span), 0 to 1. "
+						+ "It is saved in the .ork.",
+				Schema.object().str("designId", DESIGN, true).str("component", "Component id.", true)
+						.str("path", "The picture: PNG, JPG, GIF or BMP (needed for a new decal).", false)
+						.bool("remove", "Take the decal off.", false)
+						.num("offsetU", "OpenRocket's offset round: the picture starts at minus this (0 to 1).", false)
+						.num("offsetV", "OpenRocket's offset along: the picture starts at minus this (0 to 1).", false)
+						.num("centerU", "Turning centre round (0 to 1).", false).num("centerV", "Turning centre along (0 to 1).", false)
+						.num("scaleU", "OpenRocket's scale round: how many pictures fit round the part (1 = once round, 4 = a quarter each).", false)
+						.num("scaleV", "OpenRocket's scale along: how many pictures fit along the part.", false)
+						.num("rotation", "Turn, in degrees.", false)
+						.enumStr("edge", "Past the picture's edge: repeat, mirror, clamp (stretch its edge) or sticker (the paint).", false,
+								"repeat", "mirror", "clamp", "sticker").build(),
+				false, a -> AppDesign.setDecal(ctx, a)));
 		add(s, new ToolDef("app_model", "App: 3-D model", "Meshes of every part of the active configuration, with CG and CP.",
 				Schema.object().str("designId", DESIGN, true)
 						.array("known", "meshId of meshes the window already has: those are left out.", Schema.type("string", null), false)

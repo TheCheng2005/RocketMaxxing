@@ -97,7 +97,8 @@ public final class Suggestions {
 			new Feature("import_fin_outline", "Building", "Here's a photo (or a CSV) of our fin shape: use it for the fins."),
 			new Feature("export_fin_outline", "Building", "Export our fin outline as points for CAD."),
 			new Feature("scale_design", "Building", "Scale the whole rocket up to a 4-inch airframe."),
-			new Feature("materials", "Building", "Add our own fibreglass layup with its measured density."));
+			new Feature("materials", "Building", "Add our own fibreglass layup with its measured density."),
+			new Feature("simulation_extensions", "Flight", "Simulate the upper stage as an air-start at 3000 ft, or add roll control."));
 
 	/** What naturally comes next after each tool, most useful first. */
 	static final Map<String, List<String>> NEXT = Map.ofEntries(

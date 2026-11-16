@@ -8,7 +8,7 @@ points to everything.
 
 ## Tools
 
-The 91 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
+The 92 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
 from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Session
@@ -214,6 +214,14 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   deployments and landing distance.
 - `get_flight_data`: down-sampled time series, e.g. for stability-against-time plots.
 - `sweep`: vary launch conditions or any component property and fly each value.
+- `simulation_extensions`: a simulation's **extensions**, as OpenRocket's Extensions tab. `action`: `types` lists them,
+  `list` (default) shows the simulation's, `add`, `set` (by `index`) and `remove`. Kinds: air-start (`launchAltitude`,
+  `launchVelocity`), roll control (`controlFinName`, `startTime`, `setPoint`, `finRate` in deg/s, `maxFinAngle`, `KP`,
+  `KI`), damping moment, stop simulation (`stopTime`, `stopStep`), CSV save, a script (`script`, `language`,
+  `enabled`) and a Java class (`className`). `settings` take units. After a change the simulation flies again and its
+  summary comes back (`flightFailed` with the message if a script stops it). A script runs as code on the computer:
+  a new or changed one is off until turned on (`enabled: true`), which marks it trusted as OpenRocket does; in the
+  desktop app only the person can turn one on, not the assistant.
 
 ### Aerodynamics and wind
 
