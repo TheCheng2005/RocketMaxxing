@@ -177,7 +177,7 @@ export function entries(): Entry[] {
     { kind: "action", title: "Compare with an altimeter log", sub: "Flight data: a log against the simulation", keys: "flight log csv altimeter data measured actual", off: noDesign, run: () => go("flightdata") },
     { kind: "action", title: "Past rockets", sub: "Flight data: a folder of old designs and logs", keys: "library history old designs previous years", off: noDesign, run: () => go("flightdata") },
     { kind: "action", title: "Keyboard shortcuts", sub: "Guide: shortcuts and habits worth knowing", keys: "keys hotkeys tips help", run: () => (ui.guide = "tips") },
-    { kind: "action", title: "RASAero vs OpenRocket", sub: "Apogee, speed, stability, CD and CP from both models (transonic and supersonic flights)", keys: "rasaero ras aero compare transonic supersonic mach cd cp drag import csv", off: noDesign, run: () => {
+    { kind: "action", title: "High-speed drag: the model or RASAero", sub: "Fly on bevelled fins and power-on base drag, or import RASAero; beside OpenRocket's (transonic and supersonic flights)", keys: "rasaero ras aero compare transonic supersonic mach cd cp drag import csv high speed model bevel bevelled hexagonal double wedge biconvex fin section airfoil wave drag base drag power on nozzle", off: noDesign, run: () => {
       const shown = (app.flight?.maxMach ?? 0) >= 0.8 || !!app.design?.aeroTable;
       if (shown) {
         go("design");

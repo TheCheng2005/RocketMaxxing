@@ -98,10 +98,11 @@
       <Stats />
     </Panel>
     {#if fast}
-      <Panel id="design.aero" icon={Wind} title="RASAero vs OpenRocket">
+      <Panel id="design.aero" icon={Wind} title="High-speed drag">
         {#snippet status()}
-          {#if app.design?.aeroTable}<span class="chip good">RASAero table in</span>
-          {:else if app.flight?.maxMach}<span class="chip warn">Mach {fmtNum(app.flight.maxMach, 3)}: no RASAero data</span>{/if}
+          {#if app.design?.aeroTable === "RocketMaxxing high-speed model"}<span class="chip good">High-speed model on</span>
+          {:else if app.design?.aeroTable}<span class="chip good">RASAero table in</span>
+          {:else if app.flight?.maxMach}<span class="chip warn">Mach {fmtNum(app.flight.maxMach, 3)}: OpenRocket's drag only</span>{/if}
         {/snippet}
         <AeroCompare />
       </Panel>

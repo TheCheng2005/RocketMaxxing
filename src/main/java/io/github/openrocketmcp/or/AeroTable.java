@@ -48,7 +48,26 @@ public final class AeroTable {
 	}
 
 	/** SI: cp in m from the nose tip (NaN when the table has no CP). Sorted by Mach, one row per Mach (lowest alpha). */
-	public record Table(double[] mach, double[] cdOff, double[] cdOn, double[] cp, String source, boolean useDrag) {
+	public record Table(double[] mach, double[] cdOff, double[] cdOn, double[] cp, String source, boolean useDrag,
+			double[] reference, HighSpeedAero.Settings model) {
+		/** An imported table: its drag stands in for OpenRocket's. */
+		public Table(double[] mach, double[] cdOff, double[] cdOn, double[] cp, String source, boolean useDrag) {
+			this(mach, cdOff, cdOn, cp, source, useDrag, null, null);
+		}
+
+		/**
+		 * The drag coefficient to fly with, given OpenRocket's at this instant. An imported table replaces it. The
+		 * built-in model carries OpenRocket's CD at the table's conditions ({@code reference}) and applies the
+		 * difference, so the Reynolds number at altitude and the angle of attack still count.
+		 */
+		public double flown(double m, boolean powered, double live) {
+			double cd = cd(m, powered);
+			if (reference == null || Double.isNaN(cd)) {
+				return cd;
+			}
+			return Math.max(0.1 * live, live + cd - interp(mach, reference, m));
+		}
+
 		public double cd(double m, boolean powered) {
 			return interp(mach, powered ? cdOn : cdOff, m);
 		}
@@ -72,14 +91,36 @@ public final class AeroTable {
 	/** Simulations to fly on OpenRocket's own drag; weak, so candidates that are never flown do not pile up. */
 	private static final Set<Simulation> WITHOUT = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
 
+	/** The whole vehicle's table: an imported one switches the built-in model off, the model's own switches it on. */
 	public static void set(Rocket r, Table t) {
 		TABLES.put(r.getID().toString(), t);
+		if (t.model() == null) {
+			HighSpeedAero.disable(r);
+		} else {
+			HighSpeedAero.enable(r, t.model());
+		}
+	}
+
+	/** Keeps a table as the whole vehicle's without changing whether the model is on. */
+	static void put(Rocket r, Table t) {
+		TABLES.put(r.getID().toString(), t);
+	}
+
+	/** The whole vehicle's table to show: the built-in model's is worked out again from the rocket as it is now. */
+	public static Table shown(Rocket r) {
+		try {
+			HighSpeedAero.refresh(r);
+		} catch (RuntimeException e) {
+			// a rocket OpenRocket cannot analyse right now (no body yet): show what was kept
+		}
+		return of(r);
 	}
 
 	/** Every table of the rocket: the whole vehicle's and each stack's. */
 	public static void clear(Rocket r) {
 		String id = r.getID().toString();
 		TABLES.keySet().removeIf(k -> k.equals(id) || k.startsWith(id + "#"));
+		HighSpeedAero.disable(r);
 	}
 
 	/** The whole vehicle's table of a rocket or any copy of it (copies keep the original ids). */
@@ -100,12 +141,17 @@ public final class AeroTable {
 			set(r, t);
 		} else {
 			TABLES.put(r.getID() + "#" + bottom.getID(), t);
+			if (HighSpeedAero.settings(r) != null) { // an imported table for one stack: the design flies on imported data
+				HighSpeedAero.disable(r);
+				TABLES.remove(r.getID().toString());
+			}
 		}
 	}
 
 	public static void clear(Rocket r, AxialStage bottom) {
 		if (whole(r, bottom)) {
 			TABLES.remove(r.getID().toString());
+			HighSpeedAero.disable(r);
 		} else {
 			TABLES.remove(r.getID() + "#" + bottom.getID());
 		}
@@ -231,12 +277,18 @@ public final class AeroTable {
 		o.addProperty("format", FORMAT);
 		o.addProperty("source", t.source());
 		o.addProperty("useDrag", t.useDrag());
+		if (t.model() != null) {
+			o.add("model", t.model().toJson());
+		}
 		JsonArray rows = new JsonArray();
 		for (int i = 0; i < t.mach().length; i++) {
 			JsonObject r = new JsonObject();
 			r.addProperty("mach", t.mach()[i]);
 			r.addProperty("cdPowerOff", t.cdOff()[i]);
 			r.addProperty("cdPowerOn", t.cdOn()[i]);
+			if (t.reference() != null) {
+				r.addProperty("cdOpenRocket", t.reference()[i]);
+			}
 			if (Double.isNaN(t.cp()[i])) {
 				r.add("cpFromNoseTip_m", JsonNull.INSTANCE);
 			} else {
@@ -260,14 +312,20 @@ public final class AeroTable {
 		JsonArray rows = o.getAsJsonArray("rows");
 		int n = rows.size();
 		double[] mach = new double[n], off = new double[n], on = new double[n], cp = new double[n];
+		boolean model = o.has("model") && o.get("model").isJsonObject();
+		double[] ref = model ? new double[n] : null;
 		for (int i = 0; i < n; i++) {
 			JsonObject r = rows.get(i).getAsJsonObject();
+			if (model) {
+				ref[i] = r.has("cdOpenRocket") ? r.get("cdOpenRocket").getAsDouble() : Double.NaN;
+			}
 			mach[i] = r.get("mach").getAsDouble();
 			off[i] = r.get("cdPowerOff").getAsDouble();
 			on[i] = r.get("cdPowerOn").getAsDouble();
 			cp[i] = r.has("cpFromNoseTip_m") && !r.get("cpFromNoseTip_m").isJsonNull() ? r.get("cpFromNoseTip_m").getAsDouble() : Double.NaN;
 		}
-		return new Table(mach, off, on, cp, o.get("source").getAsString(), o.get("useDrag").getAsBoolean());
+		return new Table(mach, off, on, cp, o.get("source").getAsString(), o.get("useDrag").getAsBoolean(), ref,
+				model ? HighSpeedAero.Settings.fromJson(o.getAsJsonObject("model")) : null);
 	}
 
 	/** Runs {@code sim} with OpenRocket's own drag even if the design has a table (for comparisons). */
@@ -282,6 +340,15 @@ public final class AeroTable {
 			return null;
 		}
 		Map<AxialStage, Table> use = new LinkedHashMap<>();
+		if (HighSpeedAero.settings(sim.getRocket()) != null) {
+			// The built-in model: worked out for this flight's rocket and configuration, each stack that can fly.
+			FlightConfiguration fc = sim.getActiveConfiguration();
+			Map<AxialStage, Table> model = HighSpeedAero.forFlight(fc);
+			if (model.isEmpty()) {
+				return null;
+			}
+			return new DragOverride(model, model.get(stackOf(fc)));
+		}
 		all(sim.getRocket()).forEach((st, t) -> {
 			if (t.useDrag()) {
 				use.put(st, t);
@@ -293,6 +360,10 @@ public final class AeroTable {
 	/** A stamp that changes whenever the rocket's tables (or whether their drag applies) change. */
 	static String stamp(Rocket r) {
 		StringBuilder b = new StringBuilder();
+		HighSpeedAero.Settings model = HighSpeedAero.settings(r);
+		if (model != null) {
+			return "model:" + model; // the tables themselves follow the rocket, whose own changes are stamped already
+		}
 		all(r).forEach((st, t) -> b.append(st.getID()).append(':').append(t.useDrag() ? System.identityHashCode(t) : 0).append(','));
 		return b.toString();
 	}
@@ -345,7 +416,7 @@ public final class AeroTable {
 			if (t == null) {
 				return null;
 			}
-			double cd = t.cd(mach, powered);
+			double cd = t.flown(mach, powered, forces.getCDaxial());
 			if (Double.isNaN(cd)) {
 				return null;
 			}

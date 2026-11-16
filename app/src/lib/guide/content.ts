@@ -22,7 +22,7 @@ export const PAGE_HELP: { page: Page; title: string; text: string }[] = [
   { page: "flights", title: "Flights", text: "Saved simulations with their launch conditions (wind, rail, site), and plots of any flight variable. Each simulation's Extensions add an air-start, roll control or a script of your own (scripts stay off until you turn them on)." },
   { page: "targets", title: "Targets", text: "Your team's own goals (apogee window, rail exit, stability…) with live margins next to the competition's rules." },
   { page: "standards", title: "Standards", text: "The numbers every check uses: rule set, launch site, recovery factors and pin ratings, material properties, electronics." },
-  { page: "analysis", title: "Analysis", text: "52 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
+  { page: "analysis", title: "Analysis", text: "53 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
   { page: "flightdata", title: "Flight data", text: "Altimeter logs compared with the simulation, and your past rockets with predicted against measured apogee." },
   { page: "history", title: "History", text: "What changed since the last save, the edits you can still undo (back to any point), and everything that happened to your designs and the team standards, by you or the assistant. A change to the standards or targets can be put back from here." },
 ];
@@ -289,7 +289,7 @@ export const TIPS: [string, string][] = [
   ["?", "Opens the keyboard shortcuts from anywhere; the Help button at the foot of the left rail has the rest of the Guide and the tour."],
   ["Search", `Search (${keys("K")}) finds a setting of the selected part ("wall thickness"), a team standard ("pin rating"), a target, a view mode or an action, and takes you to it.`],
   ["Folding", "Every panel folds from its title; right-click a title to fold the others. Properties sections, analysis groups, target groups and Settings fold too."],
-  ["RASAero", "Above Mach 0.8 the Design page shows RASAero vs OpenRocket: import RASAero II's aero export and both models' apogee, speed, stability, CD and CP sit side by side."],
+  ["High speed", "Above Mach 0.8 the Design page shows High-speed drag. Use the high-speed model to fly on the fins' real section (bevelled, double wedge, biconvex) and the lower base drag while the motor burns, or import RASAero II's aero export; either sits side by side with OpenRocket's apogee, speed, CD and stability."],
   ["Right-click", "Anything: a part, a motor, a simulation, a target, a standard, an analysis, a result, a panel title. Each gives its quick commands; empty space gives the page's own and the app's (search, undo, save)."],
   ["Parts", `Drag in the list to move a part into another; Alt+↑/↓ moves it up or down; ${keys("D")} duplicates; ${keys("C")} and ${keys("V")} copy and paste into the selected part; right-click for all of these.`],
   ["Move", "Drag the selected part along the rocket in the view: it lines up with the edges of the parts near it (hold Alt to place it freely). Properties › Position › Line up puts it at the front, middle or back of its parent."],

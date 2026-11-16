@@ -52,7 +52,7 @@ final class AppDesign {
 		out.put("tree", node(r));
 		out.put("configurations", configList(r));
 		out.put("selected", r.getSelectedConfiguration().getId().toString());
-		AeroTable.Table aero = AeroTable.of(r);
+		AeroTable.Table aero = AeroTable.shown(r);
 		out.put("aeroTable", aero == null ? null : aero.source());
 		Map<String, Object> st = stability(r.getSelectedConfiguration());
 		double floor = Requirements.stabilityFloor(ctx.standards(), r.getSelectedConfiguration())[0];

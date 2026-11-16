@@ -59,6 +59,7 @@ public final class Suggestions {
 			new Feature("compare_shapes", "Stability, fins and aero", "Which nose cone and fin shapes fly best?"),
 			new Feature("aero_analysis", "Stability, fins and aero", "Where does our drag come from, and how does it change with speed? (per stage: the sustainer alone)"),
 			new Feature("import_aero_table", "Stability, fins and aero", "Use our RASAero or CFD aerodynamic data in the simulations."),
+			new Feature("high_speed_aero", "Stability, fins and aero", "Our fins have bevelled edges and we go supersonic: fly on the high-speed drag model."),
 
 			new Feature("fin_flutter", "Structures and heating", "Will our fins flutter, and how thick do they need to be?"),
 			new Feature("compare_materials", "Structures and heating", "Which material should our fins or airframe be: fiberglass, carbon or aluminum?"),
