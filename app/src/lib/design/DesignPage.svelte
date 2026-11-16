@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { Box, Gauge, ListTree, ShieldCheck, SlidersHorizontal, SquarePlus, ArrowUp, ArrowDown, Copy, Trash2, Image, Route, X, Wind } from "@lucide/svelte";
+  import { Box, Gauge, ListTree, ShieldCheck, SlidersHorizontal, SquarePlus, ArrowUp, ArrowDown, Copy, Trash2, Image, Route, X, Wind, Printer } from "@lucide/svelte";
   import { reducedMotion } from "../prefs.svelte";
   import { designTour } from "../tour/tours";
   import { seen, markSeen } from "../tour/session.svelte";
   import PictureDialog from "../media/PictureDialog.svelte";
+  import TemplatesDialog from "../media/TemplatesDialog.svelte";
+  import ScaleDialog from "./ScaleDialog.svelte";
   import { app, move, canMove, duplicate, removeSelected, findNode } from "../state.svelte";
   import { keys } from "../keys";
   import { isOpen, setOpen } from "../panels.svelte";
@@ -28,6 +30,9 @@
   $effect(() => {
     void ui.request;
     if (take("picture")) picture = true;
+    if (take("templates")) templates = true;
+    const sc = take("scale");
+    if (sc) scaling = sc.detail ?? "rocket";
     if (take("aero")) {
       setOpen("design.aero", true);
       setTimeout(() => document.querySelector('[data-panel="design.aero"]')?.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }), 100);
@@ -38,6 +43,8 @@
   pageMenu(() => [
     { label: clipboard.id ? `Paste ${clipboard.name}` : "Paste", shortcut: keys("V"), off: !clipboard.id && "Copy a part first", run: () => paste() },
     { label: "Picture or drawing…", run: () => (picture = true) },
+    { label: "Print templates (fins, rings, nose)…", run: () => (templates = true) },
+    { label: "Scale the rocket…", run: () => (scaling = "rocket") },
     { label: "Exploded view", run: () => dispatchEvent(new CustomEvent("rocketmaxxing:explode")) },
     { label: "Check the rules now", run: () => checkRules() },
     { label: "Add an avionics bay…", run: () => ((analysis.selected = "add_avionics_bay"), (app.page = "analysis")) },
@@ -47,6 +54,8 @@
   let isRoot = $derived(app.selected === "rocket");
   let target = $derived(findNode(app.design?.tree, app.selected)?.name ?? "");
   let picture = $state(false);
+  let templates = $state(false);
+  let scaling = $state<string | null>(null);
   // The first time the page is shown, a line above the view offers the tour (once; the View panel keeps a button).
   let offer = $state(!seen("design"));
   function noThanks() {
@@ -81,6 +90,7 @@
       {#snippet tools()}
         <button class="tool wide" title="A guided tour of this page" onclick={() => { offer = false; designTour(); }}><Route size={15} /> Tour</button>
         <button class="tool wide" data-tour="picture" title="Picture or drawing of the design, for reviews and build notes" onclick={() => (picture = true)}><Image size={15} /> Picture</button>
+        <button class="tool wide" title="Full-size templates to print and cut: fins, centering rings, transitions, nose profile and fin marking guide" onclick={() => (templates = true)}><Printer size={15} /> Templates</button>
       {/snippet}
       <div class="view"><RocketView picture={() => (picture = true)} /></div>
     </Panel>
@@ -114,6 +124,8 @@
 </div>
 
 {#if picture}<PictureDialog close={() => (picture = false)} />{/if}
+{#if templates}<TemplatesDialog close={() => (templates = false)} />{/if}
+{#if scaling}<ScaleDialog part={scaling} close={() => (scaling = null)} />{/if}
 
 <style>
   .offer {

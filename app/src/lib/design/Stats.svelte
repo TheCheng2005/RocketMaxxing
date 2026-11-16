@@ -73,14 +73,15 @@
 {#snippet tile(I: typeof Gauge, label: string, value: string, sub = "", cls = "", title = "", flight = false)}
   <div class="tile" class:stale={flight && app.flying} title={title || undefined}>
     <div class="tl"><I size={13} /> {label}</div>
-    <div class="tv {cls}">{value}{#if sub}<small>{sub}</small>{/if}</div>
+    <div class="tv {cls}"><span class="main">{value}</span>{#if sub}<small>{sub}</small>{/if}</div>
   </div>
 {/snippet}
 
 <style>
   .sum {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    /* Wider tiles for larger text, so the numbers keep their room. */
+    grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--text)), 1fr));
     gap: 6px;
     padding: 10px 12px;
   }
@@ -101,17 +102,22 @@
     font-size: calc(11.5px * var(--text));
     color: var(--ink-3);
   }
+  /* The number stays whole; the note after it moves under it when the tile is narrow. */
   .tv {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 6px;
     margin-top: 1px;
     font-size: calc(14px * var(--text));
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+  }
+  .tv .main {
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
   .tv small {
-    margin-left: 6px;
+    min-width: 0;
     font-size: calc(11.5px * var(--text));
     font-weight: 400;
     color: var(--ink-3);

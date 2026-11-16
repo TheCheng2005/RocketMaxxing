@@ -1,6 +1,7 @@
 import type { Issue } from "../api";
 import { CATALOG } from "../analysis/catalog";
 import { label } from "../analysis/text";
+import { localNumbers } from "../numberMark";
 
 // What an error means for someone using the app: the engine's sentence in the app's own words (its messages are
 // also read by AI assistants, and name their tools), what could be causing it, and what to try. An error code or
@@ -65,7 +66,7 @@ const PLACES: Record<string, string> = {
   set_stage_separation: "the stage's Separation settings", flight_configuration: "the Motors page", search_parts: "the part's Catalogue button",
   apply_preset: "the part's Catalogue button", open_design: "Open", save_design: "Save", list_files: "Open", update_standards: "the Standards page",
   get_standards: "the Standards page", load_standards: "the Standards page", targets: "the Targets page", render_3d: "Picture on the Design page",
-  draw_rocket: "Picture on the Design page", undo: "Undo", redo: "Redo",
+  draw_rocket: "Picture on the Design page", print_templates: "Templates on the Design page", scale_design: "Scale on the Design page", materials: "Your materials on the Standards page", simulation_extensions: "Extensions on the Flights page", import_fin_outline: "Import outline in the fin editor", export_fin_outline: "Export CSV in the fin editor", undo: "Undo", redo: "Redo",
 };
 const ANALYSES: Record<string, string> = Object.fromEntries(CATALOG.flatMap((g) => g.items.map((a) => [a.tool, a.label])));
 
@@ -78,6 +79,7 @@ export function plain(text: string): string {
   t = t.replace(/\bPass (?=[A-Z][a-z])/g, "Give ").replace(/\s{2,}/g, " ").trim();
   // A sentence that now starts with an input's name starts with a capital; one that starts with a file name is left.
   const was = text.replace(/^Error:\s*/, "");
+  t = localNumbers(t);
   return was.charAt(0) === t.charAt(0) ? t : t.charAt(0).toUpperCase() + t.slice(1);
 }
 

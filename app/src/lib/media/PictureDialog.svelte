@@ -6,17 +6,19 @@
   import Modal from "../Modal.svelte";
   import RocketLoader from "../RocketLoader.svelte";
   import { exportPath } from "./media";
+  import PhotoStudio from "./PhotoStudio.svelte";
 
   // A picture of the design for reviews and build notes: shaded 3-D (exploded, cut-away or outside, with a numbered parts
   // list), or OpenRocket's side drawing with CG and CP. Written to the designs folder.
   let { close }: { close: () => void } = $props();
 
-  type Kind = "exploded" | "cutaway" | "assembled" | "drawing";
+  type Kind = "exploded" | "cutaway" | "assembled" | "drawing" | "photo";
   const KINDS: [Kind, string][] = [
     ["exploded", "Exploded, with parts list"],
     ["cutaway", "Cut-away"],
     ["assembled", "Outside"],
     ["drawing", "Side drawing (SVG)"],
+    ["photo", "Photo studio"],
   ];
   let kind = $state<Kind>("exploded");
   let azimuth = $state(25);
@@ -26,6 +28,7 @@
   let result = $state<any>(null);
 
   async function make() {
+    if (kind === "photo") return; // drawn in the page by the photo studio
     busy = true;
     try {
       const designId = app.design!.designId;
@@ -49,7 +52,7 @@
     <div class="seg">
       {#each KINDS as [k, label] (k)}<button class:on={kind === k} onclick={() => (kind = k)}>{label}</button>{/each}
     </div>
-    {#if kind !== "drawing"}
+    {#if kind !== "drawing" && kind !== "photo"}
       <label><span>Turn (°)</span><input class="input" type="number" min="-90" max="90" bind:value={azimuth} onchange={make} /></label>
       <label><span>Look down (°)</span><input class="input" type="number" min="-60" max="80" bind:value={elevation} onchange={make} /></label>
       <label>
@@ -59,10 +62,13 @@
         </select>
       </label>
     {/if}
-    {#if result?.file}
+    {#if result?.file && kind !== "photo"}
       <button class="btn" onclick={() => call("app_reveal", { path: result.file }).catch(() => {})}><FolderOpen size={14} /> Show in folder</button>
     {/if}
   </div>
+  {#if kind === "photo"}
+    <div class="view"><PhotoStudio /></div>
+  {:else}
   <div class="view" class:stale={busy}>
     {#if result?.file}
       <img src={fileUrl(result.file)} alt="The design" />
@@ -71,7 +77,8 @@
       <RocketLoader text="Drawing the picture" />
     {/if}
   </div>
-  {#if result?.parts?.length}
+  {/if}
+  {#if kind !== "photo" && result?.parts?.length}
     <table class="grid">
       <thead><tr><th class="n">#</th><th>Part</th><th>Kind</th><th class="n">Mass</th></tr></thead>
       <tbody>

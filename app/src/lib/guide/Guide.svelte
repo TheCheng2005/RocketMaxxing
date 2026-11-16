@@ -6,7 +6,7 @@
   import { CATALOG } from "../analysis/catalog";
   import { ui } from "../search/ui.svelte";
   import { designTour } from "../tour/tours";
-  import { PAGE_HELP, QUESTIONS, REVIEW, STD_SECTIONS, STEPS, TIPS } from "./content";
+  import { PAGE_HELP, QUESTIONS, REVIEW, SHORTCUTS, STD_SECTIONS, STEPS, TIPS } from "./content";
 
   // How to use RocketMaxxing: a first session step by step, what each page is for, which analysis answers which
   // question, what the team standards hold, and shortcuts. Every step and analysis named here can be opened from it.
@@ -15,7 +15,8 @@
     ["pages", "The pages"],
     ["analyses", "Which analysis?"],
     ["standards", "Team standards"],
-    ["tips", "Shortcuts and tips"],
+    ["keys", "Keyboard shortcuts"],
+    ["tips", "Tips"],
   ];
   let tab = $state(ui.guide && TABS.some(([t]) => t === ui.guide) ? ui.guide : "start");
   const NAMES = Object.fromEntries(CATALOG.flatMap((g) => g.items).map((a) => [a.tool, a.label]));
@@ -120,6 +121,18 @@
           </section>
         {/each}
         {@render open("standards", undefined, "Open the Standards page")}
+      {:else if tab === "keys"}
+        {#each SHORTCUTS as g (g.where)}
+          <section class="keys">
+            <h4>{g.where}</h4>
+            <dl class="tips">
+              {#each g.keys as [k, text] (k)}
+                <dt><kbd>{k}</kbd></dt>
+                <dd>{text}</dd>
+              {/each}
+            </dl>
+          </section>
+        {/each}
       {:else}
         <dl class="tips">
           {#each TIPS as [k, text] (k)}
@@ -311,5 +324,26 @@
       border-right: 0;
       border-bottom: 1px solid var(--line);
     }
+  }
+  .keys + .keys {
+    margin-top: 16px;
+  }
+  .keys h4 {
+    margin: 0 0 4px;
+  }
+  .keys .tips {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    column-gap: 16px;
+    margin: 0;
+  }
+  .keys .tips dt,
+  .keys .tips dd {
+    margin: 0;
+    padding: 5px 0;
+    border-top: 1px solid var(--line);
+  }
+  .keys .tips dd {
+    align-self: center;
   }
 </style>

@@ -96,6 +96,8 @@ public final class Main {
 			  choosing a laminate.
 			- Pictures and video: render_3d for exploded / cut-away 3-D images with a parts list, animate_flight for a 3-D
 			  animation of the simulated flight (GIF, MP4 with ffmpeg, key-moment stills).
+			- Building: print_templates writes a PDF of full-size templates (fins with tabs, centering rings with motor tube
+			  holes, bulkheads, transition shrouds, nose cone profile, fin marking guide) to print at 100% and cut.
 			- Inputs accept units ("20 ft/s", "4 in", "15 psi"); bare numbers are SI. Output uses the team's unit setting.
 			- Help the team discover what you can do; most people never read documentation. Results may end with
 			  youCouldAlsoAsk: related things this server does that the team has not used yet. When one fits what the
@@ -130,6 +132,7 @@ public final class Main {
 	 */
 	public static McpServer build(Context ctx, java.util.function.Consumer<McpServer> extra, boolean suggest) {
 		McpServer server = new McpServer("openrocket-mcp", VERSION, ctx.sandboxed() ? INSTRUCTIONS + TEAM : INSTRUCTIONS);
+		io.github.openrocketmcp.or.CustomMaterials.load(ctx.workspace()); // the team's own materials, by name like the rest
 		DesignTools.register(server, ctx);
 		FileTools.register(server, ctx);
 		AvionicsTools.register(server, ctx);

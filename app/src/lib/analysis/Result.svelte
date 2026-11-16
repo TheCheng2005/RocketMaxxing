@@ -4,6 +4,8 @@
   import { report } from "../state.svelte";
   import { isPath, isPrimitive, label, status } from "./text";
   import Self from "./Result.svelte";
+  import { localNumbers } from "../numberMark";
+  import { num } from "../units.svelte";
 
   // Any engine result as tables: objects as rows, lists of rows as tables, nested parts in folding sections.
   let { value, depth = 0 }: { value: any; depth?: number } = $props();
@@ -42,14 +44,18 @@
   {#if v === null || v === undefined}
     <span class="muted">–</span>
   {:else if Array.isArray(v)}
-    {v.join(", ")}
+    {v.map((x: unknown) => (typeof x === "number" ? num(x, 6) : localNumbers(String(x)))).join("; ")}
   {:else if typeof v === "boolean"}
     {v ? "yes" : "no"}
   {:else if isPath(k, v)}
     <span class="path">{v}</span>
     <button class="show" onclick={() => reveal(v)} title="Show in the file manager"><FolderOpen size={13} /> Show</button>
   {:else if status(v)}
-    <span class="st {status(v)}">{v}</span>
+    <span class="st {status(v)}">{localNumbers(String(v))}</span>
+  {:else if typeof v === "string"}
+    {localNumbers(v)}
+  {:else if typeof v === "number"}
+    {num(v, 6)}
   {:else}
     {v}
   {/if}

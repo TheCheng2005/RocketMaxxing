@@ -216,7 +216,7 @@ class McpIntegrationTest {
 		String sim = call("run_simulation", "{\"designId\":\"" + id + "\"}");
 		assertTrue(sim.contains("apogee"), sim);
 		String after = call("get_design", "{\"designId\":\"" + id + "\"}");
-		assertTrue(after.contains("MCP - "), "new simulation is stored with the design");
+		assertTrue(after.contains("Simulation of "), "new simulation is stored with the design");
 		assertTrue(call("run_simulation", "{\"designId\":\"" + id + "\"}").contains("\"launchRodAngleFromVertical\":\"6 deg\""));
 	}
 

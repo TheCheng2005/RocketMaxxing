@@ -68,6 +68,151 @@ public final class SimTools {
 				.str("configuration", DesignTools.CONFIG, false);
 	}
 
+	static Map<String, Object> extensions(Context ctx, Args a) {
+		String act = a.str("action", "list");
+		if (act.equals("types")) {
+			return Map.of("types", io.github.openrocketmcp.or.Extensions.kinds());
+		}
+		Designs.Design d = ctx.designs.get(a.str("designId", null));
+		Simulation sim = Sims.find(d, a.str("simulation", null));
+		if (sim == null) {
+			if (d.doc.getSimulations().isEmpty()) {
+				throw new ToolException("The design has no simulation yet: run_simulation makes one, then add extensions to it.");
+			}
+			sim = d.doc.getSimulations().get(0);
+		}
+		List<info.openrocket.core.simulation.extension.SimulationExtension> exts = sim.getSimulationExtensions();
+		Map<String, Object> out = new LinkedHashMap<>();
+		boolean changed = false;
+		switch (act) {
+			case "add" -> {
+				if (!a.has("type")) {
+					throw new ToolException("Say which extension to add (type), e.g. AirStart; action types lists them.");
+				}
+				var e = io.github.openrocketmcp.or.Extensions.create(a.str("type"));
+				if (e instanceof info.openrocket.core.simulation.extension.impl.ScriptingExtension sc) {
+					sc.setEnabled(false); // until a person (or settings below) turns it on
+				}
+				applySettings(ctx, e, a);
+				if (e instanceof info.openrocket.core.simulation.extension.example.RollControl rc) {
+					// OpenRocket looks for a fin set called "CONTROL": use the design's own fins unless one was named.
+					List<String> fins = new ArrayList<>();
+					for (info.openrocket.core.rocketcomponent.RocketComponent c : d.doc.getRocket()) {
+						if (c instanceof info.openrocket.core.rocketcomponent.FinSet) {
+							fins.add(c.getName());
+						}
+					}
+					if (fins.isEmpty()) {
+						throw new ToolException("Roll control turns a fin set, and this design has none.");
+					}
+					if (!fins.contains(rc.getControlFinName())) {
+						if (a.has("settings") && a.raw().getAsJsonObject("settings").has("controlFinName")) {
+							throw new ToolException("No fin set called \"" + rc.getControlFinName() + "\". Fin sets: " + fins + ".");
+						}
+						rc.setControlFinName(fins.get(fins.size() - 1)); // the aft-most set
+					}
+				}
+				exts.add(e);
+				out.put("added", io.github.openrocketmcp.or.Extensions.describe(e, exts.size() - 1));
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), sim.getName() + ": added the extension " + nameOf(e), null);
+				changed = true;
+			}
+			case "set" -> {
+				var e = pick(exts, a);
+				applySettings(ctx, e, a);
+				out.put("changed", io.github.openrocketmcp.or.Extensions.describe(e, exts.indexOf(e)));
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), sim.getName() + ": changed the extension " + nameOf(e)
+						+ (a.has("settings") ? " (" + String.join(", ", a.raw().getAsJsonObject("settings").keySet()) + ")" : ""), null);
+				changed = true;
+			}
+			case "remove" -> {
+				var e = pick(exts, a);
+				exts.remove(e);
+				out.put("removed", nameOf(e));
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), sim.getName() + ": removed the extension " + nameOf(e), null);
+				changed = true;
+			}
+			default -> {
+			}
+		}
+		List<Map<String, Object>> list = new ArrayList<>();
+		for (int i = 0; i < exts.size(); i++) {
+			list.add(io.github.openrocketmcp.or.Extensions.describe(exts.get(i), i));
+		}
+		out.put("simulation", sim.getName());
+		out.put("extensions", list);
+		if (changed) {
+			d.doc.setSaved(false);
+			if (a.bool("run", true)) {
+				try {
+					Sims.ensure(sim);
+					out.put("flight", Sims.summarize(sim));
+				} catch (RuntimeException e) {
+					out.put("flightFailed", String.valueOf(e.getMessage()).replace("org.graalvm.polyglot.PolyglotException: ", ""));
+				}
+			}
+		}
+		return out;
+	}
+
+	private static info.openrocket.core.simulation.extension.SimulationExtension pick(
+			List<info.openrocket.core.simulation.extension.SimulationExtension> exts, Args a) {
+		if (exts.isEmpty()) {
+			throw new ToolException("This simulation has no extensions.");
+		}
+		int i = a.has("index") ? a.integer("index", 0) : exts.size() == 1 ? 0 : -1;
+		if (i < 0 || i >= exts.size()) {
+			throw new ToolException("Say which extension (index 0 to " + (exts.size() - 1) + "); action list shows them.");
+		}
+		return exts.get(i);
+	}
+
+	private static String nameOf(info.openrocket.core.simulation.extension.SimulationExtension e) {
+		return String.valueOf(io.github.openrocketmcp.or.Extensions.describe(e, 0).get("name"));
+	}
+
+	static boolean scriptsAllowed() {
+		String v = System.getProperty("openrocketmcp.scripts", System.getenv("OPENROCKET_MCP_SCRIPTS"));
+		return v != null && (v.equalsIgnoreCase("on") || v.equalsIgnoreCase("true") || v.equals("1"));
+	}
+
+	private static void applySettings(Context ctx, info.openrocket.core.simulation.extension.SimulationExtension e, Args a) {
+		if (!a.has("settings")) {
+			return;
+		}
+		com.google.gson.JsonObject set = a.raw().getAsJsonObject("settings");
+		Boolean enable = null;
+		for (var entry : set.entrySet()) {
+			if (e instanceof info.openrocket.core.simulation.extension.impl.ScriptingExtension && entry.getKey().equalsIgnoreCase("enabled")) {
+				enable = entry.getValue().getAsBoolean();
+				continue;
+			}
+			io.github.openrocketmcp.or.Extensions.set(e, entry.getKey(), entry.getValue());
+		}
+		if (e instanceof info.openrocket.core.simulation.extension.impl.ScriptingExtension sc) {
+			if (Boolean.TRUE.equals(enable)) {
+				// A script runs as code on this computer. In the desktop app the assistant may write one, but only the
+				// person turns it on (app_trust_script, which assistants do not have).
+				boolean person = ctx.journal() && "you".equals(Journal.actor());
+				if (!person && ctx.journal()) {
+					throw new ToolException("A script runs as code on this computer, so the person using RocketMaxxing turns it on "
+							+ "(Flights page, the simulation's Extensions). Add it with enabled false and ask them to read it and turn it on.");
+				}
+				// Outside the app (an MCP or team server) nobody is there to read it: off unless whoever runs the server allows it.
+				if (!person && !scriptsAllowed()) {
+					throw new ToolException("A script runs as code on the computer running this server, so it cannot be turned on from "
+							+ "here. The script is kept, off: turn it on in RocketMaxxing (Flights page, the simulation's Extensions) or in "
+							+ "OpenRocket, or start this server with OPENROCKET_MCP_SCRIPTS=on to allow it.");
+				}
+				io.github.openrocketmcp.or.Extensions.trust(sc, true);
+			} else if (Boolean.FALSE.equals(enable)) {
+				sc.setEnabled(false);
+			} else if (set.has("script") && sc.isEnabled()) {
+				sc.setEnabled(false); // a changed script is a new script: on again only when someone says so
+			}
+		}
+	}
+
 	/** Prepares and runs the selected simulation with overrides from the arguments. */
 	static Simulation runSelected(Context ctx, Args a) {
 		Designs.Design d = ctx.designs.get(a.str("designId", null));
@@ -77,6 +222,25 @@ public final class SimTools {
 	}
 
 	public static void register(McpServer s, Context ctx) {
+		s.tool(new ToolDef("simulation_extensions", "Simulation extensions",
+				"Set up a simulation's extensions, as OpenRocket's Extensions tab: air-start (the flight starts at an altitude and "
+						+ "speed, for an upper stage lit in the air), roll control (canted fins holding a roll rate), damping moment, "
+						+ "stop the simulation at a time or step, save every step as CSV, a script run during the flight (JavaScript "
+						+ "defining OpenRocket's listener functions such as postStep or preWindModel), or a Java listener class. "
+						+ "action: list (default), types, add, set, remove. add and set take settings in units (\"500 ft\", \"20 deg/s\"). "
+						+ "After a change the simulation flies again and the result comes back. A script runs as code on this "
+						+ "computer: one from a file stays off until a person turns it on, and in the desktop app only the person "
+						+ "can turn one on.",
+				Schema.object().str("designId", DesignTools.DESIGN_ID, false)
+						.str("simulation", "Simulation index or name (default the first).", false)
+						.enumStr("action", "list, types, add, set or remove.", false, "list", "types", "add", "set", "remove")
+						.str("type", "For add: the extension, e.g. AirStart, RollControl, DampingMoment, StopSimulation, CSVSave, "
+								+ "ScriptingExtension (a script), JavaCode.", false)
+						.integer("index", "For set or remove: which of the simulation's extensions (from list, 0 first).", false)
+						.obj("settings", "For add or set: settings by key, e.g. {\"launchAltitude\": \"1000 ft\"} or "
+								+ "{\"script\": \"function postStep(status) { ... }\", \"enabled\": true}.", false)
+						.bool("run", "Fly the simulation after a change (default true).", false).build(),
+				false, a -> extensions(ctx, a)));
 		s.tool(new ToolDef("run_simulation", "Simulate a flight",
 				"Run an OpenRocket 6-DOF simulation and return a compact summary: apogee, max velocity/Mach/acceleration, rail exit "
 						+ "velocity, thrust-to-weight, stability at rail exit and min/max during ascent, each stage's events, "

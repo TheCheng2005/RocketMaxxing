@@ -120,6 +120,7 @@ export interface Editor {
   label: string;
   paint?: string;
   shine?: number;
+  decal?: import("./design/decals").Decal | null;
   presetType?: string;
   preset?: string;
   sections: { title: string; fields: FieldDef[] }[];
@@ -147,6 +148,8 @@ export interface Part {
   /** Painted parts: 0 (matte) to 1 (glossy). */
   shine?: number;
   type: string;
+  /** A picture on the part (design/decals.ts). */
+  decal?: import("./design/decals").Decal;
   /** Left out when the window already has it (see design/meshes.ts). */
   mesh?: string;
   meshId?: string;
@@ -190,7 +193,7 @@ export interface Session {
   notices?: string | null;
 }
 
-export type Page = "home" | "design" | "motors" | "flights" | "flightdata" | "targets" | "standards" | "analysis";
+export type Page = "home" | "design" | "motors" | "flights" | "flightdata" | "targets" | "standards" | "analysis" | "history";
 
 export const app = $state({
   session: null as Session | null,
@@ -225,6 +228,8 @@ export interface Check {
   requirement?: string;
   value?: string;
   ref?: string;
+  /** What the row is about, to open on a click: "part:<id>", "page:<page>" or "analysis:<tool>". */
+  about?: string;
 }
 
 export interface Checks {
@@ -353,7 +358,7 @@ export function toast(text: string, kind: "error" | "info" = "info") {
 /** Runs an engine action, showing its error (if any) instead of throwing. */
 const PAGES: Record<Page, string> = {
   home: "Start", design: "Design", motors: "Motors", flights: "Flights", flightdata: "Flight data", targets: "Targets",
-  standards: "Standards", analysis: "Analysis",
+  standards: "Standards", analysis: "Analysis", history: "History",
 };
 
 /** Puts a failure in the problems list and shows it, labelled with whose problem it is. */
@@ -462,6 +467,16 @@ export async function openPath(path: string) {
     else if (projectOffers(app.design?.project).length) ui.importReport = true;
     else if (r.conversionWarnings?.length) toast("Converted on opening: " + r.conversionWarnings.join("; "));
   });
+}
+
+/** A file to read: the system's open dialog, or a typed path where there is none (a browser on another machine). */
+export async function chooseFile(title: string, hint: string, types: string): Promise<string | null> {
+  try {
+    return (await call<{ path: string | null }>("app_choose_file", { mode: "open", types })).path;
+  } catch {
+    const p = await ask(title, hint);
+    return p?.trim() || null;
+  }
 }
 
 export async function openDialog() {

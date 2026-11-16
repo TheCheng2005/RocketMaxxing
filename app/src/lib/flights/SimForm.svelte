@@ -3,6 +3,7 @@
   import { act } from "../state.svelte";
   import { isOpen, toggle } from "../panels.svelte";
   import QuantityInput from "../design/QuantityInput.svelte";
+  import SimExtensions from "./SimExtensions.svelte";
   import { editNum, readNum } from "../units.svelte";
 
   // OpenRocket's simulation dialog ("Launch conditions" and "Simulation options") as one form.
@@ -102,6 +103,13 @@
       <div class="rows">
         <div class="row"><span>Time step</span><QuantityInput value={o.timeStep} dim="TIME" commit={(v) => set("timeStep", v)} /></div>
       </div>
+    {/if}
+  </section>
+
+  <section>
+    {@render head("extensions", "Extensions", true)}
+    {#if isOpen("sim.extensions")}
+      <SimExtensions sim={sim.index} />
     {/if}
   </section>
 </div>

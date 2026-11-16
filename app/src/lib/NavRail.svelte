@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { House, Rocket, Flame, ChartSpline, FileChartLine, Target, BookOpenCheck, ClipboardCheck, LifeBuoy } from "@lucide/svelte";
+  import { House, Rocket, Flame, ChartSpline, FileChartLine, Target, BookOpenCheck, ClipboardCheck, LifeBuoy, History } from "@lucide/svelte";
   import { app, toast, type Page } from "./state.svelte";
   import { call } from "./api";
   import { updates, checkNow } from "./updates.svelte";
@@ -40,16 +40,17 @@
     { id: "standards", label: "Standards", hint: "Rule set, launch site, safety factors, ratings and materials", icon: BookOpenCheck },
     { id: "analysis", label: "Analysis", hint: "Rule check, recovery, structures, studies", icon: ClipboardCheck },
     { id: "flightdata", label: "Flight data", hint: "Altimeter logs and past rockets", icon: FileChartLine },
+    { id: "history", label: "History", hint: "What changed since the last save, what can be undone, and everything that happened", icon: History },
   ];
 </script>
 
 <nav>
-  {#each pages as p (p.id)}
+  {#each pages as p, i (p.id)}
     {@const Icon = p.icon}
     <button
       class:on={app.page === p.id}
-      disabled={p.id !== "home" && !app.design}
-      title={p.hint}
+      disabled={p.id !== "home" && p.id !== "history" && !app.design}
+      title={`${p.hint} (${keys(String(i + 1))})`}
       onclick={() => (app.page = p.id)}
     >
       <Icon size={24} strokeWidth={1.7} />

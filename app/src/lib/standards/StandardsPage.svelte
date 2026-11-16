@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { Trophy, MapPin, Umbrella, Wrench, Cpu } from "@lucide/svelte";
+  import TeamMaterials from "./TeamMaterials.svelte";
+  import { Trophy, MapPin, Umbrella, Wrench, Cpu, Layers } from "@lucide/svelte";
   import { reducedMotion } from "../prefs.svelte";
   const ICONS = { launchSite: MapPin, recovery: Umbrella, structures: Wrench, electronics: Cpu } as Record<string, any>;
   import { onMount } from "svelte";
@@ -159,6 +160,11 @@
           <div class="body"><StdNode path={[key]} std={std} {set} /></div>
         </Panel>
       {/each}
+      <div id="std-materials"></div>
+      <Panel id="std.materials" icon={Layers} title="Your materials">
+        {#snippet status()}<span class="muted small">In every part's material list</span>{/snippet}
+        <TeamMaterials />
+      </Panel>
     </div>
   {:else}
     <p class="muted pad">Reading the standards…</p>

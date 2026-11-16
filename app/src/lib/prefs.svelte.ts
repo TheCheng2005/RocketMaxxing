@@ -27,6 +27,7 @@ export const SCHEMES: Scheme[] = [
 ];
 
 import { resetPanels } from "./panels.svelte";
+import { setCommaMark } from "./numberMark";
 
 const KEY = "rocketmaxxing.theme";
 const SCHEME_KEY = "rocketmaxxing.scheme";
@@ -87,6 +88,8 @@ function inkOn(hex: string): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.4 ? "#111111" : "#ffffff";
 }
+
+setCommaMark(prefs.mark === "comma");
 
 const motionQuery = typeof matchMedia === "function" ? matchMedia("(prefers-reduced-motion: reduce)") : null;
 
@@ -174,6 +177,7 @@ export function setDigits(n: number) {
 
 export function setMark(m: Mark) {
   prefs.mark = m;
+  setCommaMark(m === "comma");
   keep("rocketmaxxing.mark", m === "point" ? null : m);
 }
 

@@ -23,6 +23,7 @@
   import { openMenu, nativeHere, currentPageItems } from "./lib/menu/menu.svelte";
   import { openIssues } from "./lib/issues/issues.svelte";
   import { keys, MAC } from "./lib/keys";
+  import { PAGE_KEYS } from "./lib/guide/content";
 
   let ready = $state(false);
 
@@ -37,6 +38,7 @@
     standards: () => import("./lib/standards/StandardsPage.svelte"),
     targets: () => import("./lib/targets/TargetsPage.svelte"),
     analysis: () => import("./lib/analysis/AnalysisPage.svelte"),
+    history: () => import("./lib/history/HistoryPage.svelte"),
   };
   const issuesCode: Lazy = () => import("./lib/issues/IssuesDrawer.svelte");
   const assistantCode: Lazy = () => import("./lib/assistant/AssistantDrawer.svelte");
@@ -50,7 +52,7 @@
   function prefetch() {
     for (const f of [PAGE_CODE.design, ...Object.values(PAGE_CODE), issuesCode, assistantCode, searchCode, guideCode]) load(f).catch(() => {});
   }
-  const PAGES: Page[] = ["home", "design", "motors", "flights", "flightdata", "targets", "standards", "analysis"];
+  const PAGES: Page[] = ["home", "design", "motors", "flights", "flightdata", "targets", "standards", "analysis", "history"];
   /** The start: designs handed over meanwhile wait for it. */
   let started: Promise<unknown> = Promise.resolve();
 
@@ -109,9 +111,16 @@
     } else if (mod && e.key.toLowerCase() === "o") {
       e.preventDefault();
       openDialog();
+    } else if (mod && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key) && !overlay()) {
+      // Ctrl+1 to Ctrl+9: the pages in the left rail's order
+      const p = PAGE_KEYS[Number(e.key) - 1];
+      if (p && (p === "home" || p === "history" || app.design)) {
+        e.preventDefault();
+        app.page = p;
+      }
     } else if (e.key === "?" && !typing(e) && !overlay()) {
       e.preventDefault();
-      ui.guide = "tips";
+      ui.guide = "keys";
     } else if (app.page === "design" && !typing(e) && !overlay()) {
       // The parts: delete, move, copy and paste, as in a file list. Not while a dialog or the tour is on top.
       const k = e.key.toLowerCase();

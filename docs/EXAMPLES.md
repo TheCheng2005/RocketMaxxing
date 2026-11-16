@@ -481,7 +481,7 @@ Each stage is followed through the whole flight. The captions name the stage (bo
 
 | Rocket | File | Year | Motors | Predicted apogee |
 |---|---|---|---|---|
-| Maple 10K | 2026/maple/maple-10k.ork | 2026 | M1315W (M, 6645 Ns (1494 lbf-s)) | 3029 m (9937 ft) (simulated now ('MCP - [L1250DM-P]')) |
+| Maple 10K | 2026/maple/maple-10k.ork | 2026 | M1315W (M, 6645 Ns (1494 lbf-s)) | 3029 m (9937 ft) (simulated now ('Simulation of [L1250DM-P]')) |
 | Maple 10K | 2025/maple-pdr/maple-pdr.ork | 2025 | L1250DM (L, 4400 Ns (989.2 lbf-s)) | 3122 m (10243 ft) (simulated now in OpenRocket's default conditions (no simulation in the file)) |
 | Two stage high power rocket | 2024/two-stage.ork | 2024 | H148R, H148R (I, 430.4 Ns (96.75 lbf-s)) | 675 m (2214 ft) (saved result of 'Simulation 1') |
 

@@ -183,8 +183,24 @@
       const need = rule.need.map((k) => all.find((i) => i.key === k)).filter((i): i is Input => !!i);
       if (need.length && !need.some(filled)) out.push(need.map((i) => label(i.key)).join(" or "));
     }
+    // The analysis's own rule (a set of inputs filled together, a value the team standards may give).
+    const own = entry.needs?.({
+      value: (k) => (values[k] ?? "").trim(),
+      tubesPerStage: (app.design?.tree.children ?? []).map((st) => st.children.filter((c) => c.type === "BodyTube").length),
+      siteHasPosition,
+    });
+    if (own) out.push(own);
     if (noMotor) out.push("a motor");
     return out;
+  });
+
+  /** Whether the team standards give the launch site's position (the forecast can do without one typed). */
+  let siteHasPosition = $state(false);
+  $effect(() => {
+    if (entry.tool !== "weather_forecast") return;
+    call<{ merged: { launchSite?: { latitude?: unknown; longitude?: unknown } } }>("app_standards")
+      .then((s) => (siteHasPosition = [s.merged?.launchSite?.latitude, s.merged?.launchSite?.longitude].every((v) => v !== "" && v !== null && v !== undefined)))
+      .catch(() => (siteHasPosition = false));
   });
 
   /** The engine's description of an input, without the unit sentence every quantity carries. */

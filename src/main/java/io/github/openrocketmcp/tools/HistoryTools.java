@@ -48,11 +48,14 @@ public final class HistoryTools {
 	private static Object move(Context ctx, Args a, boolean undo) {
 		Designs.Design d = ctx.designs.get(a.str("designId", null));
 		int steps = Math.max(1, Math.min(History.LEVELS, a.integer("steps", 1)));
+		List<String> words = d.history.next(undo, steps);
 		List<String> done = undo ? d.history.undo(d.doc.getRocket(), steps) : d.history.redo(d.doc.getRocket(), steps);
 		if (done.isEmpty()) {
 			throw new ToolException("Nothing to " + (undo ? "undo" : "redo") + " for " + d.name() + " in this session.");
 		}
 		d.doc.setSaved(false);
+		Journal.add(ctx, undo ? "undo" : "redo", d.name(), d.path == null ? null : d.path.toString(),
+				(undo ? "Undid: " : "Redid: ") + String.join("; ", words), null);
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put(undo ? "undone" : "redone", done);
 		out.put("canUndo", d.history.undoable());
@@ -75,10 +78,13 @@ public final class HistoryTools {
 				return t.handler().call(args);
 			}
 			History.Pending p = d.history.before(d.doc.getRocket());
+			String said = described(t, args, d); // before the call: a removed part's name is gone after it
 			try {
 				return t.handler().call(args);
 			} finally {
-				d.history.after(p, d.doc.getRocket(), t.name() + summary(args));
+				if (d.history.after(p, d.doc.getRocket(), t.name() + summary(args), said)) {
+					Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), said, null);
+				}
 			}
 		});
 	}
@@ -92,6 +98,33 @@ public final class HistoryTools {
 			return ctx.designs.get(id);
 		} catch (RuntimeException e) {
 			return null; // the tool reports the unknown design itself
+		}
+	}
+
+	/**
+	 * An edit as the team would say it: "Set Length of Nose cone to 45 cm" for a field typed in the app, else the
+	 * tool's title with its arguments in short.
+	 */
+	static String described(ToolDef t, Args args, Designs.Design d) {
+		try {
+			String part = args.has("component") ? partName(d, args.str("component")) : null;
+			if (t.name().equals("app_edit") && args.has("key")) {
+				String key = args.str("key").replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase(java.util.Locale.ROOT);
+				return "Set " + key + (part == null ? "" : " of " + part) + " to " + args.get("value").toString().replace("\"", "");
+			}
+			String title = t.title() == null ? t.name() : t.title().replaceFirst("^App: ", "");
+			title = title.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + title.substring(1);
+			return title + (part == null ? "" : ": " + part) + summary(args).replaceAll("component=[^,)]*,? ?", "").replace(" ()", "");
+		} catch (RuntimeException e) {
+			return t.name() + summary(args);
+		}
+	}
+
+	private static String partName(Designs.Design d, String id) {
+		try {
+			return io.github.openrocketmcp.or.Components.find(d.doc.getRocket(), id).getName();
+		} catch (RuntimeException e) {
+			return id;
 		}
 	}
 

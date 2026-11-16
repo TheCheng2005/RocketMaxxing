@@ -89,6 +89,7 @@ const PAGES: { id: Page; title: string; sub: string; keys: string }[] = [
   { id: "standards", title: "Standards", sub: "Rule set, launch site, safety factors, ratings and materials", keys: "rule set launch site safety factor pin ratings materials team standards" },
   { id: "analysis", title: "Analysis", sub: "Rule check, recovery, structures, studies", keys: "analyses tools" },
   { id: "flightdata", title: "Flight data", sub: "Altimeter logs and past rockets", keys: "altimeter logs past rockets library" },
+  { id: "history", title: "History", sub: "What changed since the last save, undo to any point, everything that happened", keys: "history changes changelog undo revert log timeline audit what changed who" },
 ];
 
 function go(page: Page) {
@@ -159,6 +160,10 @@ export function entries(): Entry[] {
     { kind: "action", title: "Cut-away view", sub: "The airframe cut open in 3-D to show the inside", keys: "cutaway section inside internal open", off: noDesign, run: view("cutaway") },
     { kind: "action", title: "Fit the rocket in the view", sub: "Zoom to show the whole rocket", keys: "zoom reset center centre frame", off: noDesign, run: view("fit") },
     { kind: "action", title: "Picture or drawing", sub: "Exploded or cut-away 3-D image with a parts list, or the side drawing (SVG)", keys: "image render png svg export screenshot exploded parts list drawing", off: noDesign, run: view("picture") },
+    { kind: "action", title: "Simulation extensions", sub: "Air-start, roll control, a script of your own: the simulation's Extensions (Flights page)", keys: "extension extensions air start airstart roll control script scripting javascript listener damping stop simulation plugin", off: noDesign, run: () => go("flights") },
+    { kind: "action", title: "Your own materials", sub: "Add a laminate, filament, canopy cloth or cord with its density (Standards page)", keys: "custom material add material density laminate filament cloth cord preferences materials database", run: () => { go("standards"); setTimeout(() => document.getElementById("std-materials")?.scrollIntoView({ block: "start" }), 300); } },
+    { kind: "action", title: "Scale the rocket", sub: "Every length by a factor, or to a body diameter or overall length (Edit › Scale in OpenRocket)", keys: "scale resize bigger smaller upscale downscale clone size factor diameter", off: noDesign, run: view("scale", "rocket") },
+    { kind: "action", title: "Print templates", sub: "Full-size fins, centering rings, bulkheads, transition shrouds, nose profile and fin marking guide (PDF)", keys: "print template fin template ring centering bulkhead cut out marking guide nose profile shroud pdf paper build", off: noDesign, run: view("templates") },
     { kind: "action", title: "Flight video", sub: "The selected simulation as an MP4 in your Downloads folder", keys: "animation movie gif mp4 animate", off: noDesign, run: () => (go("flights"), request("video")) },
     { kind: "action", title: "Import a motor file", sub: "A .eng, .rse or zipped motor file into the motor list", keys: "eng rse thrustcurve rasp motor file load", off: noDesign, run: () => (go("motors"), request("motor", "import")) },
     { kind: "action", title: "Your own motor", sub: "A motor from static-fire data or an average thrust", keys: "custom motor static fire test thrust curve homemade research", off: noDesign, run: () => (go("motors"), request("motor", "custom")) },
@@ -204,7 +209,7 @@ export function entries(): Entry[] {
       }
     }
   }
-  const PAGE_NAME: Record<string, string> = { home: "Start", design: "Design", motors: "Motors", flights: "Flights", targets: "Targets", standards: "Standards", analysis: "Analysis", flightdata: "Flight data" };
+  const PAGE_NAME: Record<string, string> = { home: "Start", design: "Design", motors: "Motors", flights: "Flights", targets: "Targets", standards: "Standards", analysis: "Analysis", flightdata: "Flight data", history: "History" };
   const known = new Set(out.map((e) => e.title));
   fromMenu(currentPageItems().filter((it) => !(it && typeof it === "object" && "label" in it && known.has(it.label))), `${PAGE_NAME[app.page]} page`);
 

@@ -8,7 +8,7 @@ points to everything.
 
 ## Tools
 
-The 86 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
+The 92 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
 from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Session
@@ -88,6 +88,16 @@ from the model by hosts that show views). Bold marks the main job of each tool.
     as `conversionWarnings`, to check before trusting the numbers.
   - **Custom materials:** materials carried inside the file can be named in `edit_components`.
 - `get_design`: the component tree, motors, and the **stability of every stage stack**.
+- `scale_design`: **scales the rocket**, or some parts and what is inside them, as OpenRocket's Edit › Scale: by a
+  `factor`, or to a body `diameter` or an overall `length`. Every length scales (body lengths and radii, fin chords,
+  spans and tabs, shoulders, rail buttons, parachutes and packed sizes). `thickness` (wall thicknesses, default on),
+  `offsets` (positions, default on) and `masses` (fixed masses and overrides by the factor cubed, default off) are
+  options. Values OpenRocket works out itself follow the parts they match; one undo puts it all back.
+- `materials`: **the team's own materials**, as OpenRocket's Preferences › Materials: `add` a solid, cloth or line
+  material with its density and unit ("1.85 g/cm3", "40 g/m2", "2 g/m"), `remove` one, or list them. They are kept
+  beside the designs (`materials.json`), load whenever the server starts and are used by name like OpenRocket's own
+  (in `edit_components` and `compare_materials`). A design carries the materials it uses, so files stay readable
+  elsewhere.
 - `describe_component`, `edit_components`, `add_component`, `remove_component`: read and change parts.
 - `set_deployment`, `set_stage_separation`, `flight_configuration`: events and configurations.
 - `save_design`: writes the .ork (and the aero table next to it, if one is imported). A path ending in `.rmx` writes a
@@ -204,6 +214,16 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   deployments and landing distance.
 - `get_flight_data`: down-sampled time series, e.g. for stability-against-time plots.
 - `sweep`: vary launch conditions or any component property and fly each value.
+- `simulation_extensions`: a simulation's **extensions**, as OpenRocket's Extensions tab. `action`: `types` lists them,
+  `list` (default) shows the simulation's, `add`, `set` (by `index`) and `remove`. Kinds: air-start (`launchAltitude`,
+  `launchVelocity`), roll control (`controlFinName`, `startTime`, `setPoint`, `finRate` in deg/s, `maxFinAngle`, `KP`,
+  `KI`), damping moment, stop simulation (`stopTime`, `stopStep`), CSV save, a script (`script`, `language`,
+  `enabled`) and a Java class (`className`). `settings` take units. After a change the simulation flies again and its
+  summary comes back (`flightFailed` with the message if a script stops it). A script runs as code on the computer:
+  a new or changed one is off until turned on (`enabled: true`), which marks it trusted as OpenRocket does. In the
+  desktop app only the person can turn one on, not the assistant. On an MCP or team server a script cannot be turned
+  on at all unless whoever runs the server starts it with `OPENROCKET_MCP_SCRIPTS=on`; a script already trusted on
+  that computer (turned on in RocketMaxxing or OpenRocket) runs as before.
 
 ### Aerodynamics and wind
 
@@ -246,6 +266,12 @@ from the model by hosts that show views). Bold marks the main job of each tool.
 
   Only buildable shapes are tried: a minimum tip chord, no tip trailing edge behind the root unless allowed, a capped
   sweep, and a root no longer than the tube. It draws the planform; `apply` keeps the result.
+- `import_fin_outline`: **a fin outline from a file**, as OpenRocket's freeform fin import. A CSV or text file of points
+  (two numbers a line; the unit from a heading such as `x (mm)` or `unit`, else mm; drawn either way round), or a
+  **picture of the fin** (PNG, JPG, GIF, BMP: a drawing, scan or photo of a template, dark on light paper, root along the
+  bottom) traced round its outer edge (holes ignored), simplified to its corners and scaled to `rootChord` (default the
+  fin's root now) or `height`. The fins become freeform; undo brings the old ones back.
+- `export_fin_outline`: any fin set's outline as a CSV of points in mm, to edit in a spreadsheet or CAD and import again.
 
 ### Design studies
 
@@ -385,6 +411,20 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   crossing and the alignment tolerance.
 
 ### CFD, CAD and manufacturing
+
+- `print_templates`: **full-size templates to print and cut** as a PDF, as OpenRocket prints them:
+  - each fin set's outline with its tab (dashed: the body line), and how many to cut;
+  - centering rings with the motor tube holes where the tubes are (clusters included) and bulkheads; identical ones
+    print once, "cut 3";
+  - a paper shroud (flat pattern, with a glue strip) for each transition, as a cone between its ends;
+  - half the nose cone's profile at full size with its shoulder, to check a turned or printed nose;
+  - a fin marking guide for each body tube with fins, lugs or rail buttons: a strip to wrap round the tube with a line
+    at each fin and rail button and its angle.
+
+  `paper`: A4 (default), Letter, A3 or Tabloid; `include` picks the kinds; `components` limits it to some parts. Each
+  page has a 100 mm and a 4 in bar to check it printed at 100%. A template too big for a page is turned sideways if
+  that fits, else cut into pieces (labelled row and column, with dashed edges to tape together) that share sheets with
+  the rest.
 
 - `export_geometry` writes three things:
   - the **outer mold line as STL**, with a named region per part, the base and each fin set. The body is watertight and

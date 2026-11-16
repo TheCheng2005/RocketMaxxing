@@ -152,6 +152,7 @@ final class AppDesign {
 		if (!(c instanceof Rocket)) {
 			out.put("paint", paint(c));
 			out.put("shine", c.getAppearance() == null ? null : c.getAppearance().getShine());
+			out.put("decal", decal(ctx, c));
 			out.put("presetType", c.getPresetType() == null ? null : c.getPresetType().name());
 			out.put("preset", c.getPresetComponent() == null ? null : Presets.name(c.getPresetComponent()));
 		}
@@ -284,6 +285,10 @@ final class AppDesign {
 					if (painted != null) {
 						p.put("color", painted);
 						p.put("shine", pc.getAppearance().getShine());
+					}
+					Map<String, Object> decal = decal(ctx, pc);
+					if (decal != null) {
+						p.put("decal", decal);
 					}
 				}
 				parts.add(p);
@@ -452,7 +457,14 @@ final class AppDesign {
 		RocketComponent c = find(d, a.str("component"));
 		String hex = a.str("color", "").trim();
 		if (hex.isEmpty()) {
-			c.setAppearance(null);
+			Appearance old = c.getAppearance();
+			Appearance def = info.openrocket.core.appearance.defaults.DefaultAppearance.getDefaultAppearance(c);
+			boolean own = old != null && old.getTexture() != null && old.getTexture().getImage() != null && !(def != null
+					&& def.getTexture() != null && def.getTexture().getImage() != null
+					&& def.getTexture().getImage().getName().equals(old.getTexture().getImage().getName()));
+			// The team's own decal stays when the paint goes back to the default; OpenRocket's default look otherwise.
+			c.setAppearance(!own ? null : new Appearance(def != null && def.getPaint() != null ? def.getPaint() : new ORColor(225, 225, 225),
+					old.getShine(), old.getTexture()));
 		} else {
 			if (!hex.matches("#?[0-9a-fA-F]{6}")) {
 				throw new ToolException("'" + hex + "' is not a colour this can use. Give it as # and six hex digits, for example "
@@ -468,6 +480,119 @@ final class AppDesign {
 		return Map.of("component", c.getName(), "color", hex.isEmpty() ? "default" : hex);
 	}
 
+	/**
+	 * The part's decal for the 3-D view: its image copied out of the design into the app's folder (named by its
+	 * contents, so it is written once), with where it sits. Null when the part has none.
+	 */
+	private static final Map<info.openrocket.core.appearance.DecalImage, String> DECAL_FILES = java.util.Collections
+			.synchronizedMap(new java.util.WeakHashMap<>());
+
+	static Map<String, Object> decal(Context ctx, RocketComponent c) {
+		Appearance ap = c.getAppearance();
+		info.openrocket.core.appearance.Decal t = ap == null ? null : ap.getTexture();
+		if (t == null || t.getImage() == null) {
+			return null;
+		}
+		Map<String, Object> m = new LinkedHashMap<>();
+		String name = t.getImage().getName();
+		m.put("name", name.replaceAll("^.*[/\\\\]", ""));
+		String kept = DECAL_FILES.get(t.getImage()); // the model is asked for after every edit: read each picture once
+		if (kept != null && java.nio.file.Files.exists(java.nio.file.Path.of(kept)) && kept.startsWith(ctx.workspace().toString())) {
+			m.put("image", kept);
+		} else
+		try (java.io.InputStream in = t.getImage().getBytes()) {
+			byte[] bytes = in.readAllBytes();
+			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
+			String hash = java.util.HexFormat.of().formatHex(md.digest(bytes)).substring(0, 16);
+			String ext = name.toLowerCase(java.util.Locale.ROOT).matches(".*\\.(png|jpe?g|gif|bmp|webp)$") ? name.substring(name.lastIndexOf('.')) : ".png";
+			java.nio.file.Path out = ctx.workspace().resolve(".app/decals/" + hash + ext);
+			if (!java.nio.file.Files.exists(out)) {
+				java.nio.file.Files.createDirectories(out.getParent());
+				java.nio.file.Files.write(out, bytes);
+			}
+			m.put("image", out.toString());
+			DECAL_FILES.put(t.getImage(), out.toString());
+		} catch (Exception e) {
+			m.put("missing", "The decal's picture (" + name + ") could not be found: open the design next to it, or choose the picture again.");
+		}
+		m.put("offsetU", t.getOffset().x);
+		m.put("offsetV", t.getOffset().y);
+		m.put("centerU", t.getCenter().x);
+		m.put("centerV", t.getCenter().y);
+		m.put("scaleU", t.getScale().x);
+		m.put("scaleV", t.getScale().y);
+		m.put("rotation", Math.toDegrees(t.getRotation()));
+		m.put("edge", t.getEdgeMode().name());
+		return m;
+	}
+
+	/** Puts a picture on a part (or moves, resizes or turns the one it has), as OpenRocket's Appearance tab does. */
+	static Map<String, Object> setDecal(Context ctx, Args a) {
+		Designs.Design d = ctx.designs.get(a.str("designId"));
+		RocketComponent c = find(d, a.str("component"));
+		Appearance old = c.getAppearance();
+		if (a.bool("remove", false)) {
+			if (old != null) {
+				c.setAppearance(new Appearance(old.getPaint(), old.getShine()));
+			}
+			d.doc.setSaved(false);
+			return Map.of("component", c.getName(), "decal", "removed");
+		}
+		info.openrocket.core.appearance.AppearanceBuilder b = old == null ? new info.openrocket.core.appearance.AppearanceBuilder()
+				: new info.openrocket.core.appearance.AppearanceBuilder(old);
+		if (a.has("path")) {
+			java.nio.file.Path p = ctx.path(a.str("path"));
+			if (!java.nio.file.Files.isRegularFile(p)) {
+				throw new ToolException("Not found: " + p);
+			}
+			if (!p.getFileName().toString().toLowerCase(java.util.Locale.ROOT).matches(".*\\.(png|jpe?g|gif|bmp)$")) {
+				throw new ToolException("A decal is a picture: PNG, JPG, GIF or BMP.");
+			}
+			info.openrocket.core.appearance.DecalImage img = d.doc
+					.getDecalImage(new info.openrocket.core.document.attachments.FileSystemAttachment(p.toString(), p.toFile()));
+			DECAL_FILES.remove(img); // the file may have been edited since it was last chosen
+			b.setImage(img);
+			if (old == null || old.getTexture() == null) { // a new decal: once round the part, unless told otherwise
+				b.setScaleUV(1, 1);
+				b.setOffset(0, 0);
+				b.setCenter(0, 0);
+				b.setRotation(0);
+				b.setEdgeMode(info.openrocket.core.appearance.Decal.EdgeMode.REPEAT);
+			}
+		} else if (b.getImage() == null) {
+			throw new ToolException("Choose a picture for the decal (path).");
+		}
+		if (a.has("offsetU") || a.has("offsetV")) {
+			b.setOffset(a.num("offsetU", b.getOffsetU()), a.num("offsetV", b.getOffsetV()));
+		}
+		if (a.has("centerU") || a.has("centerV")) {
+			b.setCenter(a.num("centerU", b.getCenterU()), a.num("centerV", b.getCenterV()));
+		}
+		if (a.has("scaleU") || a.has("scaleV")) {
+			double su = a.num("scaleU", b.getScaleU()), sv = a.num("scaleV", b.getScaleV());
+			if (!(su > 0 && sv > 0 && su <= 1000 && sv <= 1000)) {
+				throw new ToolException("A decal's scale is how many pictures fit across the part: more than zero, at most 1000.");
+			}
+			b.setScaleUV(su, sv);
+		}
+		if (a.has("rotation")) {
+			b.setRotation(Math.toRadians(a.num("rotation")));
+		}
+		if (a.has("edge")) {
+			try {
+				b.setEdgeMode(info.openrocket.core.appearance.Decal.EdgeMode.valueOf(a.str("edge").toUpperCase(java.util.Locale.ROOT)));
+			} catch (IllegalArgumentException e) {
+				throw new ToolException("Edge \"" + a.str("edge") + "\" is not one of repeat, mirror, clamp or sticker.");
+			}
+		}
+		c.setAppearance(b.getAppearance());
+		d.doc.setSaved(false);
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("component", c.getName());
+		out.put("decal", decal(ctx, c));
+		return out;
+	}
+
 	/** The component's paint as #rrggbb, or null for OpenRocket's default look. */
 	static String paint(RocketComponent c) {
 		Appearance ap = c.getAppearance();
@@ -475,6 +600,10 @@ final class AppDesign {
 			return null;
 		}
 		ORColor col = ap.getPaint();
+		Appearance def = ap.getTexture() == null ? null : info.openrocket.core.appearance.defaults.DefaultAppearance.getDefaultAppearance(c);
+		if (def != null && def.getPaint() != null && def.getPaint().equals(col)) {
+			return null; // the default colour under a decal
+		}
 		return String.format("#%02x%02x%02x", col.getRed(), col.getGreen(), col.getBlue());
 	}
 }

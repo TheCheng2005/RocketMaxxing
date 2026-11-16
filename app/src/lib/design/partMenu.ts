@@ -2,6 +2,7 @@
 
 import { app, act, ask, select, findNode, parentOf, duplicate, copySelected, paste, removeSelected, move, canMove, clipboard, placement } from "../state.svelte";
 import { keys } from "../keys";
+import { request } from "../search/ui.svelte";
 import type { MenuItem } from "../menu/menu.svelte";
 
 /** Focuses the part's name in Properties, ready to type a new one. */
@@ -55,6 +56,7 @@ export function partItems(id: string): MenuItem[] {
     lineUp && { label: "In its middle", run: align("MIDDLE") },
     lineUp && { label: "At its back", run: align("BOTTOM") },
     "-",
+    { label: root ? "Scale the rocket…" : "Scale this part…", run: () => request("scale", id) },
     { label: n.overridden ? "Weighed mass… (set)" : "Weighed mass…", off: root && "Weigh the parts", run: weigh },
     { label: "Delete", shortcut: "Del", danger: true, off: root && "The rocket cannot be deleted", run: () => sel() && removeSelected() },
   ].filter(Boolean) as MenuItem[];
