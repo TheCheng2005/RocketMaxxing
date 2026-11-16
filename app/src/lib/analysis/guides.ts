@@ -306,6 +306,16 @@ export const GUIDES: Record<string, Guide> = {
     gives: ["STL of the outer shape (a named region per part) for CFD meshers and CAD, DXF flat patterns of the fins, the CFD run matrix (Mach, altitude, air state, Reynolds number), and the results template that RASAero aero table reads back."],
     not: "It does not run CFD: it prepares the inputs for OpenFOAM, SimScale, Ansys Fluent or STAR-CCM+.",
   },
+  print_templates: {
+    needs: ["The parts in the design: fin sets, centering rings, bulkheads, transitions, a nose cone, tubes with fins or rail buttons."],
+    gives: [
+      "A PDF of full-size templates: fin outlines with their tabs, centering rings with the motor tube holes and bulkheads (identical ones once, with how many to cut), transition shrouds, the nose cone profile, and a marking guide to wrap round each tube with the fin and rail button lines.",
+      "A 100 mm and a 4 in bar on every page to check it printed at 100%; a template bigger than the paper comes in pieces to tape together.",
+    ],
+    how: "Drawn from OpenRocket's own geometry of each part, in vector lines, so a 50 mm edge prints 50 mm long.",
+    not: "Shrouds are cones between the transition's two ends (an ogive transition is drawn as the cone through its ends). Print with \"fit to page\" off.",
+    example: "A 98 mm rocket with three identical centering rings prints one ring, \"cut 3\", Ø 98 mm with a 54 mm hole for the motor tube.",
+  },
   mass_budget: {
     needs: ["Nothing to start: it writes the model's breakdown as a CSV to fill in. Then the filled budget (CSV or list)."],
     gives: ["Budget against model part by part, projected dry and launch mass, contingency and margin to the target. Apply writes the masses into the design."],

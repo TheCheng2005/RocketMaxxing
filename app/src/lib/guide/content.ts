@@ -22,7 +22,7 @@ export const PAGE_HELP: { page: Page; title: string; text: string }[] = [
   { page: "flights", title: "Flights", text: "Saved simulations with their launch conditions (wind, rail, site), and plots of any flight variable." },
   { page: "targets", title: "Targets", text: "Your team's own goals (apogee window, rail exit, stability…) with live margins next to the competition's rules." },
   { page: "standards", title: "Standards", text: "The numbers every check uses: rule set, launch site, recovery factors and pin ratings, material properties, electronics." },
-  { page: "analysis", title: "Analysis", text: "51 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
+  { page: "analysis", title: "Analysis", text: "52 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
   { page: "flightdata", title: "Flight data", text: "Altimeter logs compared with the simulation, and your past rockets with predicted against measured apogee." },
   { page: "history", title: "History", text: "What changed since the last save, the edits you can still undo (back to any point), and everything that happened to your designs and the team standards, by you or the assistant. A change to the standards or targets can be put back from here." },
 ];

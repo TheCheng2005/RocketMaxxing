@@ -162,6 +162,7 @@ export const CATALOG: Group[] = [
       { tool: "generate_report", label: "Design review report", blurb: "Writes a design review report with plots.", main: ["outputDir", "title"], defaults: (n) => ({ outputDir: `reports/${n}` }) },
       { tool: "export_flight_data", label: "Flight data (CSV)", blurb: "Writes the flight data of a simulation as CSV.", main: ["path", "variables"], defaults: (n) => ({ path: `${n}-flight.csv` }) },
       { tool: "export_geometry", label: "Geometry for CAD and CFD", blurb: "Writes the outer shape and flight conditions for CAD and CFD.", main: ["outDir", "units"], defaults: (n) => ({ outDir: `geometry/${n}` }) },
+      { tool: "print_templates", label: "Templates to print", blurb: "Writes full-size templates to cut: fins, rings, shrouds, nose profile, fin marking guide (PDF).", main: ["paper", "include"], defaults: (n) => ({ path: `templates/${n} templates.pdf` }) },
       { tool: "mass_budget", label: "Mass budget sheet", blurb: "Writes a mass budget sheet to fill in with weighed masses.", main: ["targetLaunchMass", "contingency"] },
     ],
   },

@@ -466,6 +466,16 @@ export async function openPath(path: string) {
   });
 }
 
+/** A file to read: the system's open dialog, or a typed path where there is none (a browser on another machine). */
+export async function chooseFile(title: string, hint: string, types: string): Promise<string | null> {
+  try {
+    return (await call<{ path: string | null }>("app_choose_file", { mode: "open", types })).path;
+  } catch {
+    const p = await ask(title, hint);
+    return p?.trim() || null;
+  }
+}
+
 export async function openDialog() {
   try {
     const r = await call<{ path: string | null }>("app_choose_file", { mode: "open" });

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { Plus, Trash2 } from "@lucide/svelte";
+  import { Plus, Trash2, FileUp, FileDown } from "@lucide/svelte";
   import { call } from "../api";
-  import { app, act, select, quietly } from "../state.svelte";
+  import { app, act, select, quietly, ask, run, toast, chooseFile } from "../state.svelte";
   import { num, readNum, toShown, toSi, unitOf, pretty } from "../units.svelte";
 
   // A fin set's outline. Freeform fins are edited here: drag a point, double-click an edge to add one, select a point
@@ -135,6 +135,30 @@
     save();
   }
 
+  /** An outline from a CSV of points or a picture of the fin (traced), as OpenRocket's freeform import. */
+  async function importOutline() {
+    const f = await chooseFile("Import a fin outline", "A .csv or .txt of points, or a picture of the fin (.png, .jpg)", "csv,txt,png,jpg,jpeg,gif,bmp");
+    if (!f) return;
+    const args: Record<string, unknown> = { component, path: f };
+    if (/\.(png|jpe?g|gif|bmp)$/i.test(f)) {
+      const root = pts.length ? pts[pts.length - 1][0] : 0;
+      const shown = root ? `${num(toShown(root, "LENGTH"))} ${u}` : "";
+      const chord = await ask("Root chord of the fin in the picture", "The real length of the fin's root, with its unit; the picture is scaled to it", shown);
+      if (chord === null) return;
+      if (chord.trim()) args.rootChord = chord.trim();
+    }
+    const r = await act("import_fin_outline", args);
+    if (r?.component) {
+      await select(r.component);
+      toast(`${r.name}: ${r.points} points from the ${r.from === "points" ? "file" : "picture"}, root ${r.rootChord}, span ${r.height}. Undo puts the old fins back.`);
+    }
+  }
+  async function exportOutline() {
+    const where = await call<{ path: string }>("app_download_path", { name: "fin outline.csv" });
+    const r = await run(() => call<{ written: string }>("export_fin_outline", { designId: app.design!.designId, component, path: where.path }), "Fin outline");
+    if (r) toast(`Saved the outline as ${r.written}`);
+  }
+
   async function convert() {
     const r = await act("app_convert_fins", { component });
     if (r?.component) await select(r.component);
@@ -185,6 +209,12 @@
         {/each}
       {/if}
     </svg>
+    {#if type !== "TubeFinSet"}
+      <div class="files">
+        <button class="btn small" title="A CSV or text file of points, or a picture of the fin (drawing, scan or photo) traced round its edge" onclick={importOutline}><FileUp size={13} /> Import outline…</button>
+        <button class="btn small" title="The outline as a CSV of points in mm, for a spreadsheet or CAD" onclick={exportOutline}><FileDown size={13} /> Export CSV</button>
+      </div>
+    {/if}
     {#if outline.editable}
       <p class="hint">Drag points; double-click an edge to add one; select a point and press Delete to remove it.</p>
       <table>
@@ -304,5 +334,18 @@
     flex-direction: column;
     gap: 6px;
     align-items: flex-start;
+  }
+  .files {
+    display: flex;
+    gap: 6px;
+    margin: 6px 0 2px;
+  }
+  .files .btn.small {
+    height: calc(26px * var(--text));
+    padding: 0 8px;
+    font-size: calc(12px * var(--text));
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
   }
 </style>

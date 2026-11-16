@@ -2,7 +2,7 @@
 
 Most people want [the desktop app](ROCKETMAXXING.md). This page is for teams who would rather work by talking to an AI
 assistant: the same engine runs as an MCP server for **Claude Desktop**, **claude.ai**, **Claude Code** and **Codex**.
-Ask in plain words, in feet or metres; the assistant runs real OpenRocket simulations and the same 51 analyses as the
+Ask in plain words, in feet or metres; the assistant runs real OpenRocket simulations and the same 52 analyses as the
 app's Analysis page, checks the results against the competition rules and your team's standards, and explains what it
 found.
 

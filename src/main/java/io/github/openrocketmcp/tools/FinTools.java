@@ -33,12 +33,112 @@ import io.github.openrocketmcp.report.Png;
 import io.github.openrocketmcp.units.Dim;
 import io.github.openrocketmcp.units.Units;
 
-/** Fin planform optimization. */
+/** Fin planform optimization, and fin outlines from files. */
 public final class FinTools {
 	private FinTools() {
 	}
 
+	static Map<String, Object> importOutline(Context ctx, Args a) {
+		Designs.Design d = ctx.designs.get(a.str("designId", null));
+		FinSet f = Components.find(d.doc.getRocket(), a.str("component"), FinSet.class, "fin set");
+		Path p = ctx.path(a.str("path"));
+		if (!Files.isRegularFile(p)) {
+			throw new ToolException("Not found: " + p);
+		}
+		String n = p.getFileName().toString().toLowerCase(Locale.ROOT);
+		List<double[]> pts;
+		boolean picture = n.matches(".*\\.(png|jpe?g|gif|bmp)$");
+		try {
+			if (picture) {
+				java.awt.image.BufferedImage img = javax.imageio.ImageIO.read(p.toFile());
+				if (img == null) {
+					throw new ToolException(p.getFileName() + " is not a picture this can read (PNG, JPG, GIF or BMP).");
+				}
+				List<double[]> px = io.github.openrocketmcp.or.FinOutline.trace(img);
+				double chordPx = px.get(px.size() - 1)[0], heightPx = 0;
+				for (double[] q : px) {
+					heightPx = Math.max(heightPx, q[1]);
+				}
+				double k = a.has("height") ? a.qty("height", Dim.LENGTH) / heightPx
+						: (a.has("rootChord") ? a.qty("rootChord", Dim.LENGTH) : f.getLength()) / chordPx;
+				pts = new ArrayList<>();
+				for (double[] q : px) {
+					pts.add(new double[] { q[0] * k, q[1] * k });
+				}
+			} else {
+				pts = io.github.openrocketmcp.or.FinOutline.csv(Files.readString(p), a.str("unit", null));
+			}
+		} catch (IOException e) {
+			throw new ToolException("Could not read " + p + " (" + e.getMessage() + ").");
+		} catch (IllegalArgumentException e) {
+			throw new ToolException(e.getMessage());
+		}
+		info.openrocket.core.rocketcomponent.FreeformFinSet ff = f instanceof info.openrocket.core.rocketcomponent.FreeformFinSet x ? x
+				: info.openrocket.core.rocketcomponent.FreeformFinSet.convertFinSet(f);
+		info.openrocket.core.util.Coordinate[] c = new info.openrocket.core.util.Coordinate[pts.size()];
+		for (int i = 0; i < c.length; i++) {
+			c[i] = new info.openrocket.core.util.Coordinate(pts.get(i)[0], pts.get(i)[1]);
+		}
+		try {
+			ff.setPoints(c);
+		} catch (RuntimeException e) {
+			throw new ToolException("OpenRocket refused the outline (" + e.getMessage() + "): the points must not cross, and the first "
+					+ "and last must be the root's two ends.");
+		}
+		d.doc.setSaved(false);
+		double span = 0;
+		for (double[] q : pts) {
+			span = Math.max(span, q[1]);
+		}
+		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("component", Components.shortId(ff));
+		out.put("name", ff.getName());
+		out.put("from", picture ? "picture, traced" : "points");
+		out.put("points", pts.size());
+		out.put("rootChord", Units.fmt(pts.get(pts.size() - 1)[0], Dim.LENGTH));
+		out.put("height", Units.fmt(span, Dim.LENGTH));
+		out.put("stability", Analysis.stageStacks(d.doc.getRocket().getSelectedConfiguration(), 0.3));
+		return out;
+	}
+
 	public static void register(McpServer s, Context ctx) {
+		s.tool(new ToolDef("import_fin_outline", "Import a fin outline",
+				"Give a fin set the outline in a file, as OpenRocket's freeform fin import: a CSV or text file of points (two "
+						+ "numbers a line, x along the root and y out from the body; the unit from a heading such as \"x (mm)\" or "
+						+ "unit, else mm), or a picture of the fin (PNG, JPG, GIF, BMP: a drawing, scan or photo of a template, dark "
+						+ "on light paper, root along the bottom) traced round its edge and scaled to rootChord or height. The fins "
+						+ "become freeform; one undo puts the old ones back.",
+				Schema.object().str("designId", DesignTools.DESIGN_ID, false)
+						.str("component", "Fin set id or name.", true)
+						.str("path", "The file: .csv or .txt of points, or a picture.", true)
+						.str("unit", "Unit of the numbers in a CSV (mm, cm, m, in, ft), if it does not say.", false)
+						.qty("rootChord", "For a picture: the real length of the fin's root (default: the fin set's root chord now).", false)
+						.qty("height", "For a picture: the real span of the fin, instead of rootChord.", false).build(),
+				false, a -> importOutline(ctx, a)));
+		s.tool(new ToolDef("export_fin_outline", "Export a fin outline",
+				"Write a fin set's outline (any fin shape) as a CSV of points in mm, from the root's leading edge, to edit in a "
+						+ "spreadsheet or CAD and import again.",
+				Schema.object().str("designId", DesignTools.DESIGN_ID, false)
+						.str("component", "Fin set id or name.", true)
+						.str("path", "CSV file to write.", true).build(),
+				false, a -> {
+					Designs.Design d = ctx.designs.get(a.str("designId", null));
+					FinSet f = Components.find(d.doc.getRocket(), a.str("component"), FinSet.class, "fin set");
+					StringBuilder b = new StringBuilder("x (mm),y (mm)\n");
+					for (info.openrocket.core.util.Coordinate p : f.getFinPoints()) {
+						b.append(String.format(Locale.ROOT, "%.3f,%.3f%n", p.x * 1000, p.y * 1000));
+					}
+					Path out = ctx.path(a.str("path"));
+					try {
+						if (out.getParent() != null) {
+							Files.createDirectories(out.getParent());
+						}
+						Files.writeString(out, b.toString());
+					} catch (IOException e) {
+						throw new ToolException("Could not write " + out + " (" + e.getMessage() + ").");
+					}
+					return Map.of("written", out.toString(), "points", f.getFinPoints().length);
+				}));
 		s.tool(new ToolDef("optimize_fins", "Optimize the fin planform",
 				"Search the whole trapezoidal fin shape at once (root chord, tip chord via taper, span and sweep, optionally "
 						+ "the thickness from a list of stock sheets) for the highest apogee (least drag), the lightest fins or a "

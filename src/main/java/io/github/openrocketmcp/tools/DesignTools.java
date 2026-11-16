@@ -44,6 +44,46 @@ public final class DesignTools {
 	static final String DESIGN_ID = "Design id from open_design (e.g. \"d1\"). Optional when only one design is open.";
 	static final String CONFIG = "Flight configuration id prefix, index or name. Default: the selected configuration.";
 
+	/** A density typed with its unit, in SI for the material's type. */
+	static double density(info.openrocket.core.material.Material.Type t, String text) {
+		String v = text.trim().toLowerCase(Locale.ROOT).replace("²", "2").replace("³", "3").replace(" ", "");
+		java.util.regex.Matcher m = java.util.regex.Pattern.compile("^([0-9]*\\.?[0-9]+(?:e-?[0-9]+)?)(.*)$").matcher(v);
+		if (!m.matches()) {
+			throw new IllegalArgumentException("Density \"" + text + "\" is not a number with a unit.");
+		}
+		double n = Double.parseDouble(m.group(1));
+		String u = m.group(2);
+		switch (t) {
+			case BULK -> {
+				return switch (u) {
+					case "", "kg/m3" -> n;
+					case "g/cm3", "g/cc", "g/ml" -> n * 1000;
+					case "lb/ft3" -> n * 16.0185;
+					case "lb/in3" -> n * 27679.9;
+					case "oz/in3" -> n * 1729.99;
+					default -> throw new IllegalArgumentException("Unit \"" + u + "\" is not a bulk density: use kg/m3, g/cm3, lb/ft3 or lb/in3.");
+				};
+			}
+			case SURFACE -> {
+				return switch (u) {
+					case "", "kg/m2" -> n;
+					case "g/m2", "gsm" -> n / 1000;
+					case "oz/yd2" -> n * 0.0339057;
+					default -> throw new IllegalArgumentException("Unit \"" + u + "\" is not a surface density: use kg/m2, g/m2 or oz/yd2.");
+				};
+			}
+			default -> {
+				return switch (u) {
+					case "", "kg/m" -> n;
+					case "g/m" -> n / 1000;
+					case "oz/ft" -> n * 0.0930102;
+					case "lb/ft" -> n * 1.48816;
+					default -> throw new IllegalArgumentException("Unit \"" + u + "\" is not a line density: use kg/m, g/m, oz/ft or lb/ft.");
+				};
+			}
+		}
+	}
+
 	public static void register(McpServer s, Context ctx) {
 		s.tool(new ToolDef("open_design", "Open or create a rocket design",
 				"Open an OpenRocket .ork file (any OpenRocket version) or a RockSim .rkt file, one of OpenRocket's bundled "
@@ -334,6 +374,101 @@ public final class DesignTools {
 					c.getParent().removeChild(c);
 					d.doc.setSaved(false);
 					return Map.of("removed", c.getName());
+				}));
+
+		s.tool(new ToolDef("materials", "The team's own materials",
+				"List, add or remove the team's own materials, as OpenRocket's Preferences > Materials: a laminate, a printed "
+						+ "filament, a canopy cloth or a cord with its density. They are kept beside the designs (materials.json) and "
+						+ "used by name like OpenRocket's own, in parts and in compare_materials. Bulk density in kg/m3 or with a unit "
+						+ "(\"1.85 g/cm3\"), surface in kg/m2 or g/m2, line in kg/m or g/m.",
+				Schema.object().enumStr("action", "list (default), add or remove.", false, "list", "add", "remove")
+						.enumStr("type", "For add: bulk (solid parts), surface (canopies, streamers) or line (lines, cords).", false, "bulk", "surface", "line")
+						.str("name", "For add or remove: the material's name.", false)
+						.str("density", "For add: its density, with a unit.", false).build(),
+				false, a -> {
+					String act = a.str("action", "list");
+					try {
+						if (act.equals("add")) {
+							info.openrocket.core.material.Material.Type t = io.github.openrocketmcp.or.CustomMaterials.type(a.str("type", "bulk"));
+							double rho = density(t, a.str("density", ""));
+							var m = io.github.openrocketmcp.or.CustomMaterials.add(ctx.workspace(), t, a.str("name", ""), rho);
+							return Map.of("added", m.getName(), "type", t.name().toLowerCase(Locale.ROOT), "materials",
+									io.github.openrocketmcp.or.CustomMaterials.list());
+						}
+						if (act.equals("remove")) {
+							if (!io.github.openrocketmcp.or.CustomMaterials.remove(ctx.workspace(), a.str("name", ""))) {
+								throw new ToolException("No material called \"" + a.str("name", "") + "\".");
+							}
+							return Map.of("removed", a.str("name"), "materials", io.github.openrocketmcp.or.CustomMaterials.list(),
+									"note", "Parts already made of it keep it: the design carries its materials.");
+						}
+					} catch (IllegalArgumentException e) {
+						throw new ToolException(e.getMessage());
+					} catch (java.io.IOException e) {
+						throw new ToolException("The materials file could not be written (" + e.getMessage() + ").");
+					}
+					return Map.of("materials", io.github.openrocketmcp.or.CustomMaterials.list(), "file",
+							ctx.workspace().resolve(io.github.openrocketmcp.or.CustomMaterials.FILE).toString());
+				}));
+
+		s.tool(new ToolDef("scale_design", "Scale the design",
+				"Scale the whole rocket, or some parts and what is inside them, as OpenRocket's Edit > Scale does: by a factor, "
+						+ "or to a body diameter or an overall length. Every length scales (body lengths and radii, fin chords, spans "
+						+ "and tabs, shoulders, rail buttons, parachutes and packed sizes); wall thicknesses, positions and masses "
+						+ "are options. Values OpenRocket works out itself follow the parts they match. One undo puts it all back.",
+				Schema.object().str("designId", DESIGN_ID, false)
+						.num("factor", "Scale factor, e.g. 2 for twice the size, 0.5 for half.", false)
+						.qty("diameter", "Scale so the largest body tube has this outside diameter (instead of factor).", false)
+						.qty("length", "Scale so the rocket is this long overall (instead of factor).", false)
+						.array("components", "Only these parts and what is inside them (names or ids); default the whole rocket.",
+								Schema.type("string", null), false)
+						.bool("thickness", "Scale wall thicknesses too (default true; false keeps the same tubing wall).", false)
+						.bool("offsets", "Scale positions too (default true).", false)
+						.bool("masses", "Scale fixed masses and mass overrides with the volume, factor cubed (default false).", false).build(),
+				false, a -> {
+					Designs.Design d = ctx.designs.get(a.str("designId", null));
+					Rocket r = d.doc.getRocket();
+					int given = (a.has("factor") ? 1 : 0) + (a.has("diameter") ? 1 : 0) + (a.has("length") ? 1 : 0);
+					if (given != 1) {
+						throw new ToolException("Give one of factor, diameter or length.");
+					}
+					double was = 0, f;
+					if (a.has("diameter")) {
+						was = io.github.openrocketmcp.or.Scale.bodyDiameter(r);
+						if (was <= 0) {
+							throw new ToolException("The design has no body tube to match a diameter to; give a factor.");
+						}
+						f = a.qty("diameter", Dim.LENGTH) / was;
+					} else if (a.has("length")) {
+						was = io.github.openrocketmcp.or.Scale.length(r);
+						f = a.qty("length", Dim.LENGTH) / was;
+					} else {
+						f = a.num("factor");
+					}
+					if (!(f > 0.01 && f < 100)) {
+						throw new ToolException("A scale factor of " + Units.num(f) + " is out of range (0.01 to 100).");
+					}
+					Set<RocketComponent> only = null;
+					if (a.has("components")) {
+						only = new LinkedHashSet<>();
+						for (String ref : a.strList("components")) {
+							only.add(Components.find(r, ref));
+						}
+					}
+					double lengthBefore = io.github.openrocketmcp.or.Scale.length(r);
+					List<String> done = io.github.openrocketmcp.or.Scale.scale(r, only, f, new io.github.openrocketmcp.or.Scale.Options(
+							a.bool("thickness", true), a.bool("offsets", true), a.bool("masses", false)));
+					d.doc.setSaved(false);
+					Map<String, Object> out = new LinkedHashMap<>();
+					out.put("factor", Units.num(f));
+					out.put("length", Units.fmt(lengthBefore, Dim.LENGTH) + " -> " + Units.fmt(io.github.openrocketmcp.or.Scale.length(r), Dim.LENGTH));
+					out.put("bodyDiameter", Units.fmt(io.github.openrocketmcp.or.Scale.bodyDiameter(r), Dim.LENGTH));
+					out.put("changed", done);
+					out.put("stability", Analysis.stageStacks(r.getSelectedConfiguration(), 0.3));
+					if (!a.bool("masses", false)) {
+						out.put("note", "Fixed masses and mass overrides were kept; motors stay as they were, so check they still fit.");
+					}
+					return out;
 				}));
 
 		s.tool(new ToolDef("set_deployment", "Set when a recovery device deploys",

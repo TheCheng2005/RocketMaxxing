@@ -92,7 +92,12 @@ public final class Suggestions {
 
 			new Feature("render_3d", "Pictures and video", "Show the rocket in 3-D, exploded, with a parts list."),
 			new Feature("draw_rocket", "Pictures and video", "Draw a cut-away showing where everything sits inside."),
-			new Feature("animate_flight", "Pictures and video", "Animate the flight for a presentation or social media."));
+			new Feature("animate_flight", "Pictures and video", "Animate the flight for a presentation or social media."),
+			new Feature("print_templates", "Building", "Print full-size templates for the fins, centering rings and nose cone."),
+			new Feature("import_fin_outline", "Building", "Here's a photo (or a CSV) of our fin shape: use it for the fins."),
+			new Feature("export_fin_outline", "Building", "Export our fin outline as points for CAD."),
+			new Feature("scale_design", "Building", "Scale the whole rocket up to a 4-inch airframe."),
+			new Feature("materials", "Building", "Add our own fibreglass layup with its measured density."));
 
 	/** What naturally comes next after each tool, most useful first. */
 	static final Map<String, List<String>> NEXT = Map.ofEntries(
