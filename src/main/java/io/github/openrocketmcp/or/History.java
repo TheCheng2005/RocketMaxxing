@@ -23,8 +23,8 @@ public final class History {
 	public static final int LEVELS = 50;
 	private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-	/** A rocket state and the edit that led away from it. */
-	record Entry(Rocket state, String what, String when) {
+	/** A rocket state and the edit that led away from it: as the tool call (for assistants) and in words (for people). */
+	record Entry(Rocket state, String what, String when, String said) {
 	}
 
 	/** Taken before a call; becomes an entry if the call changed the rocket. */
@@ -39,10 +39,15 @@ public final class History {
 
 	/** Records the edit if the rocket changed since {@link #before}; returns whether it did. */
 	public synchronized boolean after(Pending p, Rocket r, String what) {
+		return after(p, r, what, what);
+	}
+
+	/** As {@link #after(Pending, Rocket, String)}, with the edit also said in words for the History page. */
+	public synchronized boolean after(Pending p, Rocket r, String what, String said) {
 		if (p == null || r.getModID().equals(p.modId())) {
 			return false;
 		}
-		undo.push(new Entry(p.copy(), what, LocalTime.now().format(TIME)));
+		undo.push(new Entry(p.copy(), what, LocalTime.now().format(TIME), said == null ? what : said));
 		while (undo.size() > LEVELS) {
 			undo.removeLast();
 		}
@@ -71,11 +76,32 @@ public final class History {
 		List<String> done = new ArrayList<>();
 		for (int i = 0; i < steps && !from.isEmpty(); i++) {
 			Entry e = from.pop();
-			to.push(new Entry(r.copyWithOriginalID(), e.what(), e.when()));
+			to.push(new Entry(r.copyWithOriginalID(), e.what(), e.when(), e.said()));
 			r.loadFrom(e.state().copyWithOriginalID()); // loadFrom consumes its argument; keep the stored copy intact
 			done.add(e.what());
 		}
 		return done;
+	}
+
+	/** The edits that can be undone, newest first: what (in words) and when. */
+	public synchronized List<Map<String, Object>> entries() {
+		List<Map<String, Object>> out = new ArrayList<>();
+		for (Entry e : undo) {
+			out.add(Map.of("what", e.said(), "when", e.when()));
+		}
+		return out;
+	}
+
+	/** The next {@code steps} edits an undo (or redo) would take back, in words, newest first. */
+	public synchronized List<String> next(boolean undoing, int steps) {
+		List<String> out = new ArrayList<>();
+		for (Entry e : undoing ? undo : redo) {
+			if (out.size() >= steps) {
+				break;
+			}
+			out.add(e.said());
+		}
+		return out;
 	}
 
 	/** Edits that can be undone (newest first) and redone. */

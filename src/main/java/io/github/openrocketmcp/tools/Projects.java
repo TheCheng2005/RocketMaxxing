@@ -399,9 +399,11 @@ public final class Projects {
 		}
 		JsonObject theirs = d.project.getAsJsonObject("standards");
 		Standards next = Standards.fromTeam(theirs, file); // checked before anything is written
+		JsonObject before = TeamFile.read(file);
 		Files.createDirectories(file.toAbsolutePath().getParent());
 		Files.writeString(file, Standards.pretty(theirs));
 		ctx.setStandards(next);
+		TeamFile.journal(ctx, file, before, theirs, "Used the standards of the project " + (d.path == null ? d.name() : d.path.getFileName()));
 		d.project.addProperty("standardsDiffer", false);
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("saved", file.toString());

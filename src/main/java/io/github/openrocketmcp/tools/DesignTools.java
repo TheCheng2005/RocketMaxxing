@@ -68,6 +68,8 @@ public final class DesignTools {
 					} else {
 						throw new ToolException("Pass path, example or newRocketName.");
 					}
+					Journal.add(ctx, "open", d.name(), d.path == null ? null : d.path.toString(),
+							d.path != null ? "Opened" : a.has("example") ? "Opened the example" : a.has("newRocketName") ? "Started a new design" : "Imported", null);
 					Map<String, Object> out = new LinkedHashMap<>();
 					out.put("designId", d.id);
 					out.put("name", d.name());
@@ -131,10 +133,13 @@ public final class DesignTools {
 					Designs.Design d = ctx.designs.get(a.str("designId", null));
 					Path into = a.has("path") ? ctx.path(a.str("path")) : d.path;
 					if (Projects.is(into)) {
-						return Projects.save(ctx, d, into, a.has("project") ? a.obj("project").raw() : null);
+						Map<String, Object> saved = Projects.save(ctx, d, into, a.has("project") ? a.obj("project").raw() : null);
+						Journal.add(ctx, "save", d.name(), d.path.toString(), "Saved as a project", null);
+						return saved;
 					}
 					List<String> notes = new ArrayList<>();
 					Path p = ctx.designs.save(d, a.has("path") ? ctx.path(a.str("path")) : null, notes);
+					Journal.add(ctx, "save", d.name(), p.toString(), p.equals(d.path) ? "Saved" : "Saved a copy as " + p.getFileName(), null);
 					Map<String, Object> out = new LinkedHashMap<>();
 					out.put("saved", p.toString());
 					String n = p.getFileName().toString();

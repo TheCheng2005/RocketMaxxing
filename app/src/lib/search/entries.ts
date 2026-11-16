@@ -89,6 +89,7 @@ const PAGES: { id: Page; title: string; sub: string; keys: string }[] = [
   { id: "standards", title: "Standards", sub: "Rule set, launch site, safety factors, ratings and materials", keys: "rule set launch site safety factor pin ratings materials team standards" },
   { id: "analysis", title: "Analysis", sub: "Rule check, recovery, structures, studies", keys: "analyses tools" },
   { id: "flightdata", title: "Flight data", sub: "Altimeter logs and past rockets", keys: "altimeter logs past rockets library" },
+  { id: "history", title: "History", sub: "What changed since the last save, undo to any point, everything that happened", keys: "history changes changelog undo revert log timeline audit what changed who" },
 ];
 
 function go(page: Page) {
@@ -204,7 +205,7 @@ export function entries(): Entry[] {
       }
     }
   }
-  const PAGE_NAME: Record<string, string> = { home: "Start", design: "Design", motors: "Motors", flights: "Flights", targets: "Targets", standards: "Standards", analysis: "Analysis", flightdata: "Flight data" };
+  const PAGE_NAME: Record<string, string> = { home: "Start", design: "Design", motors: "Motors", flights: "Flights", targets: "Targets", standards: "Standards", analysis: "Analysis", flightdata: "Flight data", history: "History" };
   const known = new Set(out.map((e) => e.title));
   fromMenu(currentPageItems().filter((it) => !(it && typeof it === "object" && "label" in it && known.has(it.label))), `${PAGE_NAME[app.page]} page`);
 

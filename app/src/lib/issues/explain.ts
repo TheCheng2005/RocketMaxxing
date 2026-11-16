@@ -1,6 +1,7 @@
 import type { Issue } from "../api";
 import { CATALOG } from "../analysis/catalog";
 import { label } from "../analysis/text";
+import { localNumbers } from "../numberMark";
 
 // What an error means for someone using the app: the engine's sentence in the app's own words (its messages are
 // also read by AI assistants, and name their tools), what could be causing it, and what to try. An error code or
@@ -78,6 +79,7 @@ export function plain(text: string): string {
   t = t.replace(/\bPass (?=[A-Z][a-z])/g, "Give ").replace(/\s{2,}/g, " ").trim();
   // A sentence that now starts with an input's name starts with a capital; one that starts with a file name is left.
   const was = text.replace(/^Error:\s*/, "");
+  t = localNumbers(t);
   return was.charAt(0) === t.charAt(0) ? t : t.charAt(0).toUpperCase() + t.slice(1);
 }
 

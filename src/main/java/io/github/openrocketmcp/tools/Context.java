@@ -51,6 +51,17 @@ public final class Context {
 		return workspace;
 	}
 
+	/** Whether this context keeps a journal of what happens (the desktop app does; see {@link Journal}). */
+	private volatile boolean journal;
+
+	public boolean journal() {
+		return journal;
+	}
+
+	public void keepJournal(boolean on) {
+		this.journal = on;
+	}
+
 	public boolean sandboxed() {
 		return sandboxed;
 	}

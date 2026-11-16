@@ -49,6 +49,17 @@ public final class Requirements {
 		final List<Map<String, Object>> items = new ArrayList<>();
 		List<String> manual;
 
+		/** Where the next row's subject is in the app: "part:<id>", "page:<page>" or "analysis:<tool>". */
+		private String about;
+
+		void about(String where) {
+			this.about = where;
+		}
+
+		static String part(RocketComponent c) {
+			return c == null ? null : "part:" + Components.shortId(c);
+		}
+
 		void add(Status s, String item, String requirement, String value, String ref) {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("status", s.name());
@@ -57,6 +68,10 @@ public final class Requirements {
 			m.put("value", value);
 			if (ref != null && !ref.isBlank()) {
 				m.put("ref", ref);
+			}
+			if (about != null) {
+				m.put("about", about); // the app opens it on a click; an assistant can ignore it
+				about = null;
 			}
 			items.add(m);
 		}
@@ -151,8 +166,10 @@ public final class Requirements {
 		// Physics (the flight itself) and output (numbers from beyond where a model is valid) in their own rows.
 		for (String p : Sims.problems(sim)) {
 			if (Issues.kindOf(p) == ToolException.Kind.OUTPUT) {
+				r.about("page:flights");
 				r.add(Status.WARN, "Within the models' range", "the flight stays where OpenRocket's models are valid", p, "");
 			} else {
+				r.about("page:flights");
 				r.add(p.contains("stopped") ? Status.FAIL : Status.WARN, "Physically sound flight",
 						"the simulation runs to landing", p, "");
 			}
@@ -166,16 +183,19 @@ public final class Requirements {
 			double stagedAngle = std.rule("launchAngleFromVertical.tiltInhibitedStaged", Dim.ANGLE);
 			boolean ok = Math.abs(angle - nominal) <= tol + 1e-6
 					|| (staged && !Double.isNaN(stagedAngle) && Math.abs(angle - stagedAngle) <= tol + 1e-6);
+			r.about("page:flights");
 			r.add(ok ? Status.PASS : Status.WARN, "Simulated launch angle",
 					Units.fmt(nominal, Dim.ANGLE) + " from vertical (84 deg elevation)" + (staged ? ", or 3 deg for tilt-inhibited staged flights" : ""),
 					Units.fmt(angle, Dim.ANGLE), std.ruleRef("launchAngleFromVertical"));
 		}
 		double railRule = std.rule("railLength.value", Dim.LENGTH);
 		if (!Double.isNaN(railRule) && Math.abs(opt.getLaunchRodLength() - railRule) > 0.05) {
+			r.about("page:flights");
 			r.add(Status.INFO, "Simulated rail length", "LCRA rail is " + Units.fmt(railRule, Dim.LENGTH)
 					+ " (use yours if you bring your own)", Units.fmt(opt.getLaunchRodLength(), Dim.LENGTH), std.ruleRef("railLength"));
 		}
 		if (Double.isNaN(std.q("launchSite.altitudeMsl", Dim.DISTANCE, Double.NaN))) {
+			r.about("page:standards");
 			r.add(Status.WARN, "Launch site altitude",
 					"Set the launch site's altitude in the team standards (launchSite.altitudeMsl) so air density is right",
 					Units.fmt(opt.getLaunchAltitude(), Dim.DISTANCE) + " used by this simulation", null);
@@ -187,6 +207,7 @@ public final class Requirements {
 		double railV = data.getLaunchRodVelocity();
 		if (!Double.isNaN(railMin)) {
 			Status s = railV >= railMin ? Status.PASS : !Double.isNaN(railAnalysis) && railV >= railAnalysis ? Status.WARN : Status.FAIL;
+			r.about("page:flights");
 			r.add(s, "Rail departure velocity", ">= " + Units.fmt(railMin, Dim.VELOCITY)
 					+ (Double.isNaN(railAnalysis) ? "" : " (>= " + Units.fmt(railAnalysis, Dim.VELOCITY) + " with detailed stability analysis)"),
 					Units.fmt(railV, Dim.VELOCITY), std.ruleRef("railDepartureVelocity"));
@@ -202,6 +223,7 @@ public final class Requirements {
 			double liftoff = twr.get(0)[1];
 			if (!Double.isNaN(minTwr)) {
 				Status s = liftoff < minTwr ? Status.FAIL : !Double.isNaN(recTwr) && liftoff < recTwr ? Status.WARN : Status.PASS;
+				r.about("page:motors");
 				r.add(s, "Thrust-to-weight at liftoff (avg thrust / liftoff weight)",
 						">= " + Units.num(minTwr) + " in " + year + (Double.isNaN(recTwr) ? "" : "; design for >= " + Units.num(recTwr)),
 						Units.num(liftoff), std.ruleRef("thrustToWeight"));
@@ -210,11 +232,13 @@ public final class Requirements {
 				double boosterMin = std.rule("thrustToWeight.stagedBoosterMin", Dim.DIMENSIONLESS);
 				double sustainerMin = std.rule("thrustToWeight.stagedSustainerMin", Dim.DIMENSIONLESS);
 				if (!Double.isNaN(boosterMin)) {
+					r.about("page:motors");
 					r.add(liftoff >= boosterMin ? Status.PASS : Status.FAIL, "Booster thrust-to-weight (staged)",
 							">= " + Units.num(boosterMin), Units.num(liftoff), std.ruleRef("thrustToWeight"));
 				}
 				for (int i = 1; i < twr.size(); i++) {
 					if (!Double.isNaN(sustainerMin)) {
+						r.about("page:motors");
 						r.add(twr.get(i)[1] >= sustainerMin ? Status.PASS : Status.FAIL,
 								"Upper-stage thrust-to-weight at ignition (t=" + Units.num(twr.get(i)[0]) + " s)",
 								">= " + Units.num(sustainerMin), Units.num(twr.get(i)[1]), std.ruleRef("thrustToWeight"));
@@ -228,6 +252,7 @@ public final class Requirements {
 		if (windCase != null) {
 			stability(r, windCase, std, "Ascent stability in " + Units.fmt(Winds.speed(windCase.getOptions()), Dim.VELOCITY) + " wind", fc);
 			double railW = windCase.getSimulatedData().getLaunchRodVelocity();
+			r.about("page:flights");
 			r.add(Status.INFO, "Rail departure velocity in design wind", "same as above", Units.fmt(railW, Dim.VELOCITY), std.ruleRef("maxGroundWind"));
 		}
 
@@ -242,12 +267,14 @@ public final class Requirements {
 					double tilt = Sims.tilt(main, e.getTime());
 					if (!Double.isNaN(tiltMax)) {
 						Status s = tilt > tiltMax ? Status.FAIL : !Double.isNaN(tiltRec) && tilt > tiltRec ? Status.WARN : Status.PASS;
+						r.about(Report.part(e.getSource()));
 						r.add(s, "Tilt at upper-stage ignition (" + where(e.getSource()) + ")",
 								"tilt lockout <= " + Units.fmt(tiltMax, Dim.ANGLE) + ", should be < " + Units.fmt(tiltRec, Dim.ANGLE)
 										+ "; nominal flight must be well inside the lockout",
 								Units.fmt(tilt, Dim.ANGLE), std.ruleRef("staging"));
 					}
 					if (!Double.isNaN(frac)) {
+						r.about(Report.part(e.getSource()));
 						r.add(Status.INFO, "Air-start altitude inhibit (" + where(e.getSource()) + ")",
 								"program inhibit at " + Units.num(frac * 100) + "% of the simulated ignition altitude",
 								"simulated " + Units.fmt(alt, Dim.DISTANCE) + " -> inhibit below " + Units.fmt(frac * alt, Dim.DISTANCE),
@@ -260,6 +287,7 @@ public final class Requirements {
 		// Supersonic flight: OpenRocket's aerodynamics are less accurate transonic/supersonic and fin flutter is not modeled.
 		double mach = data.getMaxMachNumber();
 		if (mach > 0.9) {
+			r.about("analysis:aero_analysis");
 			r.add(mach > 1 ? Status.WARN : Status.INFO, "Maximum Mach number",
 					"transonic/supersonic: verify with RASAero; check fin/nose materials and heating (flutter is checked below)",
 					Units.num(mach), null);
@@ -280,6 +308,7 @@ public final class Requirements {
 		double rail = eventTime(b, FlightEvent.Type.LAUNCHROD);
 		double apogee = eventTime(b, FlightEvent.Type.APOGEE);
 		if (Double.isNaN(rail) || Double.isNaN(apogee)) {
+			r.about("page:design");
 			r.add(Status.WARN, label, "stable for the entire ascent", "no rail exit/apogee in simulation", std.ruleRef("stability"));
 			return;
 		}
@@ -292,6 +321,7 @@ public final class Requirements {
 		Sims.Window w = Sims.extremes(b, FlightDataType.TYPE_STABILITY, rail, apogee, 30.48);
 		if (Double.isNaN(w.min())) {
 			// A small motor never reaches the airspeed where a static margin means something: say so, not "n/a cal".
+			r.about("page:design");
 			r.add(Status.WARN, label + " (minimum, rail exit to apogee while airspeed > 100 ft/s)",
 					">= " + Units.num(min) + " cal",
 					"not evaluated: the rocket never flies faster than " + Units.fmt(30.48, Dim.VELOCITY) + " (top speed "
@@ -305,6 +335,7 @@ public final class Requirements {
 				? "; angle of attack " + Units.fmt(aoa, Dim.ANGLE) + " there (wind / rail exit): OpenRocket's CP moves forward at high angle of attack. Zero-AoA margin: "
 						+ Units.num(zeroAoaMargin(sim, b, w.minTime())) + " cal"
 				: "";
+		r.about("page:design");
 		r.add(w.min() >= min ? Status.PASS : Status.FAIL, label + " (minimum, rail exit to apogee while airspeed > 100 ft/s)",
 				">= " + Units.num(min) + " cal" + (diameterChange ? " (diameter change: use RASAero CP/CD overrides)" : ""),
 				Units.num(w.min()) + " cal at t=" + Units.num(w.minTime()) + " s, Mach "
@@ -314,6 +345,7 @@ public final class Requirements {
 		double over = std.rule("stability.overStable", Dim.DIMENSIONLESS);
 		if (!Double.isNaN(over)) {
 			Status s = w.max() >= over ? Status.WARN : !Double.isNaN(concern) && w.max() > concern ? Status.WARN : Status.PASS;
+			r.about("page:design");
 			r.add(s, label + " (maximum, over-stability)", "should stay below ~" + Units.num(concern) + " cal; >= "
 					+ Units.num(over) + " cal is over-stable", Units.num(w.max()) + " cal", std.ruleRef("stability"));
 		}
@@ -325,6 +357,7 @@ public final class Requirements {
 		if (!Double.isNaN(ldMax)) {
 			double ld = Dynamics.lengthToDiameter(fc);
 			double ldRec = std.rule("lengthToDiameter.recommendedMax", Dim.DIMENSIONLESS);
+			r.about("page:design");
 			r.add(ld > ldMax ? Status.FAIL : ld > ldRec ? Status.WARN : Status.PASS, "Length-to-diameter ratio",
 					"shall not exceed " + Units.num(ldMax) + ", should not exceed " + Units.num(ldRec), Units.num(ld),
 					std.ruleRef("lengthToDiameter"));
@@ -348,6 +381,7 @@ public final class Requirements {
 				if (lo != null) {
 					Status st = lo.dampingRatio() < zMin || hi.dampingRatio() > zMax ? Status.FAIL
 							: lo.dampingRatio() < zrMin || hi.dampingRatio() > zrMax ? Status.WARN : Status.PASS;
+					r.about("analysis:aero_analysis");
 					r.add(st, "Damping ratio during ascent (airspeed > 100 ft/s)",
 							Units.num(zMin) + " to " + Units.num(zMax) + " (shall), " + Units.num(zrMin) + " to " + Units.num(zrMax)
 									+ " (should); low = weak damping of oscillations, high = hard weathercocking",
@@ -366,6 +400,7 @@ public final class Requirements {
 					}
 				}
 				if (worst != null) {
+					r.about("page:design");
 					r.add(worst.marginPercentLength() >= pctMin ? Status.PASS : Status.FAIL,
 							"Static margin as % of body length (rail exit to 2 x burn time" + (Double.isNaN(end) ? "" : ", t <= "
 									+ Units.num(end) + " s") + ")",
@@ -383,6 +418,7 @@ public final class Requirements {
 					String mat = rb.getMaterial().getName().toLowerCase(Locale.ROOT);
 					boolean metal = mat.contains("aluminum") || mat.contains("aluminium") || mat.contains("steel")
 							|| mat.contains("brass") || mat.contains("titanium") || mat.contains("copper");
+					r.about(Report.part(c));
 					r.add(metal ? Status.FAIL : Status.PASS, "Rail button material (" + where(c) + ")",
 							"no metal rail buttons; machine them from Delrin (POM)", rb.getMaterial().getName(), std.ruleRef("railButtons"));
 				}
@@ -390,6 +426,7 @@ public final class Requirements {
 		}
 		double machAv = std.rule("avionicsMachConcentric.value", Dim.DIMENSIONLESS);
 		if (!Double.isNaN(machAv) && sim.getSimulatedData().getMaxMachNumber() > machAv) {
+			r.about("analysis:add_avionics_bay");
 			r.add(Status.INFO, "Avionics bay layout (Mach " + Units.num(sim.getSimulatedData().getMaxMachNumber()) + ")",
 					"above Mach " + Units.num(machAv) + ": concentric altimeter bay with concentric air sampling holes; crescent "
 							+ "bays only in RF-transparent material", "verify in CAD", std.ruleRef("avionicsMachConcentric"));
@@ -403,6 +440,7 @@ public final class Requirements {
 								|| m.getMotorType() == Motor.Type.UNKNOWN)) {
 					double prop = m.getLaunchMass() - m.getBurnoutMass();
 					double isp = prop > 0 ? m.getTotalImpulseEstimate() / (prop * Atmosphere.G0) : Double.NaN;
+					r.about("page:motors");
 					r.add(isp >= ispMin ? Status.PASS : Status.FAIL, "SRAD/hybrid/liquid engine Isp (" + m.getDesignation() + ")",
 							">= " + Units.num(ispMin) + " s in static fires to come to competition (higher by probation level; "
 									+ "see advanced_probation)",
@@ -452,6 +490,7 @@ public final class Requirements {
 			double min = std.rule(Analysis.hasDiameterChange(stack) ? "stability.minCalibersWithDiameterChange" : "stability.minCalibers",
 					Dim.DIMENSIONLESS);
 			String what = whole ? "until apogee or staging" : "while " + Analysis.stackName(fc, k) + " flies alone";
+			r.about("analysis:import_aero_table");
 			r.add(Double.isNaN(min) ? Status.INFO : m.min() >= min ? Status.PASS : Status.FAIL,
 					"Ascent stability with imported CP (" + t.source() + ")" + (whole ? "" : ", " + Analysis.stackName(fc, k)),
 					Double.isNaN(min) ? "for information" : ">= " + Units.num(min) + " cal (imported CP vs simulated CG, " + what + ")",
@@ -466,6 +505,7 @@ public final class Requirements {
 		try {
 			res = Structures.flutter(sim, std, null, Double.NaN);
 		} catch (ToolException e) {
+			r.about("page:standards");
 			r.add(Status.INFO, "Fin flutter", "flutter speed >= " + Units.num(need) + " x airspeed (team standard)",
 					"not evaluated: " + e.getMessage(), null);
 			return;
@@ -475,6 +515,7 @@ public final class Requirements {
 				continue;
 			}
 			Status s = f.minMargin() < 1 ? Status.FAIL : f.minMargin() < need ? Status.WARN : Status.PASS;
+			r.about(Report.part(f.fin()));
 			r.add(s, "Fin flutter margin (" + where(f.fin()) + ", " + f.fin().getMaterial().getName() + ")",
 					"flutter speed >= " + Units.num(need) + " x airspeed along the flight (team standard; NACA TN 4197 screen, "
 							+ "see fin_flutter)",
@@ -485,10 +526,12 @@ public final class Requirements {
 
 	static void earlyDeployments(Report r, Simulation sim) {
 		for (String late : lateFirstDeployments(sim)) {
+			r.about("page:motors");
 			r.add(Status.FAIL, late, "the initial deployment event shall occur at or near apogee", "", "R4.2.1");
 		}
 		for (Sims.Deployment d : Sims.deployments(sim)) {
 			if (!Double.isNaN(d.timeAfterApogee()) && d.timeAfterApogee() < -0.5) {
+				r.about(Report.part(d.device()));
 				r.add(Status.FAIL, d.branch() + ": " + d.device().getName() + " deploys before apogee",
 						"recovery devices must not open during ascent (check the deployment event: new parachutes in "
 								+ "OpenRocket default to the motor ejection charge; use set_deployment)",
@@ -518,13 +561,16 @@ public final class Requirements {
 			}
 		}
 		if (alt + trk == 0) {
+			r.about("page:design");
 			r.add(Status.INFO, "Electronics in the design", "model altimeters, trackers and batteries as typed mass components "
 					+ "(add_avionics_bay does) so mass, CG and the checks include them", "none modelled", null);
 			return;
 		}
 		String have = alt + " altimeter(s) / flight computer(s), " + trk + " tracker(s), " + bat + " battery(ies)";
+		r.about("page:design");
 		r.add(alt >= 2 ? Status.PASS : Status.WARN, "Redundant deployment electronics",
 				"two independent altimeters (each on its own circuit)", have, "2027 Edicts, Electronics");
+		r.about("page:design");
 		r.add(bat >= alt + trk ? Status.PASS : Status.WARN, "Individual power supply per altimeter and tracker",
 				"one battery for each deployment altimeter and each GPS / RF beacon", bat + " batteries for " + (alt + trk)
 						+ " devices", "2027 Edicts, Electronics");
@@ -565,10 +611,12 @@ public final class Requirements {
 			double apogee = b.getMaximum(FlightDataType.TYPE_ALTITUDE);
 			String name = b.getName();
 			if (mine.isEmpty()) {
+				r.about("page:motors");
 				r.add(Status.FAIL, name + ": recovery", "every independently recovered body needs recovery", "no deployment in simulation", null);
 				continue;
 			}
 			if (!Double.isNaN(dualAbove) && apogee > dualAbove) {
+				r.about("page:motors");
 				r.add(mine.size() >= 2 ? Status.PASS : Status.FAIL, name + ": dual-event recovery",
 						"required above " + Units.fmt(dualAbove, Dim.DISTANCE) + " AGL apogee",
 						mine.size() + " deployment event(s), apogee " + Units.fmt(apogee, Dim.DISTANCE), std.ruleRef("dualEventAboveApogeeAgl"));
@@ -580,6 +628,7 @@ public final class Requirements {
 				if (role.equals("drogue") && !Double.isNaN(drMin)) {
 					Status s = v < drMin || v > drMax ? Status.FAIL
 							: !Double.isNaN(drRecMin) && (v < drRecMin || v > drRecMax) ? Status.WARN : Status.PASS;
+					r.about(Report.part(d.device()));
 					r.add(s, name + ": drogue descent rate (" + d.device().getName() + ")",
 							Units.fmt(drMin, Dim.VELOCITY) + " to " + Units.fmt(drMax, Dim.VELOCITY) + "; should be "
 									+ Units.fmt(drRecMin, Dim.VELOCITY) + " to " + Units.fmt(drRecMax, Dim.VELOCITY),
@@ -587,6 +636,7 @@ public final class Requirements {
 				}
 				if (role.startsWith("main")) {
 					if (!Double.isNaN(mainAltMax) && mine.size() > 1) {
+						r.about(Report.part(d.device()));
 						r.add(d.altitudeAgl() <= mainAltMax + 1 ? Status.PASS : Status.FAIL,
 								name + ": main deployment altitude (" + d.device().getName() + ")",
 								"<= " + Units.fmt(mainAltMax, Dim.DISTANCE) + " AGL", Units.fmt(d.altitudeAgl(), Dim.DISTANCE),
@@ -594,6 +644,7 @@ public final class Requirements {
 					}
 					if (!Double.isNaN(mainMax)) {
 						Status s = v >= mainMax ? Status.FAIL : !Double.isNaN(mainRec) && v > mainRec * 1.25 ? Status.WARN : Status.PASS;
+						r.about(Report.part(d.device()));
 						r.add(s, name + ": landing descent rate (" + d.device().getName() + ")",
 								"< " + Units.fmt(mainMax, Dim.VELOCITY) + ", ideally about " + Units.fmt(mainRec, Dim.VELOCITY),
 								Units.fmt(v, Dim.VELOCITY), std.ruleRef("mainDescentRate"));

@@ -24,6 +24,82 @@ export const PAGE_HELP: { page: Page; title: string; text: string }[] = [
   { page: "standards", title: "Standards", text: "The numbers every check uses: rule set, launch site, recovery factors and pin ratings, material properties, electronics." },
   { page: "analysis", title: "Analysis", text: "51 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
   { page: "flightdata", title: "Flight data", text: "Altimeter logs compared with the simulation, and your past rockets with predicted against measured apogee." },
+  { page: "history", title: "History", text: "What changed since the last save, the edits you can still undo (back to any point), and everything that happened to your designs and the team standards, by you or the assistant. A change to the standards or targets can be put back from here." },
+];
+
+/** The pages in the left rail's order, for Ctrl+1 to Ctrl+9. */
+export const PAGE_KEYS: Page[] = ["home", "design", "motors", "flights", "targets", "standards", "analysis", "flightdata", "history"];
+
+/** Every keyboard shortcut, by where it works. */
+export const SHORTCUTS: { where: string; keys: [string, string][] }[] = [
+  {
+    where: "Anywhere",
+    keys: [
+      [keys("K"), "Search: analyses, pages, parts, settings, standards, targets, actions"],
+      [keys("O"), "Open a design or project"],
+      [keys("S"), "Save"],
+      [keys("S", true), "Save as (OpenRocket, RockSim, RASAero or a RocketMaxxing project)"],
+      [keys("Z"), "Undo, including edits an analysis or the assistant made"],
+      [`${keys("Z", true)} or ${keys("Y")}`, "Redo"],
+      [`${keys("1")} … ${keys("9")}`, "Go to a page in the left rail's order: Start, Design, Motors, Flights, Targets, Standards, Analysis, Flight data, History"],
+      ["?", "These shortcuts"],
+      ["Esc", "Close a dialog, menu, search or the tour"],
+    ],
+  },
+  {
+    where: "Design page: the parts",
+    keys: [
+      ["↑ ↓", "The part above or below in the list"],
+      ["→ ←", "Open or fold a part's contents"],
+      ["Home End", "The first or last part"],
+      ["Enter", "Show the selected part's properties"],
+      ["F2", "Rename the part"],
+      ["Alt+↑ / Alt+↓", "Move the part up or down"],
+      [keys("C"), "Copy the part"],
+      [keys("V"), "Paste into the selected part"],
+      [keys("D"), "Duplicate the part"],
+      ["Delete", "Remove the part (undo brings it back)"],
+    ],
+  },
+  {
+    where: "Design page: the view",
+    keys: [
+      ["Drag", "Turn the rocket (3D) or slide the selected part along it, lining up with its neighbours"],
+      ["Alt+drag", "Slide the part freely, without lining up"],
+      ["Wheel or pinch", "Zoom"],
+      ["Double-click (fin shape)", "Add a point to a freeform fin; Delete removes the picked point"],
+    ],
+  },
+  {
+    where: "Number boxes",
+    keys: [
+      ["↑ ↓", "Step the value"],
+      ["Shift+↑ ↓", "Ten times bigger steps"],
+      ["Alt+↑ ↓", "Ten times smaller steps"],
+      ["Enter", "Apply"],
+      ["Esc", "Put back what was there"],
+    ],
+  },
+  {
+    where: "Plots",
+    keys: [
+      ["Drag", "Zoom into a box"],
+      ["Wheel", "Zoom about the pointer; over one axis, that axis alone"],
+      [`${keys("").replace(/\+$/, "")}+wheel`, "Zoom both directions, whatever Zoom is set to"],
+      ["Shift+drag", "Move the view"],
+      ["Double-click", "See it all again; on an axis, fit that axis"],
+    ],
+  },
+  {
+    where: "Lists and menus",
+    keys: [
+      ["↑ ↓ Enter", "Pick in search results, menus and the analysis list"],
+      ["Home End", "First or last menu item"],
+      ["Enter", "In the analysis filter, open the first match"],
+      ["Enter / Shift+Enter", "Assistant: send / new line"],
+      ["→ ← Enter", "The tour: next and back"],
+    ],
+  },
 ];
 
 /** The analyses by the question they answer. */
@@ -210,7 +286,7 @@ export const TIPS: [string, string][] = [
   ["*", "A needed input. Empty inputs use the design and the team standards."],
   [keys("Z"), "Undo any edit, including those an analysis or the assistant made."],
   [keys("S"), `Save; ${keys("S", true)} saves as.`],
-  ["?", "Opens these tips from anywhere; the Help button at the foot of the left rail has the rest of the Guide and the tour."],
+  ["?", "Opens the keyboard shortcuts from anywhere; the Help button at the foot of the left rail has the rest of the Guide and the tour."],
   ["Search", `Search (${keys("K")}) finds a setting of the selected part ("wall thickness"), a team standard ("pin rating"), a target, a view mode or an action, and takes you to it.`],
   ["Folding", "Every panel folds from its title; right-click a title to fold the others. Properties sections, analysis groups, target groups and Settings fold too."],
   ["RASAero", "Above Mach 0.8 the Design page shows RASAero vs OpenRocket: import RASAero II's aero export and both models' apogee, speed, stability, CD and CP sit side by side."],

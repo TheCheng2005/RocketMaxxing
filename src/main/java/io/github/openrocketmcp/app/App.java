@@ -114,6 +114,7 @@ public final class App {
 
 		OrRuntime.init(); // before any request: OpenRocket's databases fail for good if touched before it starts
 		Context ctx = new Context(Standards.discover(ws), ws, false);
+		ctx.keepJournal(true); // the History page: what changed, by whom, in the designs folder
 		ctxRef.set(ctx);
 		McpServer server = Main.build(ctx, s -> AppTools.register(s, ctx), false);
 		DesignLocks locks = new DesignLocks(ctx);

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { app, autoCheck, setAutoCheck, checkRules, toast, type Checks } from "../state.svelte";
+  import { app, autoCheck, setAutoCheck, checkRules, toast, select, type Checks, type Page } from "../state.svelte";
   import { context, copyText, type MenuItem } from "../menu/menu.svelte";
   import { analysis } from "../analysis/store.svelte";
   import { status } from "../analysis/text";
@@ -33,6 +33,32 @@
   });
   let verdict = $derived(counts.fail ? "" : counts.warn ? "Nothing fails." : rows.length ? "Every check passes." : "");
 
+  const PAGES: Record<string, string> = { flights: "launch conditions on the Flights page", motors: "the Motors page",
+    standards: "the Standards page", design: "the design" };
+  /** Where a click on a row goes, in words, for its tooltip. */
+  function whereTo(about?: string): string {
+    if (!about) return "";
+    const [kind, what] = [about.slice(0, about.indexOf(":")), about.slice(about.indexOf(":") + 1)];
+    if (kind === "part") return "Select the part on the Design page";
+    if (kind === "page") return "Open " + (PAGES[what] ?? `the ${what} page`);
+    if (kind === "analysis") return "Open the analysis that looks into it";
+    return "";
+  }
+  /** Opens what a row is about: the part, the page, or the analysis. */
+  function open(about?: string) {
+    if (!about) return;
+    const i = about.indexOf(":");
+    const kind = about.slice(0, i), what = about.slice(i + 1);
+    if (kind === "part") {
+      app.page = "design";
+      select(what);
+    } else if (kind === "page") app.page = what as Page;
+    else if (kind === "analysis") {
+      analysis.selected = what;
+      app.page = "analysis";
+    }
+  }
+
   // Right-click: check now, copy the results, show or hide passes, change the rule set.
   function items(e: MouseEvent): MenuItem[] {
     const li = (e.target as HTMLElement).closest(".rule") as HTMLElement | null;
@@ -41,6 +67,7 @@
     const line = (x: (typeof rows)[number]) => `${x.status}  ${x.item}${x.value ? ": " + x.value : ""}${x.requirement ? " (" + x.requirement + ")" : ""}${x.ref ? " [" + x.ref + "]" : ""}`;
     return [
       { header: "Rule check" },
+      r?.about ? { label: whereTo(r.about), run: () => open(r.about) } : null,
       r ? { label: "Copy this line", run: () => copyText(line(r)).then((ok) => ok && toast("Copied")) } : null,
       { label: "Copy all results", off: !rows.length && "No results yet", run: () => copyText([c?.ruleSet ?? "", ...rows.map(line), ...(manual.length ? ["", "To check by hand:", ...manual.map((m) => "- " + m)] : [])].join("\n")).then((ok) => ok && toast("Copied the rule check")) },
       live ? { label: "Check again", run: () => checkRules() } : null,
@@ -85,7 +112,9 @@
     {#if shown.length}
       <ul class="rules">
         {#each shown as r, i (i)}
-          <li class="rule {r.s}" data-i={i}>
+          <!-- svelte-ignore a11y_no_noninteractive_tabindex (a row is a button exactly when it has somewhere to go) -->
+          <li class="rule {r.s}" class:go={!!r.about} data-i={i} title={whereTo(r.about)} role={r.about ? "button" : undefined} tabindex={r.about ? 0 : undefined}
+            onclick={() => open(r.about)} onkeydown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), open(r.about))}>
             <span class="badge {r.s}">{r.status}</span>
             <div class="what">
               <div class="top"><span class="item">{r.item}</span>{#if r.ref}<span class="ref">{r.ref}</span>{/if}</div>
@@ -224,6 +253,15 @@
     padding: 8px 14px;
     border-bottom: 1px solid var(--line);
     border-left: 3px solid transparent;
+  }
+  .rule.go {
+    cursor: pointer;
+  }
+  .rule.go:hover {
+    background: var(--surface-2);
+  }
+  .rule.go.fail:hover {
+    background: color-mix(in srgb, var(--bad-soft) 70%, var(--surface-2));
   }
   .rule:last-child {
     border-bottom: 0;

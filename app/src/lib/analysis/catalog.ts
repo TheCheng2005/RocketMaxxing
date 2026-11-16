@@ -30,6 +30,20 @@ export interface Analysis {
   needIf?: { key: string; is: string[]; need: string[] }[];
   /** Inputs that name a file to read, with the extensions to offer. */
   files?: Record<string, string>;
+  /**
+   * What the analysis still needs that the rules above cannot say (a pair of inputs filled together, a value that
+   * may come from the team standards, a part the design has too many of to guess): "" when it has what it needs.
+   */
+  needs?: (c: NeedContext) => string;
+}
+
+/** What a form's own rule can look at: the values typed, the open design, the team's launch site. */
+export interface NeedContext {
+  value: (key: string) => string;
+  /** Body tubes directly in each stage of the open design. */
+  tubesPerStage: number[];
+  /** The team standards' launch site has a latitude and a longitude. */
+  siteHasPosition: boolean;
 }
 
 export interface Group {
@@ -95,14 +109,21 @@ export const CATALOG: Group[] = [
       { tool: "structural_loads", label: "Airframe loads", blurb: "Axial and bending loads at each airframe joint, at max q with a gust.", main: ["gustSpeed", "safetyFactor", "allowableStress"] },
       { tool: "aero_heating", label: "Aerodynamic heating", blurb: "Skin temperature screen for the nose and fins.", main: ["noseTipRadius"] },
       { tool: "compare_materials", label: "Material trade", blurb: "Flies the fins or airframe in other materials and thicknesses.", main: ["parts", "materials", "thicknesses"] },
-      { tool: "pressure_vessel", label: "Pressure vessel", blurb: "Burst and proof margins of a tank or motor case.", main: ["meop", "burstPressure", "outerDiameter", "wallThickness", "ultimateStrength"] },
+      { tool: "pressure_vessel", label: "Pressure vessel", blurb: "Burst and proof margins of a tank or motor case.", main: ["meop", "burstPressure", "outerDiameter", "wallThickness", "ultimateStrength"],
+        needs: (c) => c.value("burstPressure") || ["outerDiameter", "wallThickness", "ultimateStrength"].every((k) => c.value(k)) ? ""
+          : "Burst pressure, or Outer diameter, Wall thickness and Ultimate strength" },
     ],
   },
   {
     title: "Launch and avionics",
     items: [
-      { tool: "add_avionics_bay", label: "Avionics bay", blurb: "Builds the electronics bay between two airframe tubes.", main: ["upperTube", "lowerTube", "altimeters", "tracker", "couplerLength", "switchBand", "packRecovery"] },
-      { tool: "weather_forecast", label: "Launch-day forecast", blurb: "Wind by altitude, temperature and pressure at the site for the launch hour.", main: ["latitude", "longitude", "time", "apply", "forecastJson"] },
+      { tool: "add_avionics_bay", label: "Avionics bay", blurb: "Builds the electronics bay between two airframe tubes.", main: ["upperTube", "lowerTube", "altimeters", "tracker", "couplerLength", "switchBand", "packRecovery"],
+        // With exactly two tubes in the first stage the bay goes between them; otherwise say which.
+        needs: (c) => c.value("upperTube") || (c.tubesPerStage[0] ?? 0) === 2 ? "" : "Upper tube (the design's first stage has "
+          + (c.tubesPerStage[0] ?? 0) + " body tubes, so say which the bay goes between)" },
+      { tool: "weather_forecast", label: "Launch-day forecast", blurb: "Wind by altitude, temperature and pressure at the site for the launch hour.", main: ["latitude", "longitude", "time", "apply", "forecastJson"],
+        needs: (c) => (c.value("latitude") && c.value("longitude")) || c.siteHasPosition ? ""
+          : "Latitude and Longitude (or the launch site's position on the Standards page)" },
       { tool: "rail_buttons", label: "Rail buttons", blurb: "Rail button positions, rail exit speed and tip-off.", main: ["forward", "aft", "crosswind", "apply"] },
       { tool: "flight_card", label: "Flight card", blurb: "Writes the launch-day flight card.", main: ["path"], defaults: (n) => ({ path: `${n}-flight-card.md` }) },
       { tool: "altimeter_settings", label: "Altimeter settings", blurb: "Settings for the primary and backup altimeters: deployment, Mach lockout, port size.", main: ["bay", "bayVolume"] },

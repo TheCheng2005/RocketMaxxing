@@ -406,6 +406,9 @@ final class Assistant {
 			}, true);
 			// The same per-design locks as the app's own calls: an agent's edit and one from the page take turns.
 			tools.guard(server.guard());
+			// What the agent changes is put down to it in the History.
+			String who = label(provider);
+			tools.wrapTools(t -> t.withHandler(x -> io.github.openrocketmcp.tools.Journal.as(who, () -> t.handler().call(x))));
 			byte[] b = new byte[24];
 			new java.security.SecureRandom().nextBytes(b);
 			String token = java.util.HexFormat.of().formatHex(b);
@@ -538,7 +541,12 @@ final class Assistant {
 		params.add("arguments", JsonParser.parseString(input));
 		req.add("params", params);
 		String before = state();
-		JsonObject res = server.handleLine(req.toString());
+		JsonObject res;
+		try {
+			res = io.github.openrocketmcp.tools.Journal.as(label(provider), () -> server.handleLine(req.toString()));
+		} catch (Exception e) {
+			throw e instanceof RuntimeException r ? r : new IllegalStateException(e);
+		}
 		List<BetaToolResultBlockParam.Content.Block> blocks = new ArrayList<>();
 		List<String> images = new ArrayList<>();
 		StringBuilder shown = new StringBuilder();

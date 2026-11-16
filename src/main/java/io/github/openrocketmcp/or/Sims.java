@@ -123,7 +123,7 @@ public final class Sims {
 				}
 				base = new Simulation(d.doc, rocket);
 				base.setFlightConfigurationId(fc.getId());
-				base.setName("MCP - " + fc.getName());
+				base.setName("Simulation of " + fc.getName()); // named like one the team made, with what it flies
 				std.applyLaunchDefaults(base.getOptions());
 				// OpenRocket seeds new simulations randomly; a fixed seed makes repeated tool calls agree.
 				base.getOptions().setRandomSeed(NEW_SIMULATION_SEED);

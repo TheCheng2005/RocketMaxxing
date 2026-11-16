@@ -3,6 +3,7 @@ package io.github.openrocketmcp.tools;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 
 import com.google.gson.JsonElement;
@@ -37,11 +38,13 @@ public final class TeamFile {
 	public static Map<String, Object> save(Context ctx, JsonObject patch) throws IOException {
 		Path file = path(ctx);
 		JsonObject team = read(file);
+		JsonObject before = team.deepCopy();
 		apply(team, patch);
 		Standards next = Standards.fromTeam(team, file);
 		Files.createDirectories(file.toAbsolutePath().getParent());
 		Files.writeString(file, Standards.pretty(team));
 		ctx.setStandards(next);
+		journal(ctx, file, before, team, changes(patch, ""));
 		return Map.of("saved", file.toString());
 	}
 
@@ -66,5 +69,40 @@ public final class TeamFile {
 				target.add(e.getKey(), v.deepCopy());
 			}
 		}
+	}
+
+	/** Puts a change to the team standards in the journal, with what the file held before and after (to put back). */
+	static void journal(Context ctx, Path file, JsonObject before, JsonObject after, String what) {
+		JsonObject x = new JsonObject();
+		x.add("before", before);
+		x.add("after", after.deepCopy());
+		Journal.add(ctx, "standards", null, file.toString(), what, x);
+	}
+
+	/** "targets.apogee.min = 2800 m; launchSite.altitude cleared": what a change sets, in a line. */
+	static String changes(JsonObject patch, String at) {
+		List<String> out = new java.util.ArrayList<>();
+		for (Map.Entry<String, JsonElement> e : patch.entrySet()) {
+			String k = at.isEmpty() ? e.getKey() : at + "." + e.getKey();
+			JsonElement v = e.getValue();
+			if (v.isJsonNull()) {
+				out.add(words(k) + " cleared");
+			} else if (v.isJsonObject()) {
+				String inner = changes(v.getAsJsonObject(), k);
+				if (!inner.isEmpty()) {
+					out.add(inner);
+				}
+			} else {
+				out.add(words(k) + " set to " + (v.isJsonPrimitive() ? v.getAsString() : v.toString()));
+			}
+		}
+		String s = String.join("; ", out);
+		return s.isEmpty() ? s : s.substring(0, 1).toUpperCase(java.util.Locale.ROOT) + s.substring(1);
+	}
+
+	/** "targets.apogee.goal" as "apogee goal", "launchSite.altitude" as "launch site altitude". */
+	static String words(String path) {
+		String p = path.replaceFirst("^targets\\.", "").replace('.', ' ').replace('_', ' ');
+		return p.replaceAll("([a-z])([A-Z])", "$1 $2").toLowerCase(java.util.Locale.ROOT);
 	}
 }
