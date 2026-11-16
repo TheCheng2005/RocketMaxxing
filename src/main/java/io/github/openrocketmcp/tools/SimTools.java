@@ -94,20 +94,42 @@ public final class SimTools {
 					sc.setEnabled(false); // until a person (or settings below) turns it on
 				}
 				applySettings(ctx, e, a);
+				if (e instanceof info.openrocket.core.simulation.extension.example.RollControl rc) {
+					// OpenRocket looks for a fin set called "CONTROL": use the design's own fins unless one was named.
+					List<String> fins = new ArrayList<>();
+					for (info.openrocket.core.rocketcomponent.RocketComponent c : d.doc.getRocket()) {
+						if (c instanceof info.openrocket.core.rocketcomponent.FinSet) {
+							fins.add(c.getName());
+						}
+					}
+					if (fins.isEmpty()) {
+						throw new ToolException("Roll control turns a fin set, and this design has none.");
+					}
+					if (!fins.contains(rc.getControlFinName())) {
+						if (a.has("settings") && a.raw().getAsJsonObject("settings").has("controlFinName")) {
+							throw new ToolException("No fin set called \"" + rc.getControlFinName() + "\". Fin sets: " + fins + ".");
+						}
+						rc.setControlFinName(fins.get(fins.size() - 1)); // the aft-most set
+					}
+				}
 				exts.add(e);
 				out.put("added", io.github.openrocketmcp.or.Extensions.describe(e, exts.size() - 1));
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), sim.getName() + ": added the extension " + nameOf(e), null);
 				changed = true;
 			}
 			case "set" -> {
 				var e = pick(exts, a);
 				applySettings(ctx, e, a);
 				out.put("changed", io.github.openrocketmcp.or.Extensions.describe(e, exts.indexOf(e)));
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), sim.getName() + ": changed the extension " + nameOf(e)
+						+ (a.has("settings") ? " (" + String.join(", ", a.raw().getAsJsonObject("settings").keySet()) + ")" : ""), null);
 				changed = true;
 			}
 			case "remove" -> {
 				var e = pick(exts, a);
 				exts.remove(e);
-				out.put("removed", e.getName());
+				out.put("removed", nameOf(e));
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), sim.getName() + ": removed the extension " + nameOf(e), null);
 				changed = true;
 			}
 			default -> {
@@ -145,6 +167,15 @@ public final class SimTools {
 		return exts.get(i);
 	}
 
+	private static String nameOf(info.openrocket.core.simulation.extension.SimulationExtension e) {
+		return String.valueOf(io.github.openrocketmcp.or.Extensions.describe(e, 0).get("name"));
+	}
+
+	static boolean scriptsAllowed() {
+		String v = System.getProperty("openrocketmcp.scripts", System.getenv("OPENROCKET_MCP_SCRIPTS"));
+		return v != null && (v.equalsIgnoreCase("on") || v.equalsIgnoreCase("true") || v.equals("1"));
+	}
+
 	private static void applySettings(Context ctx, info.openrocket.core.simulation.extension.SimulationExtension e, Args a) {
 		if (!a.has("settings")) {
 			return;
@@ -162,9 +193,16 @@ public final class SimTools {
 			if (Boolean.TRUE.equals(enable)) {
 				// A script runs as code on this computer. In the desktop app the assistant may write one, but only the
 				// person turns it on (app_trust_script, which assistants do not have).
-				if (ctx.journal() && !"you".equals(Journal.actor())) {
+				boolean person = ctx.journal() && "you".equals(Journal.actor());
+				if (!person && ctx.journal()) {
 					throw new ToolException("A script runs as code on this computer, so the person using RocketMaxxing turns it on "
 							+ "(Flights page, the simulation's Extensions). Add it with enabled false and ask them to read it and turn it on.");
+				}
+				// Outside the app (an MCP or team server) nobody is there to read it: off unless whoever runs the server allows it.
+				if (!person && !scriptsAllowed()) {
+					throw new ToolException("A script runs as code on the computer running this server, so it cannot be turned on from "
+							+ "here. The script is kept, off: turn it on in RocketMaxxing (Flights page, the simulation's Extensions) or in "
+							+ "OpenRocket, or start this server with OPENROCKET_MCP_SCRIPTS=on to allow it.");
 				}
 				io.github.openrocketmcp.or.Extensions.trust(sc, true);
 			} else if (Boolean.FALSE.equals(enable)) {

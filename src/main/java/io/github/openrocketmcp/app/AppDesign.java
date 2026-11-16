@@ -484,6 +484,9 @@ final class AppDesign {
 	 * The part's decal for the 3-D view: its image copied out of the design into the app's folder (named by its
 	 * contents, so it is written once), with where it sits. Null when the part has none.
 	 */
+	private static final Map<info.openrocket.core.appearance.DecalImage, String> DECAL_FILES = java.util.Collections
+			.synchronizedMap(new java.util.WeakHashMap<>());
+
 	static Map<String, Object> decal(Context ctx, RocketComponent c) {
 		Appearance ap = c.getAppearance();
 		info.openrocket.core.appearance.Decal t = ap == null ? null : ap.getTexture();
@@ -493,6 +496,10 @@ final class AppDesign {
 		Map<String, Object> m = new LinkedHashMap<>();
 		String name = t.getImage().getName();
 		m.put("name", name.replaceAll("^.*[/\\\\]", ""));
+		String kept = DECAL_FILES.get(t.getImage()); // the model is asked for after every edit: read each picture once
+		if (kept != null && java.nio.file.Files.exists(java.nio.file.Path.of(kept)) && kept.startsWith(ctx.workspace().toString())) {
+			m.put("image", kept);
+		} else
 		try (java.io.InputStream in = t.getImage().getBytes()) {
 			byte[] bytes = in.readAllBytes();
 			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-1");
@@ -504,6 +511,7 @@ final class AppDesign {
 				java.nio.file.Files.write(out, bytes);
 			}
 			m.put("image", out.toString());
+			DECAL_FILES.put(t.getImage(), out.toString());
 		} catch (Exception e) {
 			m.put("missing", "The decal's picture (" + name + ") could not be found: open the design next to it, or choose the picture again.");
 		}
@@ -540,7 +548,10 @@ final class AppDesign {
 			if (!p.getFileName().toString().toLowerCase(java.util.Locale.ROOT).matches(".*\\.(png|jpe?g|gif|bmp)$")) {
 				throw new ToolException("A decal is a picture: PNG, JPG, GIF or BMP.");
 			}
-			b.setImage(d.doc.getDecalImage(new info.openrocket.core.document.attachments.FileSystemAttachment(p.toString(), p.toFile())));
+			info.openrocket.core.appearance.DecalImage img = d.doc
+					.getDecalImage(new info.openrocket.core.document.attachments.FileSystemAttachment(p.toString(), p.toFile()));
+			DECAL_FILES.remove(img); // the file may have been edited since it was last chosen
+			b.setImage(img);
 			if (old == null || old.getTexture() == null) { // a new decal: once round the part, unless told otherwise
 				b.setScaleUV(1, 1);
 				b.setOffset(0, 0);
@@ -559,8 +570,8 @@ final class AppDesign {
 		}
 		if (a.has("scaleU") || a.has("scaleV")) {
 			double su = a.num("scaleU", b.getScaleU()), sv = a.num("scaleV", b.getScaleV());
-			if (!(su > 0 && sv > 0)) {
-				throw new ToolException("A decal's size must be more than zero.");
+			if (!(su > 0 && sv > 0 && su <= 1000 && sv <= 1000)) {
+				throw new ToolException("A decal's scale is how many pictures fit across the part: more than zero, at most 1000.");
 			}
 			b.setScaleUV(su, sv);
 		}

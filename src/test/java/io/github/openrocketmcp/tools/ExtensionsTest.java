@@ -48,6 +48,10 @@ class ExtensionsTest {
 		assertFalse(r.has("flightFailed"), r.toString());
 		assertTrue(r.getAsJsonArray("extensions").get(0).getAsJsonObject().has("off"), "a new script is off");
 
+		// A plain MCP or team server: nobody is there to read it, so it cannot be turned on.
+		String plain = TemplatesTest.callText(s, "simulation_extensions", "{\"action\":\"set\",\"index\":0,\"settings\":{\"enabled\":true}}");
+		assertTrue(plain.contains("cannot be turned on from here"), plain);
+
 		// The assistant in the desktop app cannot turn it on.
 		ctx.keepJournal(true);
 		String refused = Journal.as("Claude", () -> TemplatesTest.callText(s, "simulation_extensions",
@@ -58,5 +62,16 @@ class ExtensionsTest {
 		r = TemplatesTest.call(s, "simulation_extensions", "{\"action\":\"set\",\"index\":0,\"settings\":{\"enabled\":true}}", false);
 		String flown = r.toString();
 		assertTrue(flown.contains("script ran"), flown);
+
+		// Saved and opened on a computer that never agreed to the script: it is off again.
+		Path ork = ws.resolve("scripted.ork");
+		TemplatesTest.call(s, "save_design", "{\"path\":" + new Gson().toJson(ork.toString()) + "}", false);
+		TemplatesTest.call(s, "close_design", "{\"designId\":\"" + ctx.designs.get(null).id + "\"}", false);
+		info.openrocket.core.startup.Application.getInjector()
+				.getInstance(info.openrocket.core.simulation.extension.impl.ScriptingUtil.class).clearTrustedScripts();
+		TemplatesTest.call(s, "open_design", "{\"path\":" + new Gson().toJson(ork.toString()) + "}", false);
+		JsonObject again = TemplatesTest.call(s, "simulation_extensions", "{}", false);
+		assertTrue(again.getAsJsonArray("extensions").get(0).getAsJsonObject().has("off"), "off until someone here turns it on: " + again);
+		assertFalse(TemplatesTest.callText(s, "run_simulation", "{}").contains("script ran"), "and it does not run");
 	}
 }

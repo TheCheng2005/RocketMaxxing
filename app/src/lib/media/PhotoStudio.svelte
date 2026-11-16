@@ -52,7 +52,6 @@
   /** The body's radius (not the fins'): what the flame and smoke are sized from. */
   let body = 0.03;
   let made: THREE.Material[] = [];
-  let textures: THREE.Texture[] = [];
   const W = 960, H = 600;
 
   /** The outside of the rocket from the model the Design page has, with its paint and decals. */
@@ -103,6 +102,12 @@
   }
 
   /** A soft round spot, white in the middle: smoke puffs and the flame's glow. */
+  /** What the flame and smoke are made of now, freed when they are made again. */
+  let effectStuff: { dispose(): void }[] = [];
+  let effectsKey = "";
+  let skyKey = "";
+  let skyTexture: THREE.Texture | null = null;
+
   function puff(inner: string, outer: string): THREE.Texture {
     const c = document.createElement("canvas");
     c.width = c.height = 128;
@@ -114,17 +119,13 @@
     g.fillRect(0, 0, 128, 128);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
-    textures.push(t);
+    effectStuff.push(t);
     return t;
   }
 
   /** The motor's flame (two glowing cones and a light) and the smoke trail behind it, in the rocket's own frame. */
   function buildEffects() {
-    effects.traverse((o) => {
-      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
-      m?.dispose();
-    });
-    effects.clear();
+    freeEffects();
     const d = 2 * body;
     const tail = length;
     if (flame) {
@@ -168,6 +169,8 @@
 
   /** The sky behind the rocket: a gradient (with stars at night) or one colour. */
   function background(): THREE.Color | THREE.Texture {
+    skyTexture?.dispose();
+    skyTexture = null;
     if (sky === "plain") return new THREE.Color(plain);
     const c = document.createElement("canvas");
     c.width = 16;
@@ -198,7 +201,7 @@
       t = new THREE.CanvasTexture(big);
     } else t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
-    textures.push(t);
+    skyTexture = t;
     return t;
   }
 
@@ -269,8 +272,17 @@
 
   function refresh() {
     if (!view) return;
-    scene.background = background();
-    buildEffects();
+    // The sky and the flame are made again only when what they show changes, not on every move of the camera.
+    const sk = `${sky}|${plain}`;
+    if (sk !== skyKey) {
+      scene.background = background();
+      skyKey = sk;
+    }
+    const ek = `${flame}|${smoke}|${sky}|${light}`;
+    if (ek !== effectsKey) {
+      buildEffects();
+      effectsKey = ek;
+    }
     arrange();
     draw();
   }
@@ -321,8 +333,8 @@
     refresh();
     return () => {
       for (const m of made) m.dispose();
-      for (const t of textures) t.dispose();
-      buildEffectsDispose();
+      skyTexture?.dispose();
+      freeEffects();
       floor?.geometry.dispose();
       (floor?.material as THREE.Material | undefined)?.dispose();
       if (view) {
@@ -331,12 +343,15 @@
       }
     };
   });
-  function buildEffectsDispose() {
+  function freeEffects() {
     effects.traverse((o) => {
       const m = o as THREE.Mesh;
-      m.geometry?.dispose();
+      if (m.isMesh) m.geometry.dispose(); // sprites share one geometry inside three.js: not theirs to free
       (m.material as THREE.Material | undefined)?.dispose();
     });
+    effects.clear();
+    for (const x of effectStuff) x.dispose();
+    effectStuff = [];
   }
 
   $effect(() => {

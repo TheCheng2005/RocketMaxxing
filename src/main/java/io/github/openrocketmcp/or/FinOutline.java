@@ -42,7 +42,9 @@ public final class FinOutline {
 			if (t.isEmpty() || t.startsWith("#") || t.startsWith(";")) {
 				continue;
 			}
-			String[] parts = t.split("\\s*[,;\\t]\\s*|\\s+");
+			// "12,5;40,0" (decimal commas, as a spreadsheet set to most European languages writes them) or "12.5,40.0"
+			boolean commas = (t.contains(";") || t.contains("\t")) && t.contains(",");
+			String[] parts = commas ? t.replace(',', '.').split("\\s*[;\\t]\\s*") : t.split("\\s*[,;\\t]\\s*|\\s+");
 			if (parts.length >= 2) {
 				try {
 					pts.add(new double[] { Double.parseDouble(parts[0]), Double.parseDouble(parts[1]) });

@@ -220,8 +220,10 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   `KI`), damping moment, stop simulation (`stopTime`, `stopStep`), CSV save, a script (`script`, `language`,
   `enabled`) and a Java class (`className`). `settings` take units. After a change the simulation flies again and its
   summary comes back (`flightFailed` with the message if a script stops it). A script runs as code on the computer:
-  a new or changed one is off until turned on (`enabled: true`), which marks it trusted as OpenRocket does; in the
-  desktop app only the person can turn one on, not the assistant.
+  a new or changed one is off until turned on (`enabled: true`), which marks it trusted as OpenRocket does. In the
+  desktop app only the person can turn one on, not the assistant. On an MCP or team server a script cannot be turned
+  on at all unless whoever runs the server starts it with `OPENROCKET_MCP_SCRIPTS=on`; a script already trusted on
+  that computer (turned on in RocketMaxxing or OpenRocket) runs as before.
 
 ### Aerodynamics and wind
 

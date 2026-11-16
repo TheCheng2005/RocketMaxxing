@@ -66,7 +66,8 @@ public final class Extensions {
 							new Field("stopTime", "Stop at time (s)", "Seconds after launch; 0 for no limit.", Dim.DIMENSIONLESS),
 							new Field("stopStep", "Stop at step", "Number of steps; 0 for no limit.", Dim.DIMENSIONLESS),
 							new Field("reportRate", "Report every", "Steps between progress reports.", Dim.DIMENSIONLESS))),
-			new Kind(EX + "CSVSave", "Save every step as CSV", "Writes each step of the flight to a CSV file in the working folder.",
+			new Kind(EX + "CSVSave", "Save every step as CSV", "Writes each step of the flight to simulation-NNN.csv in the folder "
+					+ "the program was started from. Flights > CSV (export_flight_data) writes the same where you choose.",
 					List.of()),
 			new Kind(IMPL + "ScriptingExtension", "Script", "Your own code run during the flight (JavaScript): define any of "
 					+ "OpenRocket's listener functions (startSimulation, preStep, postStep, preWindModel, postAerodynamicCalculation, "
@@ -99,6 +100,12 @@ public final class Extensions {
 		List<Map<String, Object>> out = new ArrayList<>();
 		Set<String> seen = new TreeSet<>();
 		for (Kind k : KNOWN) {
+			seen.add(k.id());
+			if (k.id().endsWith(".CSVSave")) {
+				// It writes simulation-NNN.csv into whatever folder the program was started from, where nobody looks:
+				// export_flight_data (Flights > CSV) writes the same where it is asked. A design that has it still runs it.
+				continue;
+			}
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("type", short_(k.id()));
 			m.put("name", k.name());

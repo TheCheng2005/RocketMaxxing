@@ -53,6 +53,15 @@ class FinOutlineTest {
 		assertEquals(4 * 0.0254, p[p.length - 1].x, 1e-6, "root chord in inches");
 		assertEquals(2.5 * 0.0254, p[1].y, 1e-6);
 
+		// A spreadsheet's CSV with decimal commas and semicolons, in mm.
+		Path eu = ws.resolve("fin-eu.csv");
+		Files.writeString(eu, "x (mm);y (mm)\n0;0\n37,5;62,5\n87,5;62,5\n100;0\n");
+		TemplatesTest.call(s, "import_fin_outline", "{\"component\":\"" + fins + "\",\"path\":" + q(eu) + "}", false);
+		p = TemplatesTest.first(r).getFinPoints();
+		assertEquals(0.0375, p[1].x, 1e-9);
+		assertEquals(0.0625, p[1].y, 1e-9);
+		assertEquals(0.1, p[p.length - 1].x, 1e-9);
+
 		// Round trip through a CSV export.
 		Path out = ws.resolve("out.csv");
 		TemplatesTest.call(s, "export_fin_outline", "{\"component\":\"" + fins + "\",\"path\":" + q(out) + "}", false);

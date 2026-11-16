@@ -30,6 +30,8 @@
 
   /** The part's picture: added, changed, moved, sized, turned, or taken off (OpenRocket's decals). */
   async function decal(args: Record<string, unknown>) {
+    // An empty or zero size box: nothing to do (a size of nothing has no meaning).
+    if (Object.values(args).some((v) => typeof v === "number" && !Number.isFinite(v))) return;
     await act("app_decal", { component: ed!.id, ...args });
   }
   async function pickDecal() {

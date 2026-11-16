@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import { Plus, Trash2, Power } from "@lucide/svelte";
   import { call } from "../api";
-  import { app, act, ask, toast } from "../state.svelte";
+  import { app, act, ask, toast, type TreeNode } from "../state.svelte";
 
   // OpenRocket's Extensions tab for one simulation: air-start, roll control, damping, stop, CSV, a script, a Java
   // class. Each change flies the simulation again. A script runs as code on this computer: it stays off until the
@@ -33,13 +33,23 @@
   let list = $state<Ext[]>([]);
   let adding = $state("AirStart");
   let scripts = $state<Record<number, string>>({});
+  const savedScripts: Record<number, string> = {};
 
   async function load() {
     if (!app.design) return;
     if (!kinds.length) kinds = (await call<{ types: Kind[] }>("simulation_extensions", { action: "types" }).catch(() => ({ types: [] }))).types;
     const r = await call<{ extensions: Ext[] }>("simulation_extensions", { designId: app.design.designId, simulation: String(sim) }).catch(() => null);
     list = r?.extensions ?? [];
-    scripts = Object.fromEntries(list.filter((e) => e.type === "ScriptingExtension").map((e) => [e.index, String(e.settings.script ?? "")]));
+    // A script being typed is kept when the page reloads for another edit (the assistant's, an undo): only boxes
+    // still showing what was saved take the new text.
+    const next: Record<number, string> = {};
+    for (const e of list.filter((x) => x.type === "ScriptingExtension")) {
+      const now = String(e.settings.script ?? "");
+      const typing = scripts[e.index] !== undefined && scripts[e.index] !== savedScripts[e.index];
+      next[e.index] = typing ? scripts[e.index] : now;
+      savedScripts[e.index] = now;
+    }
+    scripts = next;
   }
   $effect(() => {
     void sim;
@@ -47,6 +57,17 @@
     untrack(load);
   });
 
+  /** The design's fin sets by name, for roll control's "which fins turn". */
+  let finSets = $derived.by(() => {
+    const out: string[] = [];
+    const walk = (n?: TreeNode) => {
+      if (!n) return;
+      if (/FinSet$/.test(n.type) && !out.includes(n.name)) out.push(n.name);
+      n.children.forEach(walk);
+    };
+    walk(app.design?.tree);
+    return out;
+  });
   const kindOf = (e: Ext) => kinds.find((k) => k.type === e.type);
   /** The settings to show: the known ones in order, then any others the extension has. */
   function rows(e: Ext): Setting[] {
@@ -114,7 +135,14 @@
           {#each rows(e) as s (s.key)}
             <label class="row" title={s.help}>
               <span>{s.label}{#if s.unit}<small> ({s.unit})</small>{/if}</span>
+              {#if s.key === "controlFinName" && finSets.length}
+                <select class="select" value={value(e, s.key)} onchange={(ev) => setOne(e, s.key, (ev.target as HTMLSelectElement).value)}>
+                  {#if !finSets.includes(value(e, s.key))}<option value={value(e, s.key)}>{value(e, s.key)} (not in the design)</option>{/if}
+                  {#each finSets as n (n)}<option value={n}>{n}</option>{/each}
+                </select>
+              {:else}
               <input class="input" value={value(e, s.key)} onblur={(ev) => setOne(e, s.key, (ev.target as HTMLInputElement).value)} onkeydown={(ev) => ev.key === "Enter" && (ev.target as HTMLInputElement).blur()} />
+              {/if}
             </label>
           {/each}
         </div>
