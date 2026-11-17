@@ -75,6 +75,13 @@ class HighSpeedAeroTest {
 		Rocket r = ctx.designs.get(null).doc.getRocket();
 		double baseApogee = ExtensionsTest.apogee(TemplatesTest.call(s, "run_simulation", "{}", false));
 
+		// One Barrowman pass per Mach gives OpenRocket's own total.
+		var conf = r.getSelectedConfiguration();
+		for (double m : new double[] { 0.4, 1.1, 2.5 }) {
+			double total = io.github.openrocketmcp.or.Aero.sweep(conf, new double[] { m }).get(0).cd();
+			assertEquals(total, HighSpeedAero.rows(conf, HighSpeedAero.Settings.defaults(), new double[] { m }).get(0).openRocket(), 1e-9);
+		}
+
 		// As designed (square fins): only the base drag while burning differs.
 		JsonObject p = TemplatesTest.call(s, "high_speed_aero", "{}", false);
 		JsonObject m15 = row(p, 1.5);
@@ -146,7 +153,17 @@ class HighSpeedAeroTest {
 		assertNull(HighSpeedAero.settings(again), "imported data replaces the model");
 		assertFalse(AeroTable.of(again).source().equals(HighSpeedAero.SOURCE));
 
-		TemplatesTest.call(s, "high_speed_aero", "{\"finProfile\":\"round\"}", true);
+		// A new motor of another size changes the nozzle's share of the base, though OpenRocket counts no edit.
+		HighSpeedAero.Settings set = new HighSpeedAero.Settings(Double.NaN, "design", Double.NaN);
+		var fc = again.getSelectedConfiguration();
+		double before = HighSpeedAero.table(fc, set).cd(1.5, true);
+		var mc = fc.getActiveMotors().iterator().next();
+		String mount = io.github.openrocketmcp.or.Components.shortId((RocketComponent) mc.getMount());
+		TemplatesTest.call(s, "set_motor", "{\"mount\":\"" + mount + "\",\"motor\":\"J350W\"}", false);
+		double after = HighSpeedAero.table(again.getSelectedConfiguration(), set).cd(1.5, true);
+		assertTrue(after > before, "a smaller nozzle covers less of the base: " + before + " -> " + after);
+
+				TemplatesTest.call(s, "high_speed_aero", "{\"finProfile\":\"round\"}", true);
 		// Tables are kept by the rocket's own id, which every copy of this example file shares: leave none behind.
 		TemplatesTest.call(s, "close_design", "{\"designId\":\"" + ctx.designs.get(null).id + "\"}", false);
 		assertNull(AeroTable.of(again));

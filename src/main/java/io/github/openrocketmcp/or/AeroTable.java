@@ -340,10 +340,11 @@ public final class AeroTable {
 			return null;
 		}
 		Map<AxialStage, Table> use = new LinkedHashMap<>();
-		if (HighSpeedAero.settings(sim.getRocket()) != null) {
+		HighSpeedAero.Settings hs = HighSpeedAero.settingsFor(sim);
+		if (hs != null) {
 			// The built-in model: worked out for this flight's rocket and configuration, each stack that can fly.
 			FlightConfiguration fc = sim.getActiveConfiguration();
-			Map<AxialStage, Table> model = HighSpeedAero.forFlight(fc);
+			Map<AxialStage, Table> model = HighSpeedAero.forFlight(fc, hs);
 			if (model.isEmpty()) {
 				return null;
 			}

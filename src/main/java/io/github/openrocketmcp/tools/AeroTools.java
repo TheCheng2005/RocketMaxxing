@@ -364,6 +364,7 @@ public final class AeroTools {
 			if (was) {
 				AeroTable.clear(rocket);
 				d.doc.setSaved(false);
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), "Turned the high-speed drag model off", null);
 			}
 			return Map.of("highSpeedModel", "off", "note", was ? "Simulations use OpenRocket's own drag again."
 					: "The model was not on for this design.");
@@ -424,17 +425,9 @@ public final class AeroTools {
 		if (base == null) {
 			out.put("flight", "not simulated: " + noFlight);
 		} else {
-			List<Variants.Run> runs;
-			try {
-				HighSpeedAero.enable(rocket, s);
-				runs = Variants.runAll(List.of(AeroTable.without(Variants.of(base, d.doc, null, null)), Variants.of(base, d.doc, null, null)));
-			} finally {
-				if (was == null) {
-					HighSpeedAero.disable(rocket);
-				} else {
-					HighSpeedAero.enable(rocket, was);
-				}
-			}
+			// The model's flight is flown on these settings alone: nothing else (the quick flight running meanwhile) sees them.
+			List<Variants.Run> runs = Variants.runAll(List.of(AeroTable.without(Variants.of(base, d.doc, null, null)),
+					HighSpeedAero.preview(Variants.of(base, d.doc, null, null), s)));
 			if (runs.get(0).ok() && runs.get(1).ok()) {
 				var or = runs.get(0).sim().getSimulatedData();
 				var hs = runs.get(1).sim().getSimulatedData();
@@ -480,6 +473,9 @@ public final class AeroTools {
 			HighSpeedAero.enable(rocket, s);
 			AeroTable.shown(rocket);
 			d.doc.setSaved(false);
+			Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), (was == null ? "Turned the high-speed drag model on" : "Changed the high-speed drag model")
+					+ " (fins " + s.finProfile().replace('_', ' ') + (Double.isNaN(s.bevel()) ? "" : ", bevels " + Units.fmt(s.bevel(), Dim.LENGTH))
+					+ (Double.isNaN(s.nozzleExit()) ? "" : ", nozzle exit " + Units.fmt(s.nozzleExit(), Dim.LENGTH)) + ")", null);
 			out.put("highSpeedModel", "on: every simulation of this design flies on it, recalculated as the rocket changes. "
 					+ "save_design keeps the choice with the design; action off goes back to OpenRocket's drag.");
 		} else {

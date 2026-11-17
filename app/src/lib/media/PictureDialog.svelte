@@ -6,7 +6,8 @@
   import Modal from "../Modal.svelte";
   import RocketLoader from "../RocketLoader.svelte";
   import { exportPath } from "./media";
-  import PhotoStudio from "./PhotoStudio.svelte";
+  // The photo studio (with its post-processing) loads only when it is chosen.
+  const PhotoStudio = () => import("./PhotoStudio.svelte");
 
   // A picture of the design for reviews and build notes: shaded 3-D (exploded, cut-away or outside, with a numbered parts
   // list), or OpenRocket's side drawing with CG and CP. Written to the designs folder.
@@ -67,7 +68,7 @@
     {/if}
   </div>
   {#if kind === "photo"}
-    <div class="view"><PhotoStudio /></div>
+    <div class="view">{#await PhotoStudio() then m}<m.default />{/await}</div>
   {:else}
   <div class="view" class:stale={busy}>
     {#if result?.file}

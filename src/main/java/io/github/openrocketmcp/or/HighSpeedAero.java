@@ -172,8 +172,17 @@ public final class HighSpeedAero {
 		for (double m : machs) {
 			var c = Aero.conditions(fc, m);
 			double sref = c.getRefArea();
-			double total = calc.getAerodynamicForces(fc, c, new WarningSet()).getCDaxial();
-			Map<RocketComponent, AerodynamicForces> map = new BarrowmanCalculator().getForceAnalysis(fc, Aero.conditions(fc, m), new WarningSet());
+			// One pass: the force analysis carries the whole rocket's total as its Rocket entry.
+			Map<RocketComponent, AerodynamicForces> map = calc.getForceAnalysis(fc, c, new WarningSet());
+			double total = Double.NaN;
+			for (Map.Entry<RocketComponent, AerodynamicForces> e : map.entrySet()) {
+				if (e.getKey() instanceof Rocket) {
+					total = e.getValue().getCDaxial();
+				}
+			}
+			if (Double.isNaN(total)) {
+				total = calc.getAerodynamicForces(fc, c, new WarningSet()).getCDaxial();
+			}
 			double finOr = 0, finModel = 0, baseAll = 0, baseAft = 0, aftX = -Double.MAX_VALUE, aftArea = 0;
 			List<String> finNotes = new ArrayList<>();
 			String baseName = null;
@@ -263,7 +272,17 @@ public final class HighSpeedAero {
 
 	/** The model as a table over Mach 0.1 to 5, with OpenRocket's CD beside it so a flight applies the difference. */
 	public static AeroTable.Table table(FlightConfiguration fc, Settings s) {
-		String key = fc.getRocket().getModID() + "|" + fc.getId() + "|" + AeroTable.stackOf(fc) + "|" + fc.getModID() + "|" + s;
+		StringBuilder key0 = new StringBuilder();
+		key0.append(fc.getRocket().getModID()).append('|').append(fc.getId()).append('|').append(AeroTable.stackOf(fc)).append('|')
+				.append(fc.getModID()).append('|').append(s);
+		// OpenRocket changes a mount's motor without a change event: the nozzle's share of the base follows the motor.
+		for (MotorConfiguration mc : fc.getActiveMotors()) {
+			if (!mc.isEmpty() && mc.getMotor() != null) {
+				key0.append('|').append(((RocketComponent) mc.getMount()).getID()).append('=').append(mc.getMotor().getDesignation())
+						.append('@').append(mc.getMotor().getDiameter());
+			}
+		}
+		String key = key0.toString();
 		synchronized (CACHE) {
 			AeroTable.Table t = CACHE.get(key);
 			if (t != null) {
@@ -298,6 +317,21 @@ public final class HighSpeedAero {
 
 	/** Designs flying on the model, by rocket id (copies keep the id), with what it was told. */
 	private static final Map<String, Settings> ON = new ConcurrentHashMap<>();
+	/** One simulation flown on the model (a preview) without the design being switched to it. */
+	private static final Map<info.openrocket.core.document.Simulation, Settings> PREVIEW = Collections
+			.synchronizedMap(new java.util.WeakHashMap<>());
+
+	/** Flies {@code sim} on the model with {@code s}, whatever the design uses. */
+	public static info.openrocket.core.document.Simulation preview(info.openrocket.core.document.Simulation sim, Settings s) {
+		PREVIEW.put(sim, s);
+		return sim;
+	}
+
+	/** The settings a flight of {@code sim} uses: its own preview's, else the design's, else null. */
+	static Settings settingsFor(info.openrocket.core.document.Simulation sim) {
+		Settings p = PREVIEW.remove(sim);
+		return p != null ? p : settings(sim.getRocket());
+	}
 
 	public static void enable(Rocket r, Settings s) {
 		ON.put(r.getID().toString(), s);
@@ -315,8 +349,7 @@ public final class HighSpeedAero {
 	 * The tables a flight of {@code fc} uses when the design is on the model: one per stack that can fly (the whole
 	 * vehicle and what is left after each separation), from the rocket as it is now. Empty when the model is off.
 	 */
-	static Map<AxialStage, AeroTable.Table> forFlight(FlightConfiguration fc) {
-		Settings s = settings(fc.getRocket());
+	static Map<AxialStage, AeroTable.Table> forFlight(FlightConfiguration fc, Settings s) {
 		Map<AxialStage, AeroTable.Table> out = new LinkedHashMap<>();
 		if (s == null) {
 			return out;

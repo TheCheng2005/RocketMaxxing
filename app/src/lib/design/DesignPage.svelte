@@ -3,9 +3,10 @@
   import { reducedMotion } from "../prefs.svelte";
   import { designTour } from "../tour/tours";
   import { seen, markSeen } from "../tour/session.svelte";
-  import PictureDialog from "../media/PictureDialog.svelte";
-  import TemplatesDialog from "../media/TemplatesDialog.svelte";
-  import ScaleDialog from "./ScaleDialog.svelte";
+  // Dialogs load when first opened: the page itself shows sooner.
+  const PictureDialog = () => import("../media/PictureDialog.svelte");
+  const TemplatesDialog = () => import("../media/TemplatesDialog.svelte");
+  const ScaleDialog = () => import("./ScaleDialog.svelte");
   import { app, move, canMove, duplicate, removeSelected, findNode } from "../state.svelte";
   import { keys } from "../keys";
   import { isOpen, setOpen } from "../panels.svelte";
@@ -124,9 +125,9 @@
   </div>
 </div>
 
-{#if picture}<PictureDialog close={() => (picture = false)} />{/if}
-{#if templates}<TemplatesDialog close={() => (templates = false)} />{/if}
-{#if scaling}<ScaleDialog part={scaling} close={() => (scaling = null)} />{/if}
+{#if picture}{#await PictureDialog() then m}<m.default close={() => (picture = false)} />{/await}{/if}
+{#if templates}{#await TemplatesDialog() then m}<m.default close={() => (templates = false)} />{/await}{/if}
+{#if scaling}{#await ScaleDialog() then m}<m.default part={scaling} close={() => (scaling = null)} />{/await}{/if}
 
 <style>
   .offer {
