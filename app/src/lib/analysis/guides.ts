@@ -285,6 +285,18 @@ export const GUIDES: Record<string, Guide> = {
     needs: ["Nothing."],
     gives: ["This session's edits that can be undone and redone, and whether there are unsaved changes."],
   },
+  high_speed_aero: {
+    needs: [MOTOR, "How the fins' edges are made: square or rounded (as in the design), bevelled (hexagonal, with the bevel's length), double wedge or biconvex.", "The motor's nozzle exit diameter, if you know it (else 0.6 of the motor's diameter)."],
+    gives: [
+      "CD against Mach from OpenRocket and from the model, coasting and with the motor burning, with what the fins and the base contribute in each.",
+      "The flight on each: apogee, top Mach and speed.",
+      "Normal force, axial drag and centre of pressure at angles of attack (0, 2, 4, 8 degrees) for four Mach numbers.",
+      "Use: every simulation of the design flies on the model, worked out again as the rocket changes and kept with the design. Off goes back.",
+    ],
+    how: "OpenRocket's drag with two terms changed. Fins: thickness drag from linear theory, K (t/c)² / √(M² − 1) on the fin's area (K = 2 × chord / bevel for bevelled fins, 4 double wedge, 16/3 biconvex), faired in from Mach 0.85. Base: while the motor burns, base drag falls by the share of the base the nozzle exit covers.",
+    not: "It does not change the centre of pressure, friction or nose drag (OpenRocket's), and has not been checked against flight data above Mach 1. Where a competition asks for RASAero's CP and CD, import RASAero's table: it takes the model's place.",
+    example: "A 4 in rocket with four 1/4 in square-edged fins has CD about 1.2 in OpenRocket, half of it the fins' blunt edges. With 19 mm bevels the model gives about 0.55 below Mach 0.85, 1.1 near Mach 1.2 and 0.8 at Mach 1.5, and the apogee rises by a third.",
+  },
   import_aero_table: {
     needs: ["A RASAero II \"export aero data\" CSV, or any CSV with Mach, CD (and CP)."],
     gives: ["The table's drag replaces OpenRocket's in every simulation and its CP is used for the stability check; shown next to OpenRocket's own, with the effect on apogee and stability."],

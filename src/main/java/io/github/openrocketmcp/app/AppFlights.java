@@ -68,7 +68,7 @@ final class AppFlights {
 		Designs.Design d = ctx.designs.get(a.str("designId"));
 		Rocket rocket = d.doc.getRocket();
 		FlightConfiguration fc = rocket.getSelectedConfiguration();
-		AeroTable.Table t = AeroTable.of(rocket);
+		AeroTable.Table t = AeroTable.shown(rocket);
 		Map<String, Object> out = new LinkedHashMap<>();
 		out.put("hasTable", t != null);
 		if (t != null) {
@@ -76,6 +76,22 @@ final class AppFlights {
 			out.put("useDrag", t.useDrag());
 			out.put("hasCp", t.hasCp());
 			out.put("tableMaxMach", t.mach()[t.mach().length - 1]);
+			if (t.model() != null) {
+				// The built-in high-speed model: what it was told and what it took from the design.
+				Map<String, Object> m = new LinkedHashMap<>();
+				m.put("finProfile", t.model().finProfile());
+				m.put("bevel", Double.isNaN(t.model().bevel()) ? null : t.model().bevel());
+				m.put("nozzleExit", Double.isNaN(t.model().nozzleExit()) ? null : t.model().nozzleExit());
+				io.github.openrocketmcp.or.HighSpeedAero.Basis[] basis = new io.github.openrocketmcp.or.HighSpeedAero.Basis[1];
+				try {
+					io.github.openrocketmcp.or.HighSpeedAero.rows(fc, t.model(), new double[] { 1.5 }, basis);
+					m.put("fins", basis[0].fins());
+					m.put("exitShare", basis[0].exitShare());
+				} catch (RuntimeException e) {
+					// nothing to describe for a rocket OpenRocket cannot analyse yet
+				}
+				out.put("model", m);
+			}
 		}
 		double ref = Analysis.stability(fc, 0.3).referenceDiameter();
 		double topMach = Double.NaN;

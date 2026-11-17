@@ -8,7 +8,7 @@ points to everything.
 
 ## Tools
 
-The 92 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
+The 93 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
 from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Session
@@ -438,6 +438,25 @@ from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### External data
 
+- `high_speed_aero`: RocketMaxxing's own **transonic and supersonic drag model**, for flights above about Mach 0.8
+  without a RASAero run. It is OpenRocket's drag with two terms changed:
+  - **fin section** (`finProfile`: `design`, `hexagonal`, `double_wedge`, `biconvex`; `bevelLength` for hexagonal,
+    default three thicknesses). OpenRocket's square and rounded edges stay as they are; an "airfoil" fin, which
+    OpenRocket gives no thickness drag above Mach 1, is taken as biconvex. A sharp-edged section drops the blunt-edge
+    and trailing-edge drag and gets linear-theory (Ackeret) thickness drag, cd = K (t/c)² / √(M² − 1) on the planform
+    area with K = 16/3 (biconvex), 4 (double wedge) or 2c/a (hexagonal, bevels of length a), rising from Mach 0.85 to
+    its Mach 1.2 value at Mach 1.05 and held to Mach 1.2; while the leading edge is swept behind the Mach cone, K (t/c)² /
+    tan(sweep) instead (USAF DATCOM 4.1.5.1);
+  - **base drag while the motor burns** (`nozzleExitDiameter`, default 0.6 of the motor's diameter): the coasting base
+    drag of the aft end times (1 − nozzle exit area / base area), after Fleeman.
+
+  `action`: `preview` (default) reports CD by Mach for OpenRocket and the model (coasting and burning, with the fins'
+  and the base's share), the flight on each, and CN, axial CD and CP at angles of attack (`alphas`), changing nothing;
+  `use` flies every simulation of the design on it; `off` goes back. In a flight the model is applied as the difference
+  from OpenRocket's CD at the same Mach, added to OpenRocket's drag at that instant (so Reynolds number at altitude and
+  angle of attack still count), per stack on a staged rocket. It follows the rocket as it is edited, is saved in the
+  sidecar (`rocket.aero.json`, with its settings), and is replaced by an imported table. Friction, nose and body
+  pressure drag and the CP are OpenRocket's. Not validated against flight data above Mach 1; valid to about Mach 5.
 - `import_aero_table`: a **RASAero II** aero export, or any Mach/CD/CP CSV. Its drag replaces OpenRocket's in every
   simulation, power-on and power-off. Its CP is used for a stability check against the simulated CG, as Launch Canada
   asks for diameter changes. On a staged rocket each table is for one stack: the whole vehicle by default, or with

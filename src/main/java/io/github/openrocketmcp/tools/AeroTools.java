@@ -26,6 +26,7 @@ import io.github.openrocketmcp.or.Analysis;
 import io.github.openrocketmcp.or.Components;
 import io.github.openrocketmcp.or.Designs;
 import io.github.openrocketmcp.or.FlightLog;
+import io.github.openrocketmcp.or.HighSpeedAero;
 import io.github.openrocketmcp.or.Presets;
 import io.github.openrocketmcp.or.Sims;
 import io.github.openrocketmcp.or.TextFiles;
@@ -81,6 +82,29 @@ public final class AeroTools {
 						.bool("useDrag", "Apply the table's drag to simulations (default true).", false)
 						.str("source", "Label for CSV text, e.g. \"RASAero rev B\".", false).build(),
 				false, a -> importAeroTable(ctx, a)));
+
+		s.tool(new ToolDef("high_speed_aero", "High-speed drag model",
+				"RocketMaxxing's own transonic and supersonic drag model, for flights above about Mach 0.8 without a RASAero run: "
+						+ "OpenRocket's drag with (1) the fins' real section (hexagonal, i.e. a flat plate with bevelled edges, double "
+						+ "wedge or biconvex) and its supersonic thickness drag from linear theory, where OpenRocket only knows square, "
+						+ "rounded and a drag-free 'airfoil'; and (2) the lower base drag while the motor burns, by the share of the "
+						+ "base the nozzle exit covers. Friction, nose and body pressure drag and the centre of pressure stay "
+						+ "OpenRocket's. action preview (default) shows CD against Mach beside OpenRocket's, the flight with each, and "
+						+ "normal force and CP at angles of attack, changing nothing; use flies every simulation of the design on the "
+						+ "model (kept with the design, recalculated as the rocket changes; it replaces an imported table); off goes "
+						+ "back to OpenRocket's drag.",
+				SimTools.simSelect(Schema.object())
+						.enumStr("action", "preview (default), use or off.", false, "preview", "use", "off")
+						.enumStr("finProfile", "The fins' section: design (default: as in the design; airfoil fins as biconvex, square and "
+								+ "rounded as OpenRocket has them), hexagonal (bevelled edges), double_wedge or biconvex.", false,
+								"design", "hexagonal", "double_wedge", "biconvex")
+						.qty("bevelLength", "Hexagonal fins: the length of each bevel along the chord (default 3 fin thicknesses).", false)
+						.qty("nozzleExitDiameter", "The motor's nozzle exit diameter (default 0.6 of the motor's diameter).", false)
+						.array("reset", "Settings to put back to their defaults when the model is already on: bevelLength, "
+								+ "nozzleExitDiameter.", Schema.type("string", null), false)
+						.array("alphas", "Angles of attack in degrees for the normal force and CP table (default 0, 2, 4, 8).",
+								Schema.type("number", null), false).build(),
+				false, a -> highSpeed(ctx, a)));
 
 		s.tool(new ToolDef("compare_flight", "Compare an altimeter log with the simulation",
 				"Read an altimeter CSV (time, altitude; units from the header or altitudeUnit) and compare apogee, time to "
@@ -329,6 +353,143 @@ public final class AeroTools {
 			return a.str(textKey);
 		}
 		throw new ToolException("Give " + pathKey + " (a file) or " + textKey + " (the CSV text).");
+	}
+
+	private static Object highSpeed(Context ctx, Args a) {
+		Designs.Design d = ctx.designs.get(a.str("designId", null));
+		Rocket rocket = d.doc.getRocket();
+		String action = a.str("action", "preview");
+		if (action.equals("off")) {
+			boolean was = HighSpeedAero.settings(rocket) != null;
+			if (was) {
+				AeroTable.clear(rocket);
+				d.doc.setSaved(false);
+				Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), "Turned the high-speed drag model off", null);
+			}
+			return Map.of("highSpeedModel", "off", "note", was ? "Simulations use OpenRocket's own drag again."
+					: "The model was not on for this design.");
+		}
+		HighSpeedAero.Settings was = HighSpeedAero.settings(rocket);
+		HighSpeedAero.Settings s;
+		List<String> reset = a.has("reset") ? a.strList("reset") : List.of();
+		try {
+			s = new HighSpeedAero.Settings(
+					a.has("nozzleExitDiameter") ? a.positive("nozzleExitDiameter", Dim.LENGTH)
+							: was != null && !reset.contains("nozzleExitDiameter") ? was.nozzleExit() : Double.NaN,
+					a.has("finProfile") ? a.str("finProfile") : was != null ? was.finProfile() : "design",
+					a.has("bevelLength") ? a.positive("bevelLength", Dim.LENGTH)
+							: was != null && !reset.contains("bevelLength") ? was.bevel() : Double.NaN);
+		} catch (IllegalArgumentException e) {
+			throw new ToolException(e.getMessage());
+		}
+		FlightConfiguration fc = Components.config(rocket, a.str("configuration", null));
+		Simulation base = null;
+		String noFlight = null;
+		try {
+			base = Sims.prepare(d, a.str("simulation", null), a.str("configuration", null), Sims.Overrides.none(), ctx.standards(), false);
+			fc = base.getActiveConfiguration();
+		} catch (ToolException e) {
+			if (a.has("simulation")) {
+				throw e;
+			}
+			noFlight = e.getMessage();
+		}
+		Map<String, Object> out = new LinkedHashMap<>();
+		HighSpeedAero.Basis[] basis = new HighSpeedAero.Basis[1];
+		double[] ms = { 0.3, 0.6, 0.8, 0.9, 1.0, 1.1, 1.2, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0 };
+		List<HighSpeedAero.Row> rows = HighSpeedAero.rows(fc, s, ms, basis);
+		Map<String, Object> model = new LinkedHashMap<>();
+		model.put("fins", basis[0].fins().isEmpty() ? "no fins" : basis[0].fins());
+		model.put("base", basis[0].base() == null ? "no base behind the motor"
+				: "behind " + basis[0].base() + ": the nozzle exit" + (Double.isNaN(s.nozzleExit())
+						? " (taken as 0.6 of the motor's diameter; give nozzleExitDiameter for yours)"
+						: " (" + Units.fmt(s.nozzleExit(), Dim.LENGTH) + ")")
+						+ " covers " + Units.num(100 * basis[0].exitShare()) + "% of it, so base drag falls by that much while the motor burns");
+		out.put("model", model);
+		List<Map<String, Object>> table = new ArrayList<>();
+		for (HighSpeedAero.Row r : rows) {
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("mach", Units.num(r.mach()));
+			row.put("cdOpenRocket", Units.num(r.openRocket()));
+			row.put("cdModelCoasting", Units.num(r.off()));
+			row.put("cdModelBurning", Units.num(r.on()));
+			row.put("finsOpenRocket", Units.num(r.finOpenRocket()));
+			row.put("finsModel", Units.num(r.finModel()));
+			row.put("baseCoasting", Units.num(r.baseOff()));
+			row.put("baseBurning", Units.num(r.baseOn()));
+			table.add(row);
+		}
+		out.put("cdByMach", table);
+
+		// The flight on OpenRocket's drag and on the model (switched on for the comparison, then put back for a preview).
+		if (base == null) {
+			out.put("flight", "not simulated: " + noFlight);
+		} else {
+			// The model's flight is flown on these settings alone: nothing else (the quick flight running meanwhile) sees them.
+			List<Variants.Run> runs = Variants.runAll(List.of(AeroTable.without(Variants.of(base, d.doc, null, null)),
+					HighSpeedAero.preview(Variants.of(base, d.doc, null, null), s)));
+			if (runs.get(0).ok() && runs.get(1).ok()) {
+				var or = runs.get(0).sim().getSimulatedData();
+				var hs = runs.get(1).sim().getSimulatedData();
+				Map<String, Object> f = new LinkedHashMap<>();
+				f.put("simulation", base.getName());
+				f.put("apogeeOpenRocket", Units.fmt(or.getMaxAltitude(), Dim.DISTANCE));
+				f.put("apogeeModel", Units.fmt(hs.getMaxAltitude(), Dim.DISTANCE));
+				f.put("apogeeChange", Units.num(100 * (hs.getMaxAltitude() / or.getMaxAltitude() - 1)) + "%");
+				f.put("maxMachOpenRocket", Units.num(or.getMaxMachNumber()));
+				f.put("maxMachModel", Units.num(hs.getMaxMachNumber()));
+				f.put("maxSpeedModel", Units.fmt(hs.getMaxVelocity(), Dim.VELOCITY));
+				out.put("flight", f);
+				if (hs.getMaxMachNumber() > 5) {
+					out.put("beyondTheModel", "This flight passes Mach 5, where linear theory no longer holds: treat the drag as a rough guide.");
+				}
+			} else {
+				out.put("flight", "not simulated: the flight did not complete");
+			}
+		}
+
+		// Normal force and CP against angle of attack (OpenRocket's model): how stability moves in a gust.
+		double[] alphas = a.has("alphas") ? a.strList("alphas").stream().mapToDouble(Double::parseDouble).toArray() : new double[] { 0, 2, 4, 8 };
+		for (double al : alphas) {
+			if (!(al >= 0 && al <= 20)) {
+				throw new ToolException("Angles of attack must be between 0 and 20 degrees (got " + Units.num(al) + ").");
+			}
+		}
+		double dia = Analysis.maxDiameter(fc);
+		List<Map<String, Object>> aoa = new ArrayList<>();
+		for (HighSpeedAero.Alpha p : HighSpeedAero.alphas(fc, new double[] { 0.3, 0.9, 1.5, 2.5 }, alphas)) {
+			Map<String, Object> row = new LinkedHashMap<>();
+			row.put("mach", Units.num(p.mach()));
+			row.put("alpha", Units.num(p.alphaDeg()) + " deg");
+			row.put("cn", Units.num(p.cn()));
+			row.put("cdAxial", Units.num(p.cdAxial()));
+			row.put("cp", Double.isNaN(p.cpX()) ? "-" : Units.fmt(p.cpX(), Dim.LENGTH) + " (" + Units.num(p.cpX() / dia) + " cal from the nose)");
+			aoa.add(row);
+		}
+		out.put("angleOfAttack", aoa);
+
+		if (action.equals("use")) {
+			AeroTable.clear(rocket);
+			HighSpeedAero.enable(rocket, s);
+			AeroTable.shown(rocket);
+			d.doc.setSaved(false);
+			Journal.add(ctx, "edit", d.name(), d.path == null ? null : d.path.toString(), (was == null ? "Turned the high-speed drag model on" : "Changed the high-speed drag model")
+					+ " (fins " + s.finProfile().replace('_', ' ') + (Double.isNaN(s.bevel()) ? "" : ", bevels " + Units.fmt(s.bevel(), Dim.LENGTH))
+					+ (Double.isNaN(s.nozzleExit()) ? "" : ", nozzle exit " + Units.fmt(s.nozzleExit(), Dim.LENGTH)) + ")", null);
+			out.put("highSpeedModel", "on: every simulation of this design flies on it, recalculated as the rocket changes. "
+					+ "save_design keeps the choice with the design; action off goes back to OpenRocket's drag.");
+		} else {
+			out.put("highSpeedModel", was != null ? "on (this was a preview of other settings)" : "off: this was a preview; action use flies on it");
+		}
+		List<String> notes = new ArrayList<>();
+		notes.add("The model changes two terms of OpenRocket's drag: the fins' thickness drag for their real section (linear theory, "
+				+ "K (t/c)^2 / sqrt(M^2-1), faired through Mach 1) and the base drag while the motor burns. Friction, nose and body "
+				+ "pressure drag, coasting base drag and the centre of pressure are OpenRocket's.");
+		notes.add("Limits: sharp-edged sections are given no pressure drag below Mach 0.85; the fins' finite span does not reduce "
+				+ "the thickness drag (a little high for short fins); valid to about Mach 5; it has not been checked against flight data above Mach 1. "
+				+ "Where a competition asks for RASAero's CP and CD, import RASAero's table (import_aero_table): it then replaces the model.");
+		out.put("notes", notes);
+		return out;
 	}
 
 	private static Object importAeroTable(Context ctx, Args a) throws IOException {

@@ -255,7 +255,7 @@ public final class Main {
 	}
 
 	/**
-	 * One flight, rule check and 3-D model of a built-in example, on its own copy (nothing the user has open is
+	 * One flight, rule check, 3-D model and drag curve of a built-in example, on its own copy (nothing the user has open is
 	 * touched).
 	 */
 	private static void warmFlight() {
@@ -264,7 +264,12 @@ public final class Main {
 			io.github.openrocketmcp.report.Workbench.rocket(d.doc.getRocket().getSelectedConfiguration());
 			Simulation sim = Sims.prepare(d, null, null, Sims.Overrides.none(), Standards.defaults(), false);
 			Sims.run(sim);
-			Requirements.check(sim, null, Standards.defaults());
+			// With the maximum-wind case, as the app's rule check flies it (another flight path to warm).
+			Requirements.check(sim, io.github.openrocketmcp.or.Variants.windCase(sim, d.doc, 8.9), Standards.defaults());
+			// The drag curve behind the High-speed drag panel (each Mach a Barrowman pass): cold, the first one
+			// opened took several times as long.
+			io.github.openrocketmcp.or.HighSpeedAero.rows(d.doc.getRocket().getSelectedConfiguration(),
+					io.github.openrocketmcp.or.HighSpeedAero.Settings.defaults(), new double[] { 0.3, 0.9, 1.2, 2, 3 });
 		} catch (Exception | LinkageError e) {
 			Log.info("Warm-up flight skipped: " + e); // only a speed-up
 		}

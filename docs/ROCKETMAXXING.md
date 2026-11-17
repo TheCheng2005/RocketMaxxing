@@ -126,7 +126,7 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 | Targets | (not in OpenRocket) | The team's targets: a minimum, goal and maximum for apogee, speeds, rail exit, stability, flutter margin, mass, descent rates, landing and more, each with the margin to the nearer limit (met, close within 5%, missed), checked again after each edit. A limit is typed in the box in the shown unit (or with its own unit, "9500 ft"); a value that cannot be used (a minimum above the maximum, a goal outside the limits, below zero) is refused, the box goes back and is marked. A target that does not apply (a drogue rate on a rocket with one parachute) shows n/a, not missed. **Ask** (and a target's right-click menu) asks the assistant how to meet the targets missed or close, with the page's numbers sent along. The competition rules sit beside them. |
 | Flight data | (not in OpenRocket) | After a flight: load the altimeter log and see it against the simulation flown in the day's conditions, with the drag factor that matches the measured apogee (and, when the log has an accelerometer, thrust and drag fitted separately). Read a folder of past rockets and logs to see how well apogee was predicted over the years, and open or compare any of them. |
 | History | (not in OpenRocket) | What changed since the last save, the edits that can still be undone (**Undo to here** takes back that edit and every one after it), and everything that happened to the designs and the team standards, by day: edits, undos, saves, opens and changes to the targets and standards, each with who made it (you, or the assistant). **Put back** returns the targets and standards to how they were before a change (if they changed again since, it says so and asks first). Filter by design or kind. Kept in the designs folder (`history/journal.jsonl`, the newest 5000 events). |
-| Analysis | (not in OpenRocket) | 52 analyses from the engine, by area: rule check, readiness, checking meeting notes against the design, Launch Canada probation level; stability and drag vs Mach, ballast, shape trades; recovery loads, parachute sizing, late deployment, shear pins, ejection charge, opening shock, bay fit, parachute catalogue, landing energy; fin flutter, fin stress (FEA with CalculiX), airframe loads, heating, material trade, pressure vessel; avionics bay, launch-day forecast, rail buttons, flight card, altimeter settings, sensors, simulated sensor data for flight software, radio link, power budget, winds aloft; Monte Carlo, engine prediction (a solid, hybrid or liquid engine's thrust from its design, before a firing), motor ranking, parameter sweep, fin planform optimizer, optimizer; part from a shop link, compare designs, progress log, edit history, RASAero table import, flight log against the simulation; report, CSV and geometry export, templates to print. Pick one, fill in what it asks for (simulation, parts and other designs from lists, files with Browse, lists of items as small tables), run. Results show as tables with pass, warn and fail in colour, plots, and a Show button for files it writes. |
+| Analysis | (not in OpenRocket) | 53 analyses from the engine, by area: rule check, readiness, checking meeting notes against the design, Launch Canada probation level; stability and drag vs Mach, ballast, shape trades; recovery loads, parachute sizing, late deployment, shear pins, ejection charge, opening shock, bay fit, parachute catalogue, landing energy; fin flutter, fin stress (FEA with CalculiX), airframe loads, heating, material trade, pressure vessel; avionics bay, launch-day forecast, rail buttons, flight card, altimeter settings, sensors, simulated sensor data for flight software, radio link, power budget, winds aloft; Monte Carlo, engine prediction (a solid, hybrid or liquid engine's thrust from its design, before a firing), motor ranking, parameter sweep, fin planform optimizer, optimizer; part from a shop link, compare designs, progress log, edit history, RASAero table import, flight log against the simulation; report, CSV and geometry export, templates to print. Pick one, fill in what it asks for (simulation, parts and other designs from lists, files with Browse, lists of items as small tables), run. Results show as tables with pass, warn and fail in colour, plots, and a Show button for files it writes. |
 
 Every panel and section folds (click its title). The Parts and Properties panels fold to a strip at the side to give
 the view more room. What is folded is remembered.
@@ -171,14 +171,36 @@ The check opens once when the file is opened, and the **Imported from …** mark
 The original file is never written over: Save writes an `.ork`. An `.ork` that OpenRocket had to change while reading
 (written by an older version, or using a motor that is not in the database) shows the same check.
 
-### RASAero beside OpenRocket
+### High-speed drag: the model, and RASAero beside OpenRocket
 
-OpenRocket's drag and centre of pressure are least sure between Mach 0.8 and 1.2, and Launch Canada asks for RASAero's
-CP and CD when the airframe's diameter changes. When the active configuration's flight reaches Mach 0.8, or a RASAero
-table is imported, the Design page shows a **RASAero vs OpenRocket** panel:
+OpenRocket's drag is least sure from Mach 0.8 up, for two reasons a team can do something about. It knows only square,
+rounded and "airfoil" fin edges: square edges cost a great deal of drag (half the total on a rocket with 1/4 in fins),
+an "airfoil" fin has no drag from its thickness above Mach 1, and the bevelled flat plate most high-power fins are
+cannot be described. And it uses the coasting base drag while the motor burns, when the exhaust fills part of the base.
+
+When the active configuration's flight reaches Mach 0.8, the Design page shows a **High-speed drag** panel. **Use the
+high-speed model** flies every simulation of the design on RocketMaxxing's own model:
+
+- **Fin section**: as in the design, bevelled edges (hexagonal, with the bevel's length; three thicknesses if not
+  given), double wedge or biconvex. A sharp-edged section loses the blunt-edge drag and gets its supersonic thickness
+  drag from linear theory, K (t/c)² / √(M² − 1) on the fin's area (K = 2 × chord / bevel, 4 or 16/3), faired in from
+  Mach 0.85.
+- **Nozzle exit**: the base drag falls, while the motor burns, by the share of the base the nozzle exit covers (0.6 of
+  the motor's diameter if not given).
+- Friction, nose and body drag, coasting base drag and the centre of pressure stay OpenRocket's, and the model is
+  applied as a correction to OpenRocket's drag at each instant of the flight, so altitude and angle of attack still
+  count. It is worked out again whenever the rocket changes and is kept with the design.
+- The panel shows the flight on both (apogee, top speed, Mach) and CD against Mach, coasting and burning.
+
+Its limits: sharp-edged fins get no pressure drag below Mach 0.85; a swept leading edge holds the thickness drag at
+K (t/c)² / tan(sweep) until it is supersonic (USAF DATCOM), but the fins' finite span is not allowed for; it is good to
+about Mach 5; and it has not been checked against flight data above Mach 1. It does not replace RASAero where
+a competition asks for RASAero's own numbers: Launch Canada asks for RASAero's CP and CD when the airframe's diameter
+changes. For that, the same panel imports a RASAero table, which takes the model's place:
 
 - With no table: the flight's top Mach, OpenRocket's CD through Mach, and **Import RASAero CSV**: the file RASAero II
-  exports from its aero data (Mach, Alpha, CD, CD Power-Off, CD Power-On, CP, with CP in inches from the nose tip).
+  exports from its aero data (Mach, Alpha, CD, CD Power-Off, CD Power-On, CP, with CP in inches from the nose tip),
+  beside **Use the high-speed model**.
 - With a table: the flight on both models side by side (apogee, top speed, top Mach, time to apogee, rail exit,
   lowest stability with each model's CP) and the difference, flagged from 5% (or 0.5 cal); CD against Mach for
   OpenRocket and RASAero (power off and on); and CD and CP by Mach from both, Mach 0.8 to 1.2 shaded. Replace or remove

@@ -58,7 +58,7 @@
   {#if f?.noMotors}
     {@render tile(Mountain, "Flight", "No motor", "choose one on Motors", "none")}
   {:else}
-    {@render tile(Mountain, "Apogee", fmt(f?.apogee, "DISTANCE"), app.design?.aeroTable ? "RASAero drag" : "", "", app.design?.aeroTable ? "Flown on the imported RASAero table's drag; RASAero vs OpenRocket shows both" : "Quick simulation of the active configuration", true)}
+    {@render tile(Mountain, "Apogee", fmt(f?.apogee, "DISTANCE"), app.design?.aeroTable === "RocketMaxxing high-speed model" ? "high-speed model" : app.design?.aeroTable ? "RASAero drag" : "", "", app.design?.aeroTable === "RocketMaxxing high-speed model" ? "Flown on the high-speed drag model; High-speed drag below shows it beside OpenRocket's" : app.design?.aeroTable ? "Flown on the imported RASAero table's drag; High-speed drag below shows both" : "Quick simulation of the active configuration", true)}
     {@render tile(Zap, "Max speed", fmt(f?.maxVelocity, "VELOCITY"), f?.maxMach !== undefined ? `Mach ${f.maxMach.toFixed(2)}` : "", "", "", true)}
     {@render tile(Activity, "Max accel.", fmt(f?.maxAcceleration, "ACCELERATION"), "", "", "", true)}
     {@render tile(ArrowUpFromLine, "Rail exit", fmt(f?.railExitVelocity, "VELOCITY"), "", "", "", true)}

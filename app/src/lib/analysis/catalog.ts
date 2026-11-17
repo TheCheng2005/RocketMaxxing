@@ -152,6 +152,7 @@ export const CATALOG: Group[] = [
       { tool: "compare_designs", label: "Compare designs", blurb: "Differences in parts and flight against another open design or a file.", main: ["baselineDesignId", "baselinePath", "revision", "sameConditions"], oneOf: ["baselineDesignId", "baselinePath", "revision"], files: { baselinePath: "ork,rkt" } },
       { tool: "progress_log", label: "Progress log", blurb: "Records where the design stands, and what changed since a milestone or date.", main: ["mode", "label", "note", "since"] },
       { tool: "history", label: "Edit history", blurb: "The edits made in this session that can be undone.", main: [] },
+      { tool: "high_speed_aero", label: "High-speed drag model", blurb: "Flies on the fins' real section and power-on base drag above Mach 0.8, without a RASAero run.", main: ["action", "finProfile", "bevelLength", "nozzleExitDiameter"] },
       { tool: "import_aero_table", label: "RASAero aero table", blurb: "Uses CP and drag from a RASAero export (per stage) instead of OpenRocket's.", main: ["mode", "stage", "path", "cpUnit", "useDrag"], needIf: [{ key: "mode", is: ["", "import"], need: ["path", "csv"] }], files: { path: "csv,txt" } },
       { tool: "compare_flight", label: "Flight log vs simulation", blurb: "Compares an altimeter log with the simulated flight.", main: ["path", "altitudeUnit", "simulation"], oneOf: ["path", "csv"], files: { path: "csv,txt" }, defaults: (n) => ({ plotPath: `plots/${n}-flight-vs-log.svg` }) },
     ],
