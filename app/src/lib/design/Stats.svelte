@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { TriangleAlert, Gauge, Crosshair, Weight, Ruler, Mountain, Zap, Activity, ArrowUpFromLine } from "@lucide/svelte";
+  import { TriangleAlert, Gauge, Crosshair, Target, Weight, Ruler, Mountain, Zap, Activity, ArrowUpFromLine } from "@lucide/svelte";
   import { app } from "../state.svelte";
   import { fmt, num } from "../units.svelte";
   import { KINDS } from "../issues/issues.svelte";
@@ -52,7 +52,8 @@
 
 <div class="sum" use:context={items}>
   {@render tile(Gauge, "Stability", margin === null ? "–" : num(margin, 3) + " cal", st.floor ? `min ${num(st.floor, 3)}` : "", level, "Static margin at Mach 0.3, launch mass")}
-  {@render tile(Crosshair, "CG / CP", `${fmt(st.cg, "LENGTH")} / ${fmt(st.cp, "LENGTH")}`, "", "", "From the nose tip")}
+  {@render tile(Crosshair, "CG", fmt(st.cg, "LENGTH"), "from the nose tip", "", "Centre of gravity at launch mass, from the nose tip")}
+  {@render tile(Target, "CP", fmt(st.cp, "LENGTH"), "from the nose tip", "", "Centre of pressure at Mach 0.3, from the nose tip")}
   {@render tile(Weight, "Mass", fmt(st.mass, "MASS"), `${fmt(st.massBurnout, "MASS")} empty`)}
   {@render tile(Ruler, "Length / Ø", `${fmt(st.length, "LENGTH")} / ${fmt(st.diameter, "LENGTH")}`)}
   {#if f?.noMotors}
@@ -81,13 +82,14 @@
   .sum {
     display: grid;
     /* Wider tiles for larger text, so the numbers keep their room. */
-    grid-template-columns: repeat(auto-fill, minmax(calc(150px * var(--text)), 1fr));
-    gap: 6px;
-    padding: 10px 12px;
+    /* Three to a row: stability and the two centres, then mass, size and the flight (its numbers fill a third row). */
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    padding: 12px;
   }
   .tile {
     min-width: 0;
-    padding: 5px 10px 6px;
+    padding: 8px 12px 9px;
     border: 1px solid var(--line);
     border-radius: 8px;
     background: var(--surface-2);
@@ -105,16 +107,17 @@
   /* The number stays whole; the note after it moves under it when the tile is narrow. */
   .tv {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    column-gap: 6px;
-    margin-top: 1px;
-    font-size: calc(14px * var(--text));
+    flex-direction: column;
+    row-gap: 1px;
+    margin-top: 3px;
+    font-size: calc(16px * var(--text));
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
   .tv .main {
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .tv small {
     min-width: 0;
@@ -167,9 +170,9 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
   }
-  @media (max-width: 1100px) {
+  @media (max-width: 900px) {
     .sum {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .flight {
       border-left: 0;
