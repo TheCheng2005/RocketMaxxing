@@ -355,7 +355,9 @@ from the model by hosts that show views). Bold marks the main job of each tool.
 ### Recovery chain
 
 - `recovery_analysis`: deployment airspeed, air density and mass from the simulation, then the opening load (Knacke Cx
-  and finite-mass inflation), then the shear pins.
+  and finite-mass inflation), then the shear pins. It starts with `summary`, one line per device with the numbers a
+  team acts on: opening load, harness rating, descent rate, deploy speed and pin count. With no pin given, the pins are
+  the team's usual one (`recovery.defaultShearPin`, else the first under `recovery.shearPins`).
 - `deployment_delay_sweep`: how late can the drogue fire?
 - `size_parachute`: the canopy size for a descent rate, plus real chutes from the parts database.
 - `parachute_sizes`: **descent rate against canopy diameter**, as a chart (attached; SVG with `plotPath`) and a table.

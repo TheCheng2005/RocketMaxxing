@@ -203,6 +203,33 @@
       .catch(() => (siteHasPosition = false));
   });
 
+  /** A result without its key-results list (shown above it already). */
+  function withoutSummary(d: any) {
+    const { summary: _s, ...rest } = d;
+    return rest;
+  }
+
+  // What each input falls back on when left empty (the team's pin, the simulation's wind and rail...), shown greyed
+  // in its box so it is clear what Run uses; an example of what to type is in the input's (i) note.
+  let defaults = $state<Record<string, string>>({});
+  $effect(() => {
+    const tool = entry.tool;
+    const id = app.design?.designId;
+    void app.revision;
+    const sim = (values?.simulation ?? "").trim(), cfg = (values?.configuration ?? "").trim();
+    const args: Record<string, unknown> = {};
+    if (id) args.designId = id;
+    if (sim) args.simulation = sim;
+    if (cfg) args.configuration = cfg;
+    call<Record<string, string>>("app_analysis_defaults", args)
+      .then((d) => tool === entry.tool && (defaults = d))
+      .catch(() => (defaults = {}));
+  });
+  /** The value used when the input is empty: the engine's for this design, else the one its description gives. */
+  function dflt(i: Input): string {
+    return defaults[i.key] ?? whenEmpty(i);
+  }
+
   /** The engine's description of an input, without the unit sentence every quantity carries. */
   function described(i: Input): string {
     return (i.schema.description ?? "").replace(/\s*Number = SI units, or a string with units, e\.g\. "20 ft\/s"\./, "").trim();
@@ -220,8 +247,8 @@
   }
 
   function placeholder(i: Input): string {
-    const ex = example(fieldHelp(entry.tool, i.key), imperial);
-    if (ex) return "e.g. " + ex;
+    const d = dflt(i);
+    if (d) return d;
     if (i.kind === "qty") return "number and unit";
     if (i.kind === "list") return "comma separated";
     return "";
@@ -419,8 +446,8 @@
   <div class="about">
     <p class="th">{label(i.key)}{#if i.required}<span class="muted"> · required</span>{:else if i.oneOf}<span class="muted"> · one of {eitherList} is needed</span>{/if}</p>
     {#if h.help || described(i)}<p>{h.help ?? described(i)}</p>{/if}
+    {#if dflt(i) && !i.required}<p><span class="k">Default</span>{dflt(i)}<span class="muted"> (shown greyed in the box; type to change it)</span></p>{:else if empty && !i.required}<p><span class="k">If empty</span>{empty}</p>{/if}
     {#if ex}<p><span class="k">Example</span>{ex}</p>{/if}
-    {#if empty && !i.required}<p><span class="k">If empty</span>{empty}</p>{/if}
     {#if quantities(i)}
       <p class="muted">{unit ? `A number without a unit is read as ${unit}.` : "Type the unit after the number. A number without one is in SI units: m, kg, s, N, Pa, m/s."}</p>
     {/if}
@@ -450,7 +477,7 @@
     {@render lab(i, true)}
     {#if i.kind === "sim"}
       <select id={"a-" + i.key} class="select" bind:value={values[i.key]}>
-        <option value="">Active configuration</option>
+        <option value="">{defaults.simulation ? `Active configuration: ${defaults.simulation}` : "Active configuration"}</option>
         {#each sims as s}<option value={s}>{s}</option>{/each}
       </select>
     {:else if i.kind === "config"}
@@ -465,7 +492,7 @@
       </select>
     {:else if i.kind === "pin"}
       <select id={"a-" + i.key} class="select" bind:value={values[i.key]}>
-        <option value="">{i.required ? "Choose…" : "Team default"}</option>
+        <option value="">{i.required ? "Choose…" : defaults.pinType ? `Team default: ${defaults.pinType}` : "Team default"}</option>
         {#each pins as p}<option value={p}>{p}</option>{/each}
       </select>
     {:else if i.kind === "design"}
@@ -480,12 +507,12 @@
       </span>
     {:else if i.kind === "enum"}
       <select id={"a-" + i.key} class="select" bind:value={values[i.key]}>
-        {#if !i.required}<option value="">Default</option>{/if}
+        {#if !i.required}<option value="">{dflt(i) ? `Default: ${dflt(i)}` : "Default"}</option>{/if}
         {#each i.schema.enum as e}<option value={e}>{e}</option>{/each}
       </select>
     {:else if i.kind === "bool"}
       <select id={"a-" + i.key} class="select" bind:value={values[i.key]}>
-        <option value="">Default</option><option value="true">Yes</option><option value="false">No</option>
+        <option value="">{dflt(i) ? `Default: ${dflt(i)}` : "Default"}</option><option value="true">Yes</option><option value="false">No</option>
       </select>
     {:else}
       <input id={"a-" + i.key} class="input" bind:value={values[i.key]} placeholder={placeholder(i)}
@@ -639,7 +666,26 @@
             {#if outcome.data.summary}<p class="verdict">{outcome.data.summary}</p>{/if}
             <div class="rulebox"><RuleCheck data={outcome.data} tall /></div>
             <Result value={noted(unlisted(outcome.data))} />
+          {:else if Array.isArray(outcome.data?.summary) && outcome.data.summary.length && typeof outcome.data.summary[0] === "object"}
+            <!-- The numbers a team acts on first; how they were found folded below. -->
+            <div class="keys">
+              {#each outcome.data.summary as k, j (j)}
+                <div class="key">
+                  <div class="kh">{k.device ?? k.name ?? k.item ?? `#${j + 1}`}{#if k.role}<span class="chip">{k.role}</span>{/if}</div>
+                  <dl>
+                    {#each Object.entries(k).filter(([n]) => !["device", "name", "item", "role"].includes(n)) as [n, v] (n)}
+                      <dt>{label(n)}</dt><dd>{v}</dd>
+                    {/each}
+                  </dl>
+                </div>
+              {/each}
+            </div>
+            <details class="more">
+              <summary>All the numbers, and how they were found</summary>
+              <Result value={noted(withoutSummary(outcome.data))} />
+            </details>
           {:else}
+            {#if typeof outcome.data?.summary === "string"}<p class="verdict">{outcome.data.summary}</p>{/if}
             <Result value={noted(outcome.data)} />
           {/if}
         {:else}
@@ -652,6 +698,57 @@
 </div>
 
 <style>
+  .keys {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(260px * var(--text)), 1fr));
+    gap: 10px;
+    margin: 4px 0 12px;
+  }
+  .key {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    padding: 10px 14px 12px;
+  }
+  .kh {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: calc(14.5px * var(--text));
+    margin-bottom: 6px;
+  }
+  .kh .chip {
+    font-weight: 500;
+    font-size: calc(11px * var(--text));
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--select-soft);
+    color: var(--select);
+  }
+  .key dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 14px;
+    margin: 0;
+  }
+  .key dt {
+    color: var(--ink-3);
+    font-size: calc(12.5px * var(--text));
+    align-self: baseline;
+  }
+  .key dd {
+    margin: 0;
+    font-weight: 600;
+    font-size: calc(15px * var(--text));
+    font-variant-numeric: tabular-nums;
+  }
+  .more > summary {
+    cursor: pointer;
+    color: var(--ink-2);
+    font-size: calc(13px * var(--text));
+    margin: 4px 0 8px;
+  }
   .page {
     flex: 1;
     min-height: 0;
