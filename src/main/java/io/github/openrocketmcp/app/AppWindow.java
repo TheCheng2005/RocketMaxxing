@@ -6,8 +6,6 @@ import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
-import java.awt.Toolkit;
-import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -21,10 +19,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import javax.swing.JFrame;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
-import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 
@@ -322,9 +316,10 @@ final class AppWindow {
 					close();
 				}
 			});
-			if (MAC) {
-				frame.setJMenuBar(menus());
-			}
+			// No Swing menu bar: on a Mac it becomes the system menu bar, and opening one of its menus waits on Swing's
+			// thread while that thread can be waiting on the main thread for Chromium, which froze the whole app
+			// (1.6.0). The ⌘ shortcuts are the window's own (onPreKeyEvent below); the system's app menu (About,
+			// Hide, Quit) stays.
 			frame.getContentPane().add(browser.getUIComponent(), BorderLayout.CENTER);
 			Rectangle screen = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
 			frame.setMinimumSize(new Dimension(960, 600));
@@ -375,42 +370,6 @@ final class AppWindow {
 		} else if (mayQuit()) {
 			quit();
 		}
-	}
-
-	/**
-	 * The Mac menu bar while the window is in front. File's commands are the page's own (the same as its shortcuts);
-	 * Edit's work on text, as a browser's Edit menu does.
-	 */
-	private JMenuBar menus() {
-		JMenuBar bar = new JMenuBar();
-		JMenu file = new JMenu("File");
-		file.add(item("Open Design…", KeyEvent.VK_O, false));
-		file.add(item("Save", KeyEvent.VK_S, false));
-		file.add(item("Save As…", KeyEvent.VK_S, true));
-		file.addSeparator();
-		file.add(item("Close Window", KeyEvent.VK_W, false));
-		JMenu edit = new JMenu("Edit");
-		edit.add(item("Undo", KeyEvent.VK_Z, false));
-		edit.add(item("Redo", KeyEvent.VK_Z, true));
-		edit.addSeparator();
-		edit.add(item("Cut", KeyEvent.VK_X, false));
-		edit.add(item("Copy", KeyEvent.VK_C, false));
-		edit.add(item("Paste", KeyEvent.VK_V, false));
-		edit.add(item("Select All", KeyEvent.VK_A, false));
-		JMenu window = new JMenu("Window");
-		window.add(item("Minimize", KeyEvent.VK_M, false));
-		bar.add(file);
-		bar.add(edit);
-		bar.add(window);
-		return bar;
-	}
-
-	private JMenuItem item(String label, int key, boolean shift) {
-		JMenuItem it = new JMenuItem(label);
-		int mask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx() | (shift ? InputEvent.SHIFT_DOWN_MASK : 0);
-		it.setAccelerator(KeyStroke.getKeyStroke(key, mask));
-		it.addActionListener(e -> command(key, shift));
-		return it;
 	}
 
 	/** The keys of Edit's commands (with ⌘): undo and redo, cut, copy, paste, select all. */
