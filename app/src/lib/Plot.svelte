@@ -565,6 +565,12 @@
     }
   }
 
+  // A new height (the flight plot grows with the window, and has an expanded view): the chart follows.
+  $effect(() => {
+    const h = height;
+    untrack(() => plot?.setSize({ width: host.clientWidth, height: h }));
+  });
+
   onMount(() => {
     const ro = new ResizeObserver(() => plot?.setSize({ width: host.clientWidth, height }));
     ro.observe(host);

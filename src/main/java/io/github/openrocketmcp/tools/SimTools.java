@@ -61,6 +61,11 @@ public final class SimTools {
 				intoWind, Double.NaN);
 	}
 
+	/** The simulation choice inputs (design, simulation, configuration), for other tools that pick a flight the same way. */
+	public static Schema selectSchema(Schema s) {
+		return simSelect(s);
+	}
+
 	static Schema simSelect(Schema s) {
 		return s.str("designId", DesignTools.DESIGN_ID, false)
 				.str("simulation", "Simulation index or name. Default: the first simulation of the configuration; one is "

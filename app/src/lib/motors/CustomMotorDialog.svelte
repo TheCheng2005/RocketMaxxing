@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Upload } from "@lucide/svelte";
-  import { call } from "../api";
-  import { run, toast } from "../state.svelte";
+  import { call, fileUrl } from "../api";
+  import { run, toast, chooseFile } from "../state.svelte";
   import { num, pretty, unitOf, toShown } from "../units.svelte";
   import Modal from "../Modal.svelte";
   import Plot from "../Plot.svelte";
@@ -66,10 +66,17 @@
     if (!rawTouched) raw = looksRaw;
   });
 
-  function loadFile(e: Event) {
-    const f = (e.target as HTMLInputElement).files?.[0];
-    if (!f) return;
-    f.text().then((t) => (curveText = t));
+  // The app's own file dialog (a browser file picker opened a system panel that froze the app's window on a Mac).
+  async function loadFile() {
+    const path = await chooseFile("Thrust curve", "A .csv, .txt or .tsv of time and thrust", "csv,txt,tsv");
+    if (!path) return;
+    try {
+      const r = await fetch(fileUrl(path));
+      if (!r.ok) throw new Error(`could not read it (${r.status})`);
+      curveText = await r.text();
+    } catch (e: any) {
+      toast(`${path}: ${e?.message ?? e}`, "error");
+    }
   }
 
   const withUnit = (v: string, unit: string) => (/[a-z]/i.test(v) ? v.trim() : `${v.trim()} ${unit}`);
@@ -152,7 +159,7 @@
             <select class="select" bind:value={timeUnit}><option value="s">s</option><option value="ms">ms</option></select>
             <span>Thrust</span>
             <select class="select" bind:value={thrustUnit}><option value="N">N</option><option value="lbf">lbf</option><option value="kgf">kgf</option></select>
-            <label class="btn file"><Upload size={14} /> Load CSV<input type="file" accept=".csv,.txt,.tsv" onchange={loadFile} /></label>
+            <button class="btn file" type="button" onclick={loadFile}><Upload size={14} /> Load CSV</button>
           </div>
           <label class="check" title="For a log as the data logger wrote it: time before ignition, noise, a load cell that does not read zero, other columns.">
             <input type="checkbox" bind:checked={raw} onchange={() => (rawTouched = true)} />
@@ -254,14 +261,6 @@
   }
   .file {
     margin-left: auto;
-    position: relative;
-    overflow: hidden;
-  }
-  .file input {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
   }
   textarea {
     width: 100%;

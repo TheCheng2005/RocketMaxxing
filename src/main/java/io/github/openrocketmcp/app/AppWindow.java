@@ -227,6 +227,13 @@ final class AppWindow {
 			// A page's file picker (<input type=file>): the app's own dialog, which knows how to stay in front, asked
 			// off Chromium's thread; Chromium waits for the answer instead of running its own modal panel.
 			client.addDialogHandler((b, mode, title, defaultPath, filters, extensions, descriptions, cb) -> {
+				if (MAC) {
+					// On a Mac no system panel is safe beside this window, not even the app's own (it froze the app):
+					// the page uses its own file browser instead of a file picker, so this is not reached there.
+					Log.info("A page file picker was refused on the Mac (the page should use the app's file browser).");
+					cb.Cancel();
+					return true;
+				}
 				String types = String.join(",", extensions == null || extensions.isEmpty() ? filters : extensions)
 						.replace(".", "").toLowerCase(Locale.ROOT);
 				Thread t = new Thread(() -> {
@@ -425,6 +432,11 @@ final class AppWindow {
 			}
 		}
 		return true;
+	}
+
+	/** The page's Open (its file browser on a Mac). */
+	void openDialog() {
+		page("o", false);
 	}
 
 	/** Does what the page does for ⌘ and {@code key} (open, save): the page's own shortcut, so it stays one thing. */

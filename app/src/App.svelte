@@ -10,6 +10,7 @@
   import Toasts from "./lib/Toasts.svelte";
   import RocketLoader from "./lib/RocketLoader.svelte";
   import AskDialog from "./lib/AskDialog.svelte";
+  import FileBrowser from "./lib/FileBrowser.svelte";
   import { PAGE_NAMES } from "./lib/pageNames";
   import ImportReport from "./lib/ImportReport.svelte";
   import { issues, watchPageErrors } from "./lib/issues/issues.svelte";
@@ -209,6 +210,7 @@
   </div>
   <Toasts />
   <AskDialog />
+  <FileBrowser />
   <ImportReport />
   {#if ui.search}{#await load(searchCode) then m}<m.default />{/await}{/if}
   {#if ui.guide !== null}{#await load(guideCode) then m}<m.default />{/await}{/if}

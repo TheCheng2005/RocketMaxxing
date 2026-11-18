@@ -86,6 +86,7 @@ public final class Recovery {
 		}
 		double pinSf = std.q("recovery.shearPinHoldSafetyFactor", Dim.DIMENSIONLESS, 2);
 		List<Map<String, Object>> rows = new ArrayList<>();
+		List<Map<String, Object>> summary = new ArrayList<>();
 		for (Map.Entry<String, List<Sims.Deployment>> e : byBranch.entrySet()) {
 			List<Sims.Deployment> deps = e.getValue();
 			double otherCdA = 0;
@@ -99,8 +100,19 @@ public final class Recovery {
 				row.put("harnessWorkingLoad", Units.fmt(l.design() * harnessSf, Dim.FORCE) + " (design load x " + Units.num(harnessSf)
 						+ ": rating needed for shock cord, quick links, swivels, eye bolts)");
 				boolean laterEvent = i < deps.size() - 1;
+				// The numbers a team acts on, one line per device: what to rate the harness for, how fast it comes
+				// down, how many pins hold the next bay shut. The rest of the row shows how they were found.
+				Map<String, Object> key = new LinkedHashMap<>();
+				key.put("device", d.device().getName() + (byBranch.size() > 1 ? " (" + e.getKey() + ")" : ""));
+				key.put("role", role(deps, i));
+				key.put("openingLoad", Units.fmt(l.design(), Dim.FORCE));
+				key.put("harnessRating", Units.fmt(l.design() * std.q("recovery.harnessSafetyFactor", Dim.DIMENSIONLESS, 2), Dim.FORCE));
+				key.put("descentRate", Units.fmt(d.steadyDescentRate(), Dim.VELOCITY));
+				key.put("deploySpeed", Units.fmt(d.airspeed(), Dim.VELOCITY));
+				summary.add(key);
 				if (!Double.isNaN(pinStrength) && laterEvent) {
 					int pins = Math.max(3, Charges.shearPinsToHold(l.design(), pinStrength, pinSf));
+					key.put("shearPins", pins + " x " + (pinName == null ? Units.fmt(pinStrength, Dim.FORCE) : pinName + " (" + Units.fmt(pinStrength, Dim.FORCE) + ")"));
 					row.put("shearPinsForLaterBays", pins + " x " + (pinName == null ? Units.fmt(pinStrength, Dim.FORCE) + " pins" : pinName)
 							+ " (safety factor " + Units.num(pinSf) + ", min 3): bays that must stay closed while this device opens");
 				}
@@ -116,6 +128,7 @@ public final class Recovery {
 			}
 		}
 		Map<String, Object> out = new LinkedHashMap<>();
+		out.put("summary", summary);
 		out.put("simulation", sim.getName());
 		out.put("deployments", rows);
 		List<String> notes = new ArrayList<>();

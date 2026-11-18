@@ -403,6 +403,19 @@ public final class Standards {
 		return null;
 	}
 
+	/**
+	 * The team's usual shear pin: recovery.defaultShearPin when set, else the first one listed under
+	 * recovery.shearPins; null when the standards list none.
+	 */
+	public String defaultPin() {
+		JsonElement d = path(data, "recovery.defaultShearPin");
+		if (d != null && d.isJsonPrimitive() && !Double.isNaN(pinStrength(d.getAsString()))) {
+			return d.getAsString();
+		}
+		Set<String> names = pinNames();
+		return names.isEmpty() ? null : names.iterator().next();
+	}
+
 	public Set<String> pinNames() {
 		JsonElement pins = path(data, "recovery.shearPins");
 		return pins == null || !pins.isJsonObject() ? Set.of() : pins.getAsJsonObject().keySet();

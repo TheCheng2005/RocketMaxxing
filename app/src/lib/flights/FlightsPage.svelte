@@ -335,6 +335,10 @@
     padding: 8px 10px;
     margin: 0;
   }
+  /* Nothing on the page shrinks: the simulations keep their height whatever opens below them (the page scrolls). */
+  .page > :global(*) {
+    flex: none;
+  }
   .bottom {
     display: flex;
     gap: 6px;
@@ -345,7 +349,8 @@
     width: 360px;
     flex: none;
   }
-  .bottom > :global(.panel:last-child) {
+  .bottom > :global(:last-child) {
     flex: 1;
+    min-width: 0;
   }
 </style>

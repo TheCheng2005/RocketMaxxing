@@ -66,7 +66,8 @@ public final class RecoveryTools {
 	}
 
 	static Schema pins(Schema s) {
-		return s.str("pinType", "Shear pin name from the team standards (e.g. \"4-40 nylon\").", false)
+		return s.str("pinType", "Shear pin name from the team standards (e.g. \"4-40 nylon\"). Default: the team's usual pin "
+				+ "(recovery.defaultShearPin, else the first listed).", false)
 				.qty("pinStrength", "Shear strength of one pin, e.g. \"140 N\" (overrides pinType).", false);
 	}
 
@@ -116,7 +117,14 @@ public final class RecoveryTools {
 				false, a -> {
 					Simulation sim = SimTools.runSelected(ctx, a);
 					String pinName = a.has("pinType") && !a.has("pinStrength") ? a.str("pinType") : null;
-					return Recovery.analyze(sim, ctx.standards(), pinStrength(ctx, a), pinName, a.num("cx", Double.NaN));
+					double strength = pinStrength(ctx, a);
+					// No pin given: the team's usual one, so the pin count is always there (it is the number asked for).
+					String usual = ctx.standards().defaultPin();
+					if (Double.isNaN(strength) && usual != null) {
+						strength = ctx.standards().pinStrength(usual);
+						pinName = usual;
+					}
+					return Recovery.analyze(sim, ctx.standards(), strength, pinName, a.num("cx", Double.NaN));
 				}));
 
 		s.tool(new ToolDef("deployment_delay_sweep", "How late can a device deploy?",

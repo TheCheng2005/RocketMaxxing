@@ -29,6 +29,7 @@ import io.github.openrocketmcp.or.Motors;
 import io.github.openrocketmcp.or.OrRuntime;
 import io.github.openrocketmcp.or.Targets;
 import io.github.openrocketmcp.tools.Context;
+import io.github.openrocketmcp.tools.SimTools;
 import io.github.openrocketmcp.units.Dim;
 import io.github.openrocketmcp.units.UnitSystem;
 import io.github.openrocketmcp.units.Units;
@@ -393,6 +394,16 @@ public final class AppTools {
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)
 						.str("types", "File extensions to show, e.g. \"csv,txt\" (default: designs).", false).build(),
 				true, a -> FileDialogs.choose(a.str("mode"), a.str("name", null), ctx.workspace(), a.str("types", "ork,rmx,rkt,cdx1"))));
+		add(s, new ToolDef("app_analysis_defaults", "App: what an analysis uses when an input is empty",
+				"The values an analysis falls back on, by input name, for the form to show greyed in each box: the launch "
+						+ "conditions of the simulation it would fly (wind, rail, site), the team's usual shear pin and Cx.",
+				SimTools.selectSchema(Schema.object()).build(), true, a -> AnalysisDefaults.of(ctx, a)));
+		add(s, new ToolDef("app_list_folder", "App: what is in a folder",
+				"For the app's own file browser (the system's dialog freezes the app's window on a Mac): the folders and "
+						+ "files in path (default: the designs folder), hidden ones left out, with the places to start from "
+						+ "(designs folder, home, Desktop, Documents, Downloads, iCloud Drive, other disks).",
+				Schema.object().str("path", "Folder to list; default the designs folder.", false).build(), true,
+				a -> FileBrowser.list(a.has("path") ? Path.of(a.str("path")) : ctx.workspace(), ctx.workspace())));
 		add(s, new ToolDef("app_download_path", "App: where to save a download",
 				"A path for a file the user takes away (the flight video): in the Downloads folder (else the Desktop, else the "
 						+ "designs folder), numbered so it replaces nothing.",

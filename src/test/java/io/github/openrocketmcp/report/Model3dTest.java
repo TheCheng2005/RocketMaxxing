@@ -118,4 +118,60 @@ class Model3dTest {
 		assertTrue(b.rMax > tube.getOuterRadius() + 0.5 * button.getTotalHeight(), "it stands out of the skin: " + b.rMax);
 		assertFalse(b.internal);
 	}
+
+	@Test
+	void partsInsideAreDrawnAsWhatTheyAreAndStayInTheirTube() throws Exception {
+		Designs.Design d = new Designs().openExample("Dual parachute");
+		Rocket r = d.doc.getRocket();
+		BodyTube tube = first(r, BodyTube.class);
+		double bore = tube.getInnerRadius();
+		java.util.Map<String, MassComponent.MassComponentType> kinds = new java.util.LinkedHashMap<>();
+		kinds.put("Altimeter", MassComponent.MassComponentType.ALTIMETER);
+		kinds.put("GPS tracker", MassComponent.MassComponentType.TRACKER);
+		kinds.put("9 V battery", MassComponent.MassComponentType.BATTERY);
+		kinds.put("1S LiPo", MassComponent.MassComponentType.BATTERY);
+		kinds.put("Main charge", MassComponent.MassComponentType.DEPLOYMENTCHARGE);
+		kinds.put("U-bolt", MassComponent.MassComponentType.RECOVERYHARDWARE);
+		kinds.put("Sled", MassComponent.MassComponentType.MASSCOMPONENT);
+		kinds.put("Screw switch", MassComponent.MassComponentType.MASSCOMPONENT);
+		kinds.put("Payload", MassComponent.MassComponentType.PAYLOAD);
+		for (var e : kinds.entrySet()) {
+			// listed wider than the tube on purpose: the shape must still fit inside it
+			MassComponent m = new MassComponent(0.08, bore * 1.4, 0.05);
+			m.setName(e.getKey());
+			m.setMassComponentType(e.getValue());
+			tube.addChild(m);
+		}
+		info.openrocket.core.rocketcomponent.ShockCord sc = new info.openrocket.core.rocketcomponent.ShockCord();
+		sc.setName("Shock cord");
+		sc.setLength(0.12);
+		sc.setRadius(bore * 0.8);
+		tube.addChild(sc);
+		List<Model3d.Part> parts = Model3d.build(r.getSelectedConfiguration(), 24);
+		for (Model3d.Part p : parts) {
+			if (p.component instanceof MassComponent || p.component instanceof info.openrocket.core.rocketcomponent.RecoveryDevice
+					|| p.component instanceof info.openrocket.core.rocketcomponent.ShockCord) {
+				assertFalse(p.tris.isEmpty(), p.name + " is drawn");
+				double limit = p.component.getParent() instanceof BodyTube bt ? bt.getInnerRadius() + 1e-6 : 1;
+				assertTrue(radius(p) <= limit, p.name + " inside its tube: " + radius(p));
+			}
+		}
+		// not cylinders any more: a board is flat, a coil has many more faces than a slug
+		Model3d.Part board = part(parts, "Altimeter");
+		double ySpan = 0, zSpan = 0, y0 = 1, y1 = -1, z0 = 1, z1 = -1;
+		for (double[] t : board.tris) {
+			for (int v = 0; v < 3; v++) {
+				y0 = Math.min(y0, t[3 * v + 1]);
+				y1 = Math.max(y1, t[3 * v + 1]);
+				z0 = Math.min(z0, t[3 * v + 2]);
+				z1 = Math.max(z1, t[3 * v + 2]);
+			}
+		}
+		ySpan = y1 - y0;
+		zSpan = z1 - z0;
+		assertTrue(ySpan < 0.7 * zSpan, "a board, flatter than it is wide: " + ySpan + " vs " + zSpan);
+		Model3d.Part cord = parts.stream().filter(p -> p.component instanceof info.openrocket.core.rocketcomponent.ShockCord).findFirst()
+				.orElseThrow(() -> new AssertionError("the shock cord is drawn"));
+		assertTrue(cord.tris.size() > 500, "a coiled cord: " + cord.tris.size());
+	}
 }
