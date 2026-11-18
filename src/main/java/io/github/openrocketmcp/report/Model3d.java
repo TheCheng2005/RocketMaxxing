@@ -39,7 +39,8 @@ import io.github.openrocketmcp.or.Loads;
  * <p>Rocket frame as in OpenRocket: x along the axis from the nose tip aft, y and z across. Airframe pieces are hollow
  * shells (outer and inner surface, so a cut or an open end shows the wall); nose cone and transition shoulders belong to
  * their piece. Fins are thin plates. Internal parts (couplers, bulkheads, centering rings, motor mounts, parachutes,
- * shock cords, electronics and other masses, motors) are cylinders at their instances' positions.
+ * shock cords, electronics and other masses, motors) sit at their instances' positions: rings, tubes, ballast and
+ * motors as cylinders, the rest as what they are (a packed parachute, a coiled cord, boards, batteries; see Shapes3d).
  */
 public final class Model3d {
 	private Model3d() {
@@ -336,7 +337,16 @@ public final class Model3d {
 		}
 		double inner = Math.min(rIn, wall(Math.min(rs[0], rs[n])));
 		Coordinate[] at = c.toAbsolute(Coordinate.NUL);
+		double room = Double.MAX_VALUE;
+		for (double v : rs) {
+			room = Math.min(room, v);
+		}
 		for (Coordinate a : at) {
+			// A parachute, cord, circuit board, battery, charge, switch, U-bolt or sled is drawn as one; anything else
+			// (ballast, couplers, rings, mounts) as the cylinder or slug it is.
+			if (!(c instanceof RingComponent) && Shapes3d.draw(p, c, kind, a.x, len, room, a.y, a.z, seg)) {
+				continue;
+			}
 			List<double[]> prof = new ArrayList<>();
 			prof.add(new double[] { a.x, inner });
 			for (int i = 0; i <= n; i++) {

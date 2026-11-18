@@ -232,6 +232,23 @@
     scene.add(guides);
   }
 
+  // How to move the view: a note in the corner for two seconds when the pointer comes onto it (a tooltip stayed in the
+  // way while scrolling), at most once a minute.
+  let hint = $state(false);
+  let hintTimer = 0;
+  let hintShown = -Infinity;
+  function showHint() {
+    if (performance.now() - hintShown < 60_000) return;
+    hintShown = performance.now();
+    hint = true;
+    clearTimeout(hintTimer);
+    hintTimer = window.setTimeout(() => (hint = false), 2000);
+  }
+  function hideHint() {
+    clearTimeout(hintTimer);
+    hint = false;
+  }
+
   let explodeFrame = 0;
   /** Eases the explosion to {@code to} over a moment, keeping the whole rocket in view. */
   function explodeTo(to: number) {
@@ -430,9 +447,16 @@
     shadow.visible = mode === "3d";
   }
 
+  /**
+   * The user has turned, moved or zoomed the view since it was last framed: a resize or a new model then keeps their
+   * view instead of framing the rocket again (which made the view jump back, exploded or not).
+   */
+  let moved = false;
+
   /** Frames the whole rocket (and, exploded, everything laid out below it); {@code reset} also resets the turn. */
   function fit(reset = true) {
     if (!renderer) return;
+    moved = false;
     const w = canvasHost.clientWidth || 1;
     const h = canvasHost.clientHeight || 1;
     const aspect = w / h;
@@ -501,6 +525,7 @@
       controls.screenSpacePanning = true;
       controls.zoomToCursor = true;
       controls.addEventListener("change", render);
+      controls.addEventListener("start", () => (moved = true));
     }
     controls.object = camera;
     controls.minDistance = minDist;
@@ -528,7 +553,10 @@
 
   function wheel(e: WheelEvent) {
     if (!controls || !camera) return;
+    if ((e.target as Element | null)?.closest?.(".bar, .explode")) return; // the buttons over the view scroll nothing
     e.preventDefault();
+    moved = true;
+    hideHint();
     e.stopPropagation(); // OrbitControls listens on the canvas inside: it does not get the wheel
     let dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1);
     if (e.ctrlKey) dy *= 3; // a trackpad pinch arrives as small wheel steps with Ctrl
@@ -603,7 +631,19 @@
   function resize() {
     if (!renderer) return;
     renderer.setSize(canvasHost.clientWidth, canvasHost.clientHeight, false);
-    fit();
+    if (!moved || !camera) return fit();
+    // Keep the user's view: only the shape of the picture changes (the same scale, centred where it was).
+    const aspect = (canvasHost.clientWidth || 1) / (canvasHost.clientHeight || 1);
+    if (camera === persp) {
+      persp.aspect = aspect;
+      persp.updateProjectionMatrix();
+    } else {
+      const halfH = (ortho.top - ortho.bottom) / 2;
+      ortho.left = -halfH * aspect;
+      ortho.right = halfH * aspect;
+      ortho.updateProjectionMatrix();
+    }
+    render();
   }
 
   // ------------------------------------------------------------------------------------------------ pointing
@@ -940,7 +980,7 @@
     addEventListener("rocketmaxxing:explode", explodeAsked);
     const ro = new ResizeObserver(resize);
     ro.observe(canvasHost);
-    canvasHost.addEventListener("wheel", wheel, { passive: false, capture: true });
+    host.addEventListener("wheel", wheel, { passive: false, capture: true });
     const mq = matchMedia("(prefers-color-scheme: dark)");
     const theme = new MutationObserver(() => style());
     theme.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-scheme", "data-dark"] });
@@ -954,7 +994,8 @@
     return () => {
       ro.disconnect();
       removeEventListener("rocketmaxxing:explode", explodeAsked);
-      canvasHost.removeEventListener("wheel", wheel, { capture: true });
+      host.removeEventListener("wheel", wheel, { capture: true });
+      clearTimeout(hintTimer);
       cancelAnimationFrame(zoomFrame);
       cancelAnimationFrame(pulseFrame);
       cancelAnimationFrame(explodeFrame);
@@ -995,7 +1036,7 @@
       build(m.parts);
       // Keep the camera where the user put it unless the rocket's size changed a lot (a new design, a big edit).
       if (Math.abs(length - lastLength) > 0.25 * Math.max(length, lastLength) || !lastLength) fit();
-      else if (explode > 0) fit(false);
+      else if (explode > 0 && !moved) fit(false);
       else render();
       lastLength = length;
     });
@@ -1039,8 +1080,14 @@
     class="canvas"
     bind:this={canvasHost}
     style:cursor
-    title={mode === "3d" ? "Drag to turn, right-drag to move the view, scroll to zoom" : "Drag to move the view, scroll to zoom"}
+    role="img"
+    aria-label="3-D view of the rocket"
+    onpointerenter={showHint}
+    onpointerdown={hideHint}
   ></div>
+  {#if hint}
+    <div class="hint" role="note">{mode === "3d" ? "Drag to turn, right-drag to move the view, scroll to zoom" : "Drag to move the view, scroll to zoom"}</div>
+  {/if}
   {#if !webgl}
     <div class="nogl">This computer cannot show 3-D graphics (WebGL is off).</div>
   {/if}
@@ -1084,6 +1131,29 @@
 </div>
 
 <style>
+  .hint {
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    z-index: 3;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: calc(12px * var(--text));
+    pointer-events: none;
+    animation: hint-out 2s ease forwards;
+  }
+  @keyframes hint-out {
+    0%,
+    75% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
   .rv {
     position: absolute;
     inset: 0;
