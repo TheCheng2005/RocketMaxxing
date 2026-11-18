@@ -28,10 +28,11 @@
   </button>
 {/snippet}
 
+<!-- Every section starts closed: open the ones you need (each is remembered). -->
 <div class="f">
   <section>
-    {@render head("general", "Simulation", true)}
-    {#if isOpen("sim.general")}
+    {@render head("general", "Simulation", false)}
+    {#if isOpen("sim.general", false)}
       <div class="rows">
         <label class="row"><span>Name</span>
           <input class="input" bind:value={name} onblur={() => name !== sim.name && set("name", name)} onkeydown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()} />
@@ -46,8 +47,8 @@
   </section>
 
   <section>
-    {@render head("wind", "Wind", true)}
-    {#if isOpen("sim.wind")}
+    {@render head("wind", "Wind", false)}
+    {#if isOpen("sim.wind", false)}
       <div class="rows">
         {#if o.windProfile}<p class="note">Uses a wind profile by altitude; the speed here scales it from the ground.</p>{/if}
         <div class="row"><span>Average speed</span><QuantityInput value={o.windSpeed} dim="VELOCITY" commit={(v) => set("windSpeed", v)} /></div>
@@ -64,8 +65,8 @@
   </section>
 
   <section>
-    {@render head("site", "Launch site", true)}
-    {#if isOpen("sim.site")}
+    {@render head("site", "Launch site", false)}
+    {#if isOpen("sim.site", false)}
       <div class="rows">
         <div class="row"><span>Altitude (sea level)</span><QuantityInput value={o.launchAltitude} dim="DISTANCE" commit={(v) => set("launchAltitude", v)} /></div>
         <div class="row"><span>Latitude (°N)</span>
@@ -84,8 +85,8 @@
   </section>
 
   <section>
-    {@render head("rail", "Launch rail", true)}
-    {#if isOpen("sim.rail")}
+    {@render head("rail", "Launch rail", false)}
+    {#if isOpen("sim.rail", false)}
       <div class="rows">
         <div class="row"><span>Length</span><QuantityInput value={o.rodLength} dim="LENGTH" commit={(v) => set("rodLength", v)} /></div>
         <div class="row"><span>Angle from vertical</span><QuantityInput value={o.rodAngle} dim="ANGLE" commit={(v) => set("rodAngle", v)} /></div>
@@ -107,8 +108,8 @@
   </section>
 
   <section>
-    {@render head("extensions", "Extensions", true)}
-    {#if isOpen("sim.extensions")}
+    {@render head("extensions", "Extensions", false)}
+    {#if isOpen("sim.extensions", false)}
       <SimExtensions sim={sim.index} />
     {/if}
   </section>

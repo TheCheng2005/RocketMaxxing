@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { ChartLine } from "@lucide/svelte";
+  import { ChartLine, Maximize2, Minimize2 } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { call } from "../api";
   import { app, ask, toast } from "../state.svelte";
@@ -49,7 +49,7 @@
   let withLog = $state(false);
   /** The plot editor (quantities, units, which axis) is open unless it was folded away; that is remembered. */
   const OPEN = "rocketmaxxing.plotSetup";
-  let customizing = $state((() => { try { return localStorage.getItem(OPEN) !== "0"; } catch { return true; } })());
+  let customizing = $state((() => { try { return localStorage.getItem(OPEN) === "1"; } catch { return false; } })());
   $effect(() => { try { localStorage.setItem(OPEN, customizing ? "1" : "0"); } catch { /* not kept */ } });
 
   const ran = (s: Sim | undefined) => !!s && (s.status === "UPTODATE" || s.status === "LOADED" || s.status === "OUTDATED") && !!s.results?.apogee;
@@ -344,6 +344,12 @@
   }
 
   let title = $derived(`${app.design?.name ?? "Rocket"}: ${shownSims.map((s) => s.name).join(" and ")}`);
+
+  // The plot fills the height the window has left below the simulations (the page above it: about 470 px), and can be
+  // expanded over the page to nearly the whole window.
+  let big = $state(false);
+  let winH = $state(900);
+  let plotH = $derived(big ? Math.max(320, winH - 230) : Math.max(320, Math.min(900, winH - 470)));
 </script>
 
 {#snippet unitPick(n: string)}
@@ -355,8 +361,15 @@
   {/if}
 {/snippet}
 
+<svelte:window bind:innerHeight={winH} onkeydown={(e) => big && e.key === "Escape" && !e.defaultPrevented && (big = false)} />
+
+{#if big}<div class="scrim" role="presentation" onclick={() => (big = false)}></div>{/if}
+<div class="holder" class:big>
 <Panel id="flights.plot" icon={ChartLine} title="Plot">
   {#snippet tools()}
+    <button class="tool expand" onclick={() => (big = !big)} title={big ? "Back to the page (Esc)" : "Expand the plot"} aria-label={big ? "Back to the page" : "Expand the plot"}>
+      {#if big}<Minimize2 size={14} />{:else}<Maximize2 size={14} />{/if}
+    </button>
     <select class="select small" id="plot-preset" value={preset} onchange={(e) => pick((e.target as HTMLSelectElement).value)} title="Which plot to show">
       {#if !preset}<option value="">Custom</option>{/if}
       {#each PRESETS as p (p.name)}<option value={p.name}>{p.name}</option>{/each}
@@ -369,7 +382,7 @@
   {/snippet}
   <div class="plotbody" use:context={plotItems}>
     {#if plot}
-      <Plot x={plot.x} series={plot.series} xLabel={plot.xLabel} leftLabel={plot.left} rightLabel={plot.right} events={plot.events} height={300}
+      <Plot x={plot.x} series={plot.series} xLabel={plot.xLabel} leftLabel={plot.left} rightLabel={plot.right} events={plot.events} height={plotH}
         name={`${app.design?.name ?? "Rocket"} ${current.name} plot`} {title}
         pickAxis={(i, side) => { const n = plot!.series[i]?.label.split(" (")[0].split(" · ")[0]; if (n && chosen.includes(n)) axes = { ...axes, [n]: side }; }} />
       {#if stages.length > 1}
@@ -451,8 +464,37 @@
     {/if}
   </div>
 </Panel>
+</div>
 
 <style>
+  .holder {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .holder > :global(.panel) {
+    flex: 1;
+  }
+  /* Expanded: over the page, nearly the whole window. */
+  .holder.big {
+    position: fixed;
+    inset: 16px 16px 16px 88px;
+    z-index: 38;
+  }
+  .holder.big > :global(.panel) {
+    box-shadow: var(--shadow-pop);
+    overflow: auto;
+  }
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 37;
+    background: rgb(0 0 0 / 30%);
+  }
+  .expand {
+    margin-right: 6px;
+  }
   .plotbody {
     padding: 6px 10px;
     min-width: 0;
