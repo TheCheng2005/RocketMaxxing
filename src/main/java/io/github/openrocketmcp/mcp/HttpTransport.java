@@ -433,7 +433,7 @@ public final class HttpTransport {
 		}
 		return """
 				<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-				<title>OpenRocket MCP workspace</title><style>
+				<title>RocketMaxxing workspace</title><style>
 				:root{color-scheme:light dark;--fg:#1d1d1f;--bg:#fff;--mute:#6e6e73;--line:#e5e5ea;--acc:#0a66d8}
 				@media (prefers-color-scheme:dark){:root{--fg:#f5f5f7;--bg:#161618;--mute:#a1a1a6;--line:#2c2c2e;--acc:#5ea2ff}}
 				body{font:15px/1.5 system-ui,sans-serif;color:var(--fg);background:var(--bg);max-width:860px;margin:0 auto;padding:24px 16px}
@@ -441,7 +441,7 @@ public final class HttpTransport {
 				table{width:100%;border-collapse:collapse}td{padding:6px 8px;border-bottom:1px solid var(--line)}td:nth-child(2),td:nth-child(3){color:var(--mute);white-space:nowrap}
 				#drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;margin:0 0 20px;color:var(--mute)}
 				#drop.on{border-color:var(--acc)}</style></head><body>
-				<h1>OpenRocket MCP workspace</h1><p>/{{HERE}} &middot; files here are what Claude sees; open a design with its path, e.g. <code>{{HERE}}example.ork</code></p>
+				<h1>RocketMaxxing workspace</h1><p>/{{HERE}} &middot; files here are what Claude sees; open a design with its path, e.g. <code>{{HERE}}example.ork</code></p>
 				<div id="drop">Drop .ork, motor, RASAero or flight-log files here, or <input type="file" id="pick" multiple></div>
 				<table>{{ROWS}}</table>
 				<script>

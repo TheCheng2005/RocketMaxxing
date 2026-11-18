@@ -292,7 +292,7 @@ public final class McpServer {
 		result.add("capabilities", caps);
 		JsonObject info = new JsonObject();
 		info.addProperty("name", name);
-		info.addProperty("title", "OpenRocket MCP");
+		info.addProperty("title", "RocketMaxxing");
 		info.addProperty("version", this.version);
 		result.add("serverInfo", info);
 		if (instructions != null) {

@@ -1,6 +1,7 @@
-OpenRocket MCP - an MCP server for designing, simulating and checking rockets with OpenRocket
+RocketMaxxing - competition rocket design, simulation and checks, built on OpenRocket
+(the app, and the MCP server that lets AI assistants use it)
 
-Copyright (C) 2026 OpenRocket MCP contributors
+Copyright (C) 2026 RocketMaxxing contributors
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

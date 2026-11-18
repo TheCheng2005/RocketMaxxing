@@ -77,9 +77,14 @@ final class MacDesktop {
 				ACTIVE.add("quit");
 			}
 			Runnable choose = () -> SwingUtilities.invokeLater(() -> {
-				FileDialog fd = new FileDialog((Frame) null, "Open a design", FileDialog.LOAD);
+				boolean[] made = new boolean[1];
+				Frame owner = FileDialogs.owner(made);
+				FileDialog fd = new FileDialog(owner, "Open a design", FileDialog.LOAD);
 				fd.setFilenameFilter((dir, n) -> n.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rmx|rkt|cdx1)"));
 				fd.setVisible(true);
+				if (made[0]) {
+					owner.dispose();
+				}
 				if (fd.getFile() != null) {
 					openFiles.accept(List.of(new File(fd.getDirectory(), fd.getFile()).getAbsolutePath()));
 				}

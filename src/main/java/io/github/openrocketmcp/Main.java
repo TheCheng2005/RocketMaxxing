@@ -63,7 +63,7 @@ public final class Main {
 	public static final String VERSION = Versions.ENGINE;
 
 	public static final String INSTRUCTIONS = """
-			OpenRocket MCP: design, simulate and check high-power / competition rockets with OpenRocket's physics.
+			RocketMaxxing: design, simulate and check high-power / competition rockets with OpenRocket's physics.
 			Workflow: open_design -> get_design -> run_simulation / check_requirements -> change things -> re-check -> save_design.
 			- Let the tools do numeric work: use size_parachute, rank_motors, sweep, optimize, ballast, fin_flutter, monte_carlo,
 			  recovery_analysis, deployment_delay_sweep, aero_analysis rather than estimating by hand.

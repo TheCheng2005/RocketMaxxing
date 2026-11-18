@@ -68,6 +68,8 @@ final class AppWindow {
 	private CefApp cef;
 	private final Supplier<List<String>> unsaved;
 	private JFrame frame;
+	/** The window, for the system's file dialogs to belong to (null before it opens, or without one). */
+	private static volatile Frame shown;
 	private CefBrowser browser;
 	private String home;
 	private String origin;
@@ -261,6 +263,7 @@ final class AppWindow {
 			frame.setSize(Math.min(1600, screen.width * 9 / 10), Math.min(1000, screen.height * 9 / 10));
 			frame.setLocationRelativeTo(null);
 			frame.setVisible(true);
+			shown = frame;
 		});
 	}
 
@@ -289,6 +292,12 @@ final class AppWindow {
 			frame.toFront();
 			browser.setFocus(true);
 		});
+	}
+
+	/** The app's window while it is on screen, else null. */
+	static Frame owner() {
+		Frame f = shown;
+		return f != null && f.isDisplayable() && f.isVisible() ? f : null;
 	}
 
 	/** The window's close button, or ⌘W: on the Mac the app stays in the Dock (as Mac apps do); elsewhere it quits. */
