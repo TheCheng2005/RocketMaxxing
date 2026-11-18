@@ -43,7 +43,7 @@ public final class Manifest {
 				reviews, 3-D exploded views and flight animations, and more. \
 				Java and OpenRocket are included; choose the folder that holds your designs.""");
 		JsonObject author = new JsonObject();
-		author.addProperty("name", "OpenRocket MCP contributors");
+		author.addProperty("name", "RocketMaxxing contributors");
 		m.add("author", author);
 		JsonObject repo = new JsonObject();
 		repo.addProperty("type", "git");

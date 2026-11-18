@@ -39,12 +39,63 @@ export function closeMenu() {
   menu.open = null;
 }
 
-/** Where the browser's own menu is the right one: text boxes, and text the user has selected. */
+const TEXT_BOX = "input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]), textarea, [contenteditable=true]";
+
+/** Where a right-click is about text: a text box, or text the user has selected. These get the text menu below. */
 export function nativeHere(e: MouseEvent): boolean {
   const t = e.target as HTMLElement;
-  if (t.closest?.("input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea, [contenteditable=true]")) return true;
+  if (t.closest?.(TEXT_BOX)) return true;
   return !!String(getSelection() ?? "").trim();
 }
+
+/**
+ * Cut, copy, paste and select all, for a right-click on text. The browser's own menu is never shown: in the app's
+ * window on a Mac it is a native menu that held the whole app still (like the dropdown lists). The window does the
+ * editing (it can read the clipboard for paste); in a browser tab the page does what the browser allows.
+ */
+export function openTextMenu(e: MouseEvent) {
+  const box = (e.target as HTMLElement).closest?.(TEXT_BOX) as HTMLInputElement | HTMLTextAreaElement | HTMLElement | null;
+  const field = box && "selectionStart" in box ? (box as HTMLInputElement) : null;
+  const start = field?.selectionStart ?? null, end = field?.selectionEnd ?? null;
+  const selected = field ? (start !== null && end !== null && end > start) : !!String(getSelection() ?? "").trim();
+  const editable = !!box && !(field?.readOnly || (field as HTMLInputElement | null)?.disabled);
+  const back = () => {
+    if (!box) return;
+    box.focus({ preventScroll: true });
+    if (field && start !== null && end !== null) {
+      try {
+        field.setSelectionRange(start, end);
+      } catch {
+        /* a number box has no selection to restore */
+      }
+    }
+  };
+  const run = (action: "cut" | "copy" | "paste" | "selectAll") => async () => {
+    back();
+    const done = await import("../api").then(({ call }) => call<{ done: boolean }>("app_window_edit", { action })).then((r) => r.done).catch(() => false);
+    if (done) return;
+    // no app window: the page's own way
+    if (action === "paste") {
+      const text = await navigator.clipboard?.readText?.().catch(() => "");
+      back();
+      if (text) document.execCommand("insertText", false, text);
+    } else if (action === "selectAll") {
+      if (field) field.select();
+      else document.execCommand("selectAll");
+    } else {
+      document.execCommand(action);
+    }
+  };
+  openMenu(e.clientX, e.clientY, [
+    editable && { label: "Cut", shortcut: keyLabel("X"), off: selected ? false : "Select some text first", run: run("cut") },
+    { label: "Copy", shortcut: keyLabel("C"), off: selected ? false : "Select some text first", run: run("copy") },
+    editable && { label: "Paste", shortcut: keyLabel("V"), run: run("paste") },
+    "-",
+    box && { label: "Select all", shortcut: keyLabel("A"), run: run("selectAll") },
+  ]);
+}
+
+const keyLabel = (k: string) => (typeof navigator !== "undefined" && /Mac/.test(navigator.platform || navigator.userAgent) ? "⌘" : "Ctrl+") + k;
 
 /**
  * A section's own right-click menu: {@code use:context={() => [...items]}}. The items are made at the click, so they
@@ -54,7 +105,9 @@ export function context(node: HTMLElement, items: (e: MouseEvent) => (MenuItem |
   let get = items;
   const on = (e: MouseEvent) => {
     if (nativeHere(e)) {
+      e.preventDefault();
       e.stopPropagation();
+      openTextMenu(e);
       return;
     }
     e.preventDefault();

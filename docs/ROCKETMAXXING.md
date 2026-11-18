@@ -41,8 +41,10 @@ latest green run and download the one for your computer; it comes zipped).
    like any other app.
 3. It opens in its own window. Designs go in `~/RocketMaxxing`.
 
-On the Mac, the menu bar shows RocketMaxxing's menus while you work in its window: File (Open Design ⌘O, Save ⌘S, Save
-As ⇧⌘S, Close Window ⌘W), Edit (Undo, Redo, Cut, Copy, Paste, Select All) and Window (Minimize ⌘M). Closing the
+On the Mac, the keyboard shortcuts work as in any Mac app: Open Design ⌘O, Save ⌘S, Save As ⇧⌘S, Close Window ⌘W,
+Minimize ⌘M, and Undo, Redo, Cut, Copy, Paste and Select All. The menu bar has only the RocketMaxxing menu (the File,
+Edit and Window menus are left out: on a Mac they could freeze the app's window); the same commands are in the
+window's top bar and its right-click menus. Closing the
 window keeps the app running in the Dock, as Mac apps do; clicking the Dock icon brings the window back, and the Dock
 icon's menu has Show RocketMaxxing Window and Open Design. About and Quit are in the RocketMaxxing menu; Quit asks
 first when a design has unsaved changes. Double-clicking an `.ork` or `.rkt` file in Finder opens it in RocketMaxxing

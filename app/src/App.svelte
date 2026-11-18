@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { connected, handedFiles, launchFiles } from "./lib/api";
-  import { app, init, run, undo, redo, save, openDialog, openPath, removeSelected, move, copySelected, paste, duplicate, type Page } from "./lib/state.svelte";
+  import { app, toast, init, run, undo, redo, save, openDialog, openPath, removeSelected, move, copySelected, paste, duplicate, type Page } from "./lib/state.svelte";
   import { rememberPage, lastPage } from "./lib/lastPage";
   import TopBar from "./lib/TopBar.svelte";
   import NavRail from "./lib/NavRail.svelte";
@@ -20,7 +20,7 @@
   import ContextMenu from "./lib/menu/ContextMenu.svelte";
   import UpdateCard from "./lib/UpdateCard.svelte";
   import { checkAtStart } from "./lib/updates.svelte";
-  import { openMenu, nativeHere, currentPageItems } from "./lib/menu/menu.svelte";
+  import { openMenu, nativeHere, openTextMenu, currentPageItems } from "./lib/menu/menu.svelte";
   import { openIssues } from "./lib/issues/issues.svelte";
   import { keys, MAC } from "./lib/keys";
   import { PAGE_KEYS } from "./lib/guide/content";
@@ -57,6 +57,13 @@
   let started: Promise<unknown> = Promise.resolve();
 
   onMount(() => {
+    // A save from the page (a plot's PNG or CSV, a problem report) in the app's window lands in Downloads with no dialog.
+    const saved = (e: Event) => {
+      const path = String((e as CustomEvent).detail ?? "");
+      const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+      toast(`Saved ${path.slice(cut + 1)} in ${path.slice(0, cut) || "Downloads"}`);
+    };
+    addEventListener("rocketmaxxing:saved", saved);
     if (!connected) return;
     watchPageErrors();
     started = run(init)
@@ -137,8 +144,15 @@
 
   // A right-click with no menu of its own where it landed: the page's quick commands, then the app's.
   function onContext(e: MouseEvent) {
-    if (e.defaultPrevented || nativeHere(e) || overlay() || !connected) return;
-    e.preventDefault();
+    if (e.defaultPrevented) return;
+    if (nativeHere(e)) {
+      // text: the app's own cut / copy / paste menu, never the browser's (a native menu froze the Mac window)
+      e.preventDefault();
+      openTextMenu(e);
+      return;
+    }
+    e.preventDefault(); // the browser's own menu never shows, even where the app has nothing to offer
+    if (overlay() || !connected) return;
     const d = app.design;
     openMenu(e.clientX, e.clientY, [
       { header: PAGE_NAMES[app.page] },

@@ -79,6 +79,11 @@ public final class AppTools {
 		// What the interface remembers between launches, next to the assistant's settings (~/.rocketmaxxing).
 		UiPrefs prefs = new UiPrefs(assistantSettings.resolveSibling("ui-prefs.json"));
 		Path updateCache = assistantSettings.resolveSibling("update-check.json");
+		add(s, new ToolDef("app_window_edit", "App: cut, copy or paste in the window's text box",
+				"The page's own right-click menu in a text box: action cut, copy, paste, selectAll, undo or redo, done by the "
+						+ "window (it can read the clipboard, which the page cannot). done is false without the app's window.",
+				Schema.object().str("action", "cut, copy, paste, selectAll, undo or redo.", true).build(), true,
+				a -> Map.of("done", App.windowEdit(a.str("action")))));
 		add(s, new ToolDef("app_update_check", "App: check for a newer version",
 				"Whether a newer RocketMaxxing is on the Releases page: the latest version, its page and the installer for "
 						+ "this computer. Asks GitHub at most once a day unless force is true; offline it says so.",

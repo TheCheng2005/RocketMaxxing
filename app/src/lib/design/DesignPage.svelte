@@ -95,8 +95,16 @@
       {/snippet}
       <div class="view"><RocketView picture={() => (picture = true)} /></div>
     </Panel>
+    <Panel id="design.add" icon={SquarePlus} title="Add part">
+      {#snippet tools()}<span class="to">to {target}</span>{/snippet}
+      <Palette />
+    </Panel>
     <Panel id="design.summary" icon={Gauge} title="Summary">
       <Stats />
+    </Panel>
+    <Panel id="design.rules" icon={ShieldCheck} title="Rule check" initial={false}>
+      {#snippet status()}<RuleCheckStatus />{/snippet}
+      <RuleCheck />
     </Panel>
     {#if fast}
       <Panel id="design.aero" icon={Wind} title="High-speed drag">
@@ -108,14 +116,6 @@
         <AeroCompare />
       </Panel>
     {/if}
-    <Panel id="design.rules" icon={ShieldCheck} title="Rule check" initial={false}>
-      {#snippet status()}<RuleCheckStatus />{/snippet}
-      <RuleCheck />
-    </Panel>
-    <Panel id="design.add" icon={SquarePlus} title="Add part">
-      {#snippet tools()}<span class="to">to {target}</span>{/snippet}
-      <Palette />
-    </Panel>
   </div>
 
   <div class="right" class:shut={!isOpen("design.props")}>

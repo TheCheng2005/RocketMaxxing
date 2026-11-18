@@ -7,9 +7,7 @@ import java.awt.GraphicsEnvironment;
 import java.awt.MenuItem;
 import java.awt.PopupMenu;
 import java.awt.Taskbar;
-import java.awt.Toolkit;
 import java.awt.desktop.AppReopenedListener;
-import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,11 +15,7 @@ import java.util.Locale;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
-import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 
 import io.github.openrocketmcp.Main;
@@ -59,7 +53,7 @@ final class MacDesktop {
 				ACTIVE.add("reopen");
 			}
 			if (d.isSupported(Desktop.Action.APP_ABOUT)) {
-				d.setAboutHandler(e -> JOptionPane.showMessageDialog(null,
+				d.setAboutHandler(e -> JOptionPane.showMessageDialog(AppWindow.owner(), // in front of the window, not behind it
 						App.NAME + " " + App.VERSION + "\nEngine " + Main.VERSION + " on OpenRocket\n\nDesign, simulate and check "
 								+ "competition rockets, offline.",
 						"About " + App.NAME, JOptionPane.INFORMATION_MESSAGE));
@@ -77,9 +71,14 @@ final class MacDesktop {
 				ACTIVE.add("quit");
 			}
 			Runnable choose = () -> SwingUtilities.invokeLater(() -> {
-				FileDialog fd = new FileDialog((Frame) null, "Open a design", FileDialog.LOAD);
+				boolean[] made = new boolean[1];
+				Frame owner = FileDialogs.owner(made);
+				FileDialog fd = new FileDialog(owner, "Open a design", FileDialog.LOAD);
 				fd.setFilenameFilter((dir, n) -> n.toLowerCase(Locale.ROOT).matches(".*\\.(ork|rmx|rkt|cdx1)"));
 				fd.setVisible(true);
+				if (made[0]) {
+					owner.dispose();
+				}
 				if (fd.getFile() != null) {
 					openFiles.accept(List.of(new File(fd.getDirectory(), fd.getFile()).getAbsolutePath()));
 				}
@@ -95,22 +94,8 @@ final class MacDesktop {
 				Taskbar.getTaskbar().setMenu(dock);
 				ACTIVE.add("dockMenu");
 			}
-			if (d.isSupported(Desktop.Action.APP_MENU_BAR)) {
-				int cmd = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
-				JMenuBar bar = new JMenuBar();
-				JMenu file = new JMenu("File");
-				JMenuItem show = new JMenuItem("Show " + App.NAME + " Window");
-				show.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, cmd));
-				show.addActionListener(e -> showWindow.run());
-				JMenuItem open = new JMenuItem("Open Design…");
-				open.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_O, cmd));
-				open.addActionListener(e -> choose.run());
-				file.add(show);
-				file.add(open);
-				bar.add(file);
-				d.setDefaultMenuBar(bar);
-				ACTIVE.add("menuBar");
-			}
+			// No menu bar of our own (File: Show Window, Open Design): a Swing menu bar in the Mac's menu bar froze the
+			// app when opened (see AppWindow). The Dock's menu and a click on the Dock icon do the same.
 		} catch (RuntimeException | LinkageError e) {
 			Log.info("macOS integration unavailable: " + e);
 		}

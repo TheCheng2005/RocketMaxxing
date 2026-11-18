@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ColorInput from "../ColorInput.svelte";
   import { onMount, untrack } from "svelte";
   import * as THREE from "three";
   import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -372,7 +373,7 @@
       <h4>Scene</h4>
       <div class="seg" role="group" aria-label="Pose">{#each POSES as [k, l] (k)}<button class:on={pose === k} onclick={() => (pose = k)}>{l}</button>{/each}</div>
       <div class="seg" role="group" aria-label="Sky">{#each SKIES as [k, l] (k)}<button class:on={sky === k} onclick={() => (sky = k)}>{l}</button>{/each}</div>
-      {#if sky === "plain"}<label class="c">Colour <input type="color" bind:value={plain} /></label>{/if}
+      {#if sky === "plain"}<span class="c">Colour <ColorInput label="Background colour" value={plain} onchange={(v) => (plain = v)} /></span>{/if}
       <label class="c"><input type="checkbox" bind:checked={ground} disabled={pose === "flying"} /> Shadow on the ground</label>
       <label class="c"><input type="checkbox" bind:checked={flame} disabled={pose !== "flying"} /> Motor flame</label>
       <label class="c"><input type="checkbox" bind:checked={smoke} disabled={pose !== "flying"} /> Smoke trail</label>
