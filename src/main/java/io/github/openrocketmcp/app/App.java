@@ -248,6 +248,20 @@ public final class App {
 		return w != null && w.edit(action);
 	}
 
+	/** The window in front with its Open dialog (the page's own); false without a window. */
+	static boolean openInWindow() {
+		AppWindow w;
+		synchronized (App.class) {
+			w = window;
+		}
+		if (w == null) {
+			return false;
+		}
+		w.show(null);
+		w.openDialog();
+		return true;
+	}
+
 	/** The window in front, with these designs open: the Dock, a second launch and Finder all land there. */
 	static synchronized void show(List<String> files) {
 		if (window == null) {

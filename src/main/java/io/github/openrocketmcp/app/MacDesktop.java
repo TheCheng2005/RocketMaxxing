@@ -71,6 +71,10 @@ final class MacDesktop {
 				ACTIVE.add("quit");
 			}
 			Runnable choose = () -> SwingUtilities.invokeLater(() -> {
+				// With the app's window: its own Open (the page's file browser); the system's panel froze the window.
+				if (App.openInWindow()) {
+					return;
+				}
 				boolean[] made = new boolean[1];
 				Frame owner = FileDialogs.owner(made);
 				FileDialog fd = new FileDialog(owner, "Open a design", FileDialog.LOAD);

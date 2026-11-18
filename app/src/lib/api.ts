@@ -123,8 +123,18 @@ async function rpc(method: string, params: unknown, keepalive = false): Promise<
   return msg.result;
 }
 
+/**
+ * The page's own file browser, when it takes the place of the system's dialog (on a Mac the system's open and save
+ * panels froze the app's window). Set by FileBrowser.svelte; every "app_choose_file" goes to it then.
+ */
+let pagePicker: ((args: Record<string, unknown>) => Promise<{ path: string | null }>) | null = null;
+export function usePagePicker(fn: typeof pagePicker) {
+  pagePicker = fn;
+}
+
 /** Calls a tool; returns its JSON result (or text), or throws ToolError with the engine's explanation. */
 export async function call<T = any>(name: string, args: Record<string, unknown> = {}): Promise<T> {
+  if (name === "app_choose_file" && pagePicker) return (await pagePicker(args)) as T;
   const result = await rpc("tools/call", { name, arguments: args });
   const text: string = result?.content?.[0]?.text ?? "";
   if (result?.isError) {
