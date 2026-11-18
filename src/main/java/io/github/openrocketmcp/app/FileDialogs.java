@@ -100,8 +100,11 @@ final class FileDialogs {
 			Frame owner = owner(made);
 			FileDialog fd = new FileDialog(owner, save ? "Save" : "Open", save ? FileDialog.SAVE : FileDialog.LOAD);
 			fd.setDirectory(folder.toAbsolutePath().toString()); // the designs folder, like OpenRocket's last-used folder
-			fd.setFilenameFilter((dir, n) -> java.util.Arrays.stream(types).anyMatch(t -> n.toLowerCase().endsWith("." + t)));
-			if (!save) {
+			boolean any = types.length == 0 || types[0].isEmpty() || java.util.Arrays.asList(types).contains("*");
+			if (!any) {
+				fd.setFilenameFilter((dir, n) -> java.util.Arrays.stream(types).anyMatch(t -> n.toLowerCase().endsWith("." + t)));
+			}
+			if (!save && !any) {
 				fd.setFile("*." + types[0]);
 			} else if (name != null) {
 				fd.setFile(name);

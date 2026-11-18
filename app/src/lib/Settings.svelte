@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ColorInput from "./ColorInput.svelte";
   import { X, Ruler, Palette, ShieldCheck, Bot, FolderOpen, ChevronDown } from "@lucide/svelte";
   import { isOpen, toggle, setOpen } from "./panels.svelte";
   import { app, setSystem, autoCheck, setAutoCheck } from "./state.svelte";
@@ -178,8 +179,8 @@
       <div class="row">
         <span>Accent colour</span>
         <div class="accent">
-          <input type="color" aria-label="Accent colour" value={prefs.accent || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#d9480f"}
-            onchange={(e) => setAccent((e.target as HTMLInputElement).value)} />
+          <ColorInput label="Accent colour" value={prefs.accent || getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#d9480f"}
+            onchange={(v) => setAccent(v)} />
           {#if prefs.accent}<button class="link" onclick={() => setAccent("")}>Use the scheme's</button>{:else}<span class="muted">The scheme's</span>{/if}
         </div>
       </div>
@@ -504,14 +505,5 @@
     align-items: center;
     gap: 10px;
     justify-content: flex-end;
-  }
-  .accent input[type="color"] {
-    width: 44px;
-    height: 28px;
-    padding: 2px;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--surface);
-    cursor: pointer;
   }
 </style>

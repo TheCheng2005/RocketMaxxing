@@ -239,6 +239,15 @@ public final class App {
 		}
 	}
 
+	/** An editing command in the window's focused text box (the page's own right-click menu); false without a window. */
+	static boolean windowEdit(String action) {
+		AppWindow w;
+		synchronized (App.class) {
+			w = window;
+		}
+		return w != null && w.edit(action);
+	}
+
 	/** The window in front, with these designs open: the Dock, a second launch and Finder all land there. */
 	static synchronized void show(List<String> files) {
 		if (window == null) {
@@ -274,9 +283,21 @@ public final class App {
 
 	/** Asks first when designs have unsaved changes; true to go on and quit. */
 	static boolean mayQuit(Component parent, List<String> open) {
-		return open.isEmpty() || JOptionPane.showConfirmDialog(parent,
+		if (open.isEmpty()) {
+			return true;
+		}
+		// Owned by the window and in front: a question hidden behind it would hold the app still, like the file dialog.
+		boolean[] made = new boolean[1];
+		java.awt.Frame owner = parent == null ? FileDialogs.owner(made) : null;
+		try {
+			return JOptionPane.showConfirmDialog(parent != null ? parent : owner,
 				"Unsaved changes in " + String.join(", ", open) + ".\nQuit anyway and lose them?",
 				"Quit " + NAME, JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) == JOptionPane.YES_OPTION;
+		} finally {
+			if (made[0]) {
+				owner.dispose();
+			}
+		}
 	}
 
 	static String withFiles(String url, List<String> files) {

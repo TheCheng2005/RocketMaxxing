@@ -39,13 +39,12 @@ import org.cef.callback.CefBeforeDownloadCallback;
 import org.cef.callback.CefContextMenuParams;
 import org.cef.callback.CefDownloadItem;
 import org.cef.callback.CefMenuModel;
-import org.cef.callback.CefMenuModel.MenuId;
-import org.cef.callback.CefMenuModel.MenuItemType;
 import org.cef.handler.CefContextMenuHandlerAdapter;
 import org.cef.handler.CefDisplayHandlerAdapter;
 import org.cef.handler.CefDownloadHandlerAdapter;
 import org.cef.handler.CefFocusHandler.FocusSource;
 import org.cef.handler.CefFocusHandlerAdapter;
+import org.cef.handler.CefJSDialogHandler.JSDialogType;
 import org.cef.handler.CefKeyboardHandler.CefKeyEvent;
 import org.cef.handler.CefKeyboardHandlerAdapter;
 import org.cef.handler.CefLifeSpanHandlerAdapter;
@@ -75,6 +74,8 @@ final class AppWindow {
 	private String origin;
 	private Path workspace;
 	private volatile long reloaded;
+	/** Downloads the page has been told about (by Chromium's id). */
+	private final java.util.Set<Integer> told = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	private AppWindow(Supplier<List<String>> unsaved) {
 		this.unsaved = unsaved;
@@ -119,8 +120,19 @@ final class AppWindow {
 		b.setAppHandler(new MavenCefAppHandlerAdapter() {
 			@Override
 			public boolean onBeforeTerminate() {
-				// macOS Quit (JCEF takes it over from AWT): true keeps the app running.
-				return !w.mayQuit();
+				// macOS Quit (JCEF takes it over from AWT): true keeps the app running. This runs on the Mac's main
+				// thread, which the window and every dialog need: asking here (a modal dialog waiting on that thread)
+				// froze the app. With unsaved changes the quit is held, the question is asked on Swing's thread, and
+				// the app quits from there on Yes.
+				if (w.unsaved.get().isEmpty()) {
+					return false;
+				}
+				SwingUtilities.invokeLater(() -> {
+					if (w.mayQuit()) {
+						w.quit();
+					}
+				});
+				return true;
 			}
 
 			@Override
@@ -184,9 +196,20 @@ final class AppWindow {
 			client.addDownloadHandler(new CefDownloadHandlerAdapter() {
 				@Override
 				public boolean onBeforeDownload(CefBrowser b, CefDownloadItem item, String name, CefBeforeDownloadCallback cb) {
-					// The page's Save (a problem report): the system's save dialog, starting in the designs folder.
-					cb.Continue(AppWindow.this.workspace.resolve(fileName(name)).toString(), true);
+					// The page's saves (a problem report, a plot's PNG or CSV) go straight to Downloads, with no dialog:
+					// Chromium's save dialog is modal on the Mac's main thread, the kind that froze the window. The
+					// page says where the file went, with a button to show it.
+					cb.Continue(downloadTo(fileName(name)).toString(), false);
 					return true;
+				}
+
+				@Override
+				public void onDownloadUpdated(CefBrowser b, CefDownloadItem item, org.cef.callback.CefDownloadItemCallback cb) {
+					// Chromium reports a finished download more than once: the page hears of each once
+					if (item.isComplete() && item.getFullPath() != null && told.add(item.getId())) {
+						b.executeJavaScript("dispatchEvent(new CustomEvent('rocketmaxxing:saved', {detail: "
+								+ new com.google.gson.Gson().toJson(item.getFullPath()) + "}))", home, 0);
+					}
 				}
 			});
 			client.addDisplayHandler(new CefDisplayHandlerAdapter() {
@@ -202,7 +225,52 @@ final class AppWindow {
 			client.addContextMenuHandler(new CefContextMenuHandlerAdapter() {
 				@Override
 				public void onBeforeContextMenu(CefBrowser b, CefFrame f, CefContextMenuParams p, CefMenuModel m) {
-					editOnly(m);
+					// No native menu, even for text: on the Mac it runs a modal loop on the main thread, like the
+					// dropdown lists that froze the window. The page shows its own (cut, copy, paste in text boxes).
+					m.clear();
+				}
+			});
+			// A page's file picker (<input type=file>): the app's own dialog, which knows how to stay in front, asked
+			// off Chromium's thread; Chromium waits for the answer instead of running its own modal panel.
+			client.addDialogHandler((b, mode, title, defaultPath, filters, extensions, descriptions, cb) -> {
+				String types = String.join(",", extensions == null || extensions.isEmpty() ? filters : extensions)
+						.replace(".", "").toLowerCase(Locale.ROOT);
+				Thread t = new Thread(() -> {
+					try {
+						Object chosen = switch (mode) {
+							case FILE_DIALOG_OPEN_FOLDER -> FileDialogs.choose("folder", null, workspace, "").get("path");
+							case FILE_DIALOG_SAVE -> FileDialogs.choose("save", fileName(defaultPath), workspace, types).get("path");
+							default -> FileDialogs.choose("open", null, workspace, types).get("path");
+						};
+						if (chosen == null) {
+							cb.Cancel();
+						} else {
+							cb.Continue(new java.util.Vector<>(List.of(chosen.toString())));
+						}
+					} catch (Exception e) {
+						cb.Cancel();
+					}
+				}, "rocketmaxxing-file-dialog");
+				t.setDaemon(true);
+				t.start();
+				return true;
+			});
+			// alert(), confirm() and prompt() would be native modal dialogs too: the app uses its own; any left are
+			// answered "no" at once rather than shown. Leaving the page asks nothing.
+			client.addJSDialogHandler(new org.cef.handler.CefJSDialogHandlerAdapter() {
+				@Override
+				public boolean onJSDialog(CefBrowser b, String origin, JSDialogType type, String message, String prompt,
+						org.cef.callback.CefJSDialogCallback cb, BoolRef suppress) {
+					Log.info("Window page asked a " + type + " dialog, not shown: " + message);
+					suppress.set(true);
+					return false;
+				}
+
+				@Override
+				public boolean onBeforeUnloadDialog(CefBrowser b, String message, boolean reload,
+						org.cef.callback.CefJSDialogCallback cb) {
+					cb.Continue(true, "");
+					return true;
 				}
 			});
 			// A file dragged onto the window would replace the app with the file: refuse it (the parts tree's own
@@ -357,6 +425,19 @@ final class AppWindow {
 		return (e.modifiers & EventFlags.EVENTFLAG_SHIFT_DOWN) != 0;
 	}
 
+	/** cut, copy, paste, selectAll, undo or redo in the focused text box: Chromium's own commands, which can paste. */
+	boolean edit(String action) {
+		return switch (action) {
+			case "cut" -> command(KeyEvent.VK_X, false);
+			case "copy" -> command(KeyEvent.VK_C, false);
+			case "paste" -> command(KeyEvent.VK_V, false);
+			case "selectAll" -> command(KeyEvent.VK_A, false);
+			case "undo" -> command(KeyEvent.VK_Z, false);
+			case "redo" -> command(KeyEvent.VK_Z, true);
+			default -> false;
+		};
+	}
+
 	/** A menu command, from the menu or from ⌘ and its key. */
 	private boolean command(int key, boolean shift) {
 		CefFrame f = browser.getFocusedFrame() != null ? browser.getFocusedFrame() : browser.getMainFrame();
@@ -434,6 +515,21 @@ final class AppWindow {
 	}
 
 	/** The name the page gave a download, without any folders in it. */
+	/** Where a page's save goes: the Downloads folder (else the designs folder), under a name not yet taken. */
+	Path downloadTo(String name) {
+		Path dir = Path.of(System.getProperty("user.home"), "Downloads");
+		if (!Files.isDirectory(dir)) {
+			dir = workspace;
+		}
+		Path p = dir.resolve(name);
+		int dot = name.lastIndexOf('.');
+		String stem = dot > 0 ? name.substring(0, dot) : name, ext = dot > 0 ? name.substring(dot) : "";
+		for (int n = 2; Files.exists(p) && n < 1000; n++) {
+			p = dir.resolve(stem + " (" + n + ")" + ext);
+		}
+		return p;
+	}
+
 	static String fileName(String name) {
 		try {
 			Path p = name == null || name.isBlank() ? null : Path.of(name).getFileName();
@@ -443,24 +539,4 @@ final class AppWindow {
 		}
 	}
 
-	/**
-	 * The page has its own right-click menu; where it leaves Chromium's (text boxes, selected text), only the editing
-	 * commands stay: no Back, Reload, Print or View Source.
-	 */
-	static void editOnly(CefMenuModel m) {
-		for (int i = m.getCount() - 1; i >= 0; i--) {
-			int id = m.getCommandIdAt(i);
-			boolean edit = id >= MenuId.MENU_ID_UNDO && id <= MenuId.MENU_ID_SELECT_ALL;
-			boolean spelling = id >= MenuId.MENU_ID_SPELLCHECK_SUGGESTION_0 && id <= MenuId.MENU_ID_NO_SPELLING_SUGGESTIONS;
-			if (m.getTypeAt(i) != MenuItemType.MENUITEMTYPE_SEPARATOR && !edit && !spelling) {
-				m.removeAt(i);
-			}
-		}
-		for (int i = m.getCount() - 1; i >= 0; i--) {
-			if (m.getTypeAt(i) == MenuItemType.MENUITEMTYPE_SEPARATOR
-					&& (i == 0 || i == m.getCount() - 1 || m.getTypeAt(i - 1) == MenuItemType.MENUITEMTYPE_SEPARATOR)) {
-				m.removeAt(i);
-			}
-		}
-	}
 }

@@ -59,7 +59,7 @@ final class MacDesktop {
 				ACTIVE.add("reopen");
 			}
 			if (d.isSupported(Desktop.Action.APP_ABOUT)) {
-				d.setAboutHandler(e -> JOptionPane.showMessageDialog(null,
+				d.setAboutHandler(e -> JOptionPane.showMessageDialog(AppWindow.owner(), // in front of the window, not behind it
 						App.NAME + " " + App.VERSION + "\nEngine " + Main.VERSION + " on OpenRocket\n\nDesign, simulate and check "
 								+ "competition rockets, offline.",
 						"About " + App.NAME, JOptionPane.INFORMATION_MESSAGE));

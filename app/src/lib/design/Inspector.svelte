@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ColorInput from "../ColorInput.svelte";
   import { fileUrl } from "../api";
   import { BookOpen, ChevronDown, TriangleAlert, Search, X, Shapes, Ruler, Flame, Layers, Move, Scale, MessageSquare, Palette, Triangle, Spline, Umbrella, Package, Link, Weight, PenTool, CircleDot, Cylinder } from "@lucide/svelte";
 
@@ -244,7 +245,7 @@
   <div class="row">
     <span class="label">Paint</span>
     <div class="control">
-      <input type="color" class="swatch" value={ed!.paint ?? shownColor} onchange={(e) => paint(e.currentTarget.value)} aria-label="Paint colour" />
+      <ColorInput value={ed!.paint ?? shownColor} onchange={(v) => paint(v)} label="Paint colour" />
       {#if ed!.paint}<button class="link" onclick={() => paint("")}>Default</button>{:else}<span class="muted small">default</span>{/if}
     </div>
   </div>
@@ -410,14 +411,6 @@
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-  .swatch {
-    width: 44px;
-    height: 24px;
-    padding: 0;
-    border: 1px solid var(--line);
-    border-radius: 4px;
-    background: transparent;
   }
   .link {
     border: 0;
