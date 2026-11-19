@@ -214,7 +214,8 @@ export const app = $state({
   toasts: [] as { id: number; text: string; kind: "error" | "info"; issue?: Logged }[],
   /** Physics and output notes on the quick flight of the active configuration, kept current after every edit. */
   flightIssues: [] as Issue[],
-  ask: null as null | { title: string; label: string; value: string; resolve: (v: string | null) => void },
+  /** The in-page question (never a native dialog: those freeze the window on a Mac). With confirm, a yes/no with that button. */
+  ask: null as null | { title: string; label: string; value: string; confirm?: string; resolve: (v: string | null) => void },
   revision: 0, // bumped after every change, so pages reload what they show
   checks: null as Checks | null,
   checking: false,
@@ -403,6 +404,11 @@ export async function run<T>(f: () => Promise<T>, where?: string, onIssue?: (l: 
 /** A small question in the app's own dialog (the browser's prompt() is not available in app windows everywhere). */
 export function ask(title: string, label: string, value = ""): Promise<string | null> {
   return new Promise((resolve) => (app.ask = { title, label, value, resolve }));
+}
+
+/** Asks before something that cannot be undone; true when the person chose {@code ok}. */
+export function confirmIt(title: string, text: string, ok: string): Promise<boolean> {
+  return new Promise((resolve) => (app.ask = { title, label: text, value: "", confirm: ok, resolve: (v) => resolve(v !== null) }));
 }
 
 export async function init() {

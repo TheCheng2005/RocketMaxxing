@@ -194,7 +194,7 @@ public final class Sims {
 	private static final Map<Simulation, String> FLOWN = Collections.synchronizedMap(new WeakHashMap<>());
 
 	/** The parts of a run OpenRocket's own staleness check does not cover. */
-	static String stamp(Simulation sim) {
+	public static String stamp(Simulation sim) {
 		SimulationOptions o = sim.getOptions();
 		Rocket r = sim.getRocket();
 		FlightConfigurationId fcid = sim.getFlightConfigurationId();

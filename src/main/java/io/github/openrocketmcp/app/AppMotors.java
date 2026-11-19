@@ -93,6 +93,16 @@ final class AppMotors {
 		out.put("mounts", mounts);
 		out.put("recovery", recovery);
 		out.put("stages", stages);
+		// Motors the file has that the database lacks (a team motor imported elsewhere): the page shows them in their mount.
+		List<Map<String, Object>> missing = new ArrayList<>();
+		for (io.github.openrocketmcp.or.MissingMotors.Use u : d.missingMotors) {
+			MotorMount mm = io.github.openrocketmcp.or.MissingMotors.mount(r, u);
+			if (mm != null) {
+				missing.add(Map.of("configuration", u.configId(), "mount", Components.shortId((RocketComponent) mm), "manufacturer",
+						u.manufacturer(), "designation", u.designation()));
+			}
+		}
+		out.put("missing", missing);
 		return out;
 	}
 
@@ -180,6 +190,54 @@ final class AppMotors {
 		return Map.of("id", id.toString(), "name", copy.getName());
 	}
 
+	/** Start fresh: one empty configuration, or no simulations. */
+	static Map<String, Object> clear(Context ctx, Args a) {
+		Designs.Design d = ctx.designs.get(a.str("designId"));
+		Rocket r = d.doc.getRocket();
+		if (a.str("what").equals("simulations")) {
+			List<info.openrocket.core.document.Simulation> sims = new ArrayList<>(d.doc.getSimulations());
+			for (var s : sims) {
+				d.doc.removeSimulation(s);
+			}
+			if (!sims.isEmpty()) {
+				d.doc.setSaved(false);
+			}
+			return Map.of("deleted", sims.size());
+		}
+		// The active configuration's id is kept (simulations and undo stay valid), everything it had is taken off.
+		FlightConfigurationId keep = r.getSelectedConfiguration().getId();
+		List<FlightConfigurationId> others = new ArrayList<>(r.getIds());
+		others.remove(keep);
+		for (FlightConfigurationId id : others) {
+			r.removeFlightConfiguration(id);
+		}
+		for (RocketComponent c : r) {
+			if (c instanceof MotorMount mm) {
+				mm.getMotorConfigurationSet().reset(keep);
+			}
+			if (c instanceof info.openrocket.core.rocketcomponent.RecoveryDevice rd) {
+				rd.getDeploymentConfigurations().reset(keep);
+			}
+			if (c instanceof info.openrocket.core.rocketcomponent.AxialStage st) {
+				st.getSeparationConfigurations().reset(keep);
+			}
+		}
+		FlightConfiguration fc = r.getFlightConfiguration(keep);
+		fc.setName(null);
+		r.setSelectedConfiguration(keep);
+		int moved = 0;
+		for (var s : d.doc.getSimulations()) {
+			if (!keep.equals(s.getFlightConfigurationId())) {
+				s.setFlightConfigurationId(keep);
+				moved++;
+			}
+		}
+		fc.update();
+		r.fireComponentChangeEvent(info.openrocket.core.rocketcomponent.ComponentChangeEvent.MOTOR_CHANGE);
+		d.doc.setSaved(false);
+		return Map.of("removed", others.size(), "kept", fc.getName(), "simulationsMoved", moved, "selected", keep.toString());
+	}
+
 	static Map<String, Object> motors(Context ctx, Args a) {
 		double minD = Double.NaN, maxD = Double.NaN;
 		if (a.has("mount") && a.has("designId")) {
@@ -247,6 +305,7 @@ final class AppMotors {
 		} catch (IOException e) {
 			io.github.openrocketmcp.mcp.Log.info("Could not read " + dir + ": " + e.getMessage());
 		}
+		ctx.designs.restoreMissingMotors(); // a design opened before the team's motors were loaded
 	}
 
 	/** Imports a motor file and keeps a copy in the designs folder's motors/, so it is there next time. */
@@ -269,7 +328,9 @@ final class AppMotors {
 		for (ThrustCurveMotor m : found) {
 			motors.add(motorInfo(m));
 		}
-		return Map.of("file", kept.toString(), "motors", motors);
+		// A design that names one of these (made in OpenRocket elsewhere) gets it back where the file had it.
+		List<String> back = ctx.designs.restoreMissingMotors();
+		return Map.of("file", kept.toString(), "motors", motors, "putBack", back);
 	}
 
 	static Map<String, Object> motorInfo(ThrustCurveMotor m) {

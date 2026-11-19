@@ -125,6 +125,11 @@ public final class App {
 		server.handleLine("{\"jsonrpc\":\"2.0\",\"id\":0,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\","
 				+ "\"capabilities\":{},\"clientInfo\":{\"name\":\"" + NAME + "\",\"version\":\"" + VERSION + "\"}}}");
 		Main.warmUp();
+		// The team's own motors (motors/ in the designs folder) before anything opens a design: an agent can open one
+		// before the window connects, and a design that flies a team motor would lose it.
+		Thread teamMotors = new Thread(() -> AppMotors.teamMotors(ctx), "team-motors");
+		teamMotors.setDaemon(true);
+		teamMotors.start();
 		List<String> dev = new ArrayList<>();
 		if (devUrl != null) {
 			dev.add(devUrl.replaceAll("/+$", ""));

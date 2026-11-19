@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { CloudSun, Rocket, Plus, Play, PlayCircle, Trash2, Clapperboard, TriangleAlert, ChevronRight } from "@lucide/svelte";
+  import { CloudSun, Rocket, Plus, Play, PlayCircle, Trash2, Clapperboard, TriangleAlert, ChevronRight, Eraser } from "@lucide/svelte";
   import VideoDialog from "../media/VideoDialog.svelte";
   import RocketLoader from "../RocketLoader.svelte";
   import { untrack } from "svelte";
@@ -10,7 +10,7 @@
   import SimForm from "./SimForm.svelte";
   import Panel from "../Panel.svelte";
   import { context, pageMenu, copyText, type MenuItem } from "../menu/menu.svelte";
-  import { ask, selectConfig, toast } from "../state.svelte";
+  import { ask, confirmIt, selectConfig, toast } from "../state.svelte";
   import { analysis } from "../analysis/store.svelte";
   import { ui, take } from "../search/ui.svelte";
 
@@ -123,8 +123,21 @@
     if (current && take("video")) video = true;
   });
 
+  /** Start fresh: no simulations (configurations and motors stay). */
+  async function clearSims() {
+    const n = sims.length;
+    if (!n) return;
+    const sure = await confirmIt(
+      "Delete all simulations",
+      `All ${n} simulation${n === 1 ? "" : "s"} of this design, with their launch conditions and results, are deleted. Configurations and motors stay. This cannot be undone (until you save, opening the file again brings them back).`,
+      `Delete ${n} simulation${n === 1 ? "" : "s"}`,
+    );
+    if (sure) await act("app_clear", { what: "simulations" });
+  }
+
   pageMenu(() => [
     { label: "New simulation", run: newSim },
+    { label: "Delete all simulations…", danger: true, off: (!sims.length || running) && "No simulations", run: clearSims },
     { label: "Run the selected one", off: (!current || running) && "Nothing to run", run: () => runSims(false) },
     { label: "Run all", off: (!sims.length || running) && "Nothing to run", run: () => runSims(true) },
     { label: "Video of the selected flight…", off: !current && "No simulation", run: () => (video = true) },
@@ -137,6 +150,7 @@
     <button class="btn primary" disabled={!current || running} onclick={() => runSims(false)}><Play size={15} /> Run</button>
     <button class="btn" disabled={!sims.length || running} onclick={() => runSims(true)}><PlayCircle size={15} /> Run all</button>
     <button class="btn" disabled={!current} onclick={() => current && act("app_sim_delete", { simulation: current.index })}><Trash2 size={15} /> Delete</button>
+    <button class="btn" disabled={!sims.length || running} onclick={clearSims} title="Start fresh: delete every simulation"><Eraser size={15} /> Delete all…</button>
     <button class="btn" disabled={!current || running} onclick={() => (video = true)} title="The selected flight as a video"><Clapperboard size={15} /> Video</button>
     {#if running}<RocketLoader size="small" />{/if}
   </div>

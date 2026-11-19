@@ -315,7 +315,13 @@ final class AppFlights {
 		for (Simulation s : todo) {
 			Map<String, Object> m = new LinkedHashMap<>();
 			m.put("name", s.getName());
-			if (!s.getRocket().getFlightConfiguration(s.getFlightConfigurationId()).hasMotors()) {
+			String cid = s.getFlightConfigurationId().toString();
+			List<String> lost = d.missingMotors.stream().filter(u -> u.configId().equals(cid)).map(u -> u.label() + " in " + u.mountName()).toList();
+			if (!lost.isEmpty()) {
+				m.put("error", "Not in the motor database: " + String.join(", ", lost) + ". Import its .rse or .eng file on the Motors page "
+						+ "(Import motor file) and it goes back in its place.");
+				m.put("errorKind", ToolException.Kind.INPUT.id());
+			} else if (!s.getRocket().getFlightConfiguration(s.getFlightConfigurationId()).hasMotors()) {
 				m.put("error", "The configuration has no motors: choose one on the Motors page.");
 				m.put("errorKind", ToolException.Kind.INPUT.id());
 			} else {
@@ -339,9 +345,32 @@ final class AppFlights {
 		return Map.of("runs", out);
 	}
 
+	/** The same flights on OpenRocket's own drag, by simulation, kept while the design and its options stay the same. */
+	private static final Map<Simulation, Object[]> OPENROCKET_DRAG = java.util.Collections.synchronizedMap(new java.util.WeakHashMap<>());
+
+	/** {@code s} flown again on OpenRocket's drag alone (the design flies on a RASAero table or the high-speed model). */
+	static Simulation onOpenRocketDrag(Designs.Design d, Simulation s) {
+		String stamp = Sims.stamp(s);
+		Object[] kept = OPENROCKET_DRAG.get(s);
+		if (kept != null && kept[0].equals(stamp)) {
+			return (Simulation) kept[1];
+		}
+		Simulation copy = io.github.openrocketmcp.or.Variants.of(s, d.doc, null, null);
+		io.github.openrocketmcp.or.AeroTable.without(copy);
+		Sims.run(copy);
+		OPENROCKET_DRAG.put(s, new Object[] { stamp, copy });
+		return copy;
+	}
+
 	static Map<String, Object> series(Context ctx, Args a) {
 		Designs.Design d = ctx.designs.get(a.str("designId"));
 		Simulation s = sim(d, a.integer("simulation", -1));
+		if (a.bool("openRocketDrag", false)) {
+			if (s.getSimulatedData() == null) {
+				throw new ToolException("Run the simulation first.");
+			}
+			s = onOpenRocketDrag(d, s);
+		}
 		FlightData f = s.getSimulatedData();
 		if (f == null || f.getBranchCount() == 0) {
 			throw new ToolException("Run the simulation first.");

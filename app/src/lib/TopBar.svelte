@@ -59,9 +59,11 @@
         {@const rep = app.design.importReport}
         {@const n = (rep?.findings ?? []).filter((f) => f.level !== "note").length}
         {@const isProject = !!app.design.project}
+        {@const what = isProject ? "Project" : rep?.format === "OpenRocket" ? "Opened with changes" : `Imported from ${rep?.format}`}
+        <!-- Short, and never squeezed: the name gives way first. The whole story is in the tooltip and the report. -->
         <button class="imported" class:warn={n > 0} onclick={() => (ui.importReport = true)}
-          title={isProject ? "What came with this project, and what to check" : `What came in from ${rep?.file}, what was left out and what to check`}>
-          {isProject ? "Project" : rep?.format === "OpenRocket" ? "Opened with changes" : `Imported from ${rep?.format}`}{n ? ` · ${n} to check` : ""}
+          title={`${what}${n ? `: ${n} to check` : ""}. ${isProject ? "What came with this project, and what to check" : `What came in from ${rep?.file}, what was left out and what to check`}`}>
+          {#if n}<TriangleAlert size={12} /> {n} to check{:else}{what}{/if}
         </button>
       {/if}
     </div>
@@ -75,7 +77,8 @@
 
   {#if app.busy > 0}<span class="busy" title="Working"><RocketLoader size="tiny" /></span>{/if}
 
-  {#if app.design}
+  {#if app.design && app.page !== "motors"}
+    <!-- The Motors page has its own, bigger configuration chooser: one is enough there. -->
     <label class="config" data-tour="config">
       <span>Configuration</span>
       <select class="select" value={app.design.selected} onchange={(e) => selectConfig((e.target as HTMLSelectElement).value)}>
@@ -256,12 +259,17 @@
     color: var(--chrome-ink-2);
   }
   .config .select {
-    max-width: 240px;
+    max-width: 200px;
     color: var(--ink);
   }
-  @media (max-width: 1200px) {
+  @media (max-width: 1500px) {
     .config > span {
       display: none;
+    }
+  }
+  @media (min-width: 1101px) and (max-width: 1500px) {
+    .find {
+      width: 150px;
     }
   }
   .split {
@@ -275,13 +283,17 @@
   }
   .title .name {
     flex: 0 1 auto;
-    min-width: 9ch;
+    min-width: 12ch;
+  }
+  .title .edited {
+    flex: none;
   }
   .imported {
-    flex: 0 2 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    align-self: center;
     margin-left: 8px;
     padding: 1px 8px;
     border: 1px solid var(--line);

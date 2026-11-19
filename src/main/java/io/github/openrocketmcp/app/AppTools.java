@@ -378,6 +378,12 @@ public final class AppTools {
 		add(s, new ToolDef("app_sim_run", "App: run simulations", "Run one simulation, or all of them.",
 				Schema.object().str("designId", DESIGN, true).integer("simulation", "Index (omit for all).", false).build(), false,
 				a -> AppFlights.simRun(ctx, a)));
+		add(s, new ToolDef("app_clear", "App: start fresh",
+				"configurations: every flight configuration but the active one goes, and that one is emptied (no motors, deployment and "
+						+ "separation back to each part's default, name automatic); simulations stay, with their launch conditions, and fly "
+						+ "it. simulations: every simulation is deleted; configurations and motors stay.",
+				Schema.object().str("designId", DESIGN, true).enumStr("what", "configurations or simulations.", true, "configurations", "simulations")
+						.build(), false, a -> AppMotors.clear(ctx, a)));
 		add(s, new ToolDef("app_sim_delete", "App: delete a simulation", "Delete a simulation.",
 				Schema.object().str("designId", DESIGN, true).integer("simulation", "Index.", true).build(), false, a -> {
 					Designs.Design d = ctx.designs.get(a.str("designId"));
@@ -388,7 +394,8 @@ public final class AppTools {
 				}));
 		add(s, new ToolDef("app_series", "App: flight data", "Flight data of a simulation for plotting, in SI.",
 				Schema.object().str("designId", DESIGN, true).integer("simulation", "Index.", true)
-						.integer("branch", "Branch (stage) index, default 0.", false).build(),
+						.integer("branch", "Branch (stage) index, default 0.", false)
+						.bool("openRocketDrag", "The same flight on OpenRocket's own drag (when the design flies on a RASAero table or the high-speed model), to plot beside it.", false).build(),
 				true, a -> AppFlights.series(ctx, a)));
 		add(s, new ToolDef("app_choose_file", "App: choose a file", "The system's open or save dialog; returns the chosen path.",
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)

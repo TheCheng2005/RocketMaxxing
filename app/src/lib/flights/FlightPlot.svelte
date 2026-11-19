@@ -9,6 +9,7 @@
   import { context, copyText, type MenuItem } from "../menu/menu.svelte";
   import { analysis } from "../analysis/store.svelte";
   import { fd } from "../flightdata/store.svelte";
+  import { request } from "../search/ui.svelte";
 
   // The Flights page's plot: any flight quantity against time or against another quantity, for the selected
   // simulation, with other simulations, each stage of a staged rocket and the measured flight on the same axes.
@@ -120,6 +121,32 @@
     });
   });
 
+  // The design flies on a drag table (RASAero's export, or the high-speed model): the same flight on OpenRocket's own
+  // drag can be drawn beside it, dashed, to see what the table changes.
+  let table = $derived(app.design?.aeroTable ? (app.design.aeroTable === "RocketMaxxing high-speed model" ? "high-speed model" : "RASAero") : null);
+  let withOR = $state(false);
+  let orFlights = $state<Record<number, Flight>>({});
+  let orStamp = "";
+  $effect(() => {
+    const on = withOR && !!table;
+    const designId = app.design?.designId;
+    const sim = current.index;
+    const stamp = `${plotKey}/${app.revision}/${designId}/${sim}`;
+    untrack(async () => {
+      if (!on || !designId || !ran(current)) return void (orFlights = {});
+      if (stamp === orStamp && Object.keys(orFlights).length) return;
+      orStamp = stamp;
+      try {
+        const first = await call<Flight>("app_series", { designId, simulation: sim, branch: 0, openRocketDrag: true });
+        const got: Record<number, Flight> = { 0: first };
+        for (let b = 1; b < first.branches.length; b++) got[b] = await call<Flight>("app_series", { designId, simulation: sim, branch: b, openRocketDrag: true });
+        if (stamp === orStamp) orFlights = got;
+      } catch {
+        orFlights = {};
+      }
+    });
+  });
+
   let primary = $derived(flights[key(current.index, 0)]);
   /** Stage names of the selected simulation (one for a single-stage rocket). */
   let stages = $derived(primary?.branches ?? []);
@@ -141,7 +168,14 @@
       first.branches.forEach((name, b) => {
         const f = flights[key(s.index, b)];
         if (!f || hiddenNow.includes(b)) return;
-        const parts = [many ? s.name : "", first.branches.length > 1 ? name : ""].filter(Boolean);
+        const parts = [many ? s.name : "", first.branches.length > 1 ? name : "", withOR && table && s.index === current.index ? `${table} drag` : ""].filter(Boolean);
+        out.push({ flight: f, tag: parts.join(", ") });
+      });
+    }
+    if (withOR && table) {
+      Object.entries(orFlights).forEach(([b, f]) => {
+        if (hiddenNow.includes(Number(b))) return;
+        const parts = [many ? current.name : "", f.branches.length > 1 ? f.branches[Number(b)] : "", "OpenRocket drag"].filter(Boolean);
         out.push({ flight: f, tag: parts.join(", ") });
       });
     }
@@ -385,6 +419,17 @@
       <Plot x={plot.x} series={plot.series} xLabel={plot.xLabel} leftLabel={plot.left} rightLabel={plot.right} events={plot.events} height={plotH}
         name={`${app.design?.name ?? "Rocket"} ${current.name} plot`} {title}
         pickAxis={(i, side) => { const n = plot!.series[i]?.label.split(" (")[0].split(" · ")[0]; if (n && chosen.includes(n)) axes = { ...axes, [n]: side }; }} />
+      {#if table}
+        <div class="pickrow">
+          <label class="tick" title="The same flight flown again on OpenRocket's own drag, drawn beside this one">
+            <input type="checkbox" bind:checked={withOR} /> Beside it: the same flight on OpenRocket's own drag
+          </label>
+          <span class="muted small">This flight uses the {table} drag{table === "RASAero" ? " imported on the Design page" : " (Design › High-speed drag)"}.</span>
+        </div>
+      {:else if (current.results?.maxMach ?? 0) > 0.8}
+        <p class="muted small dragnote">Drag: OpenRocket's only. To plot RASAero beside it, import RASAero's aero export, or use the built-in high-speed model, in
+          <button class="link" onclick={() => { app.page = "design"; request("aero"); }}>Design › High-speed drag</button>.</p>
+      {/if}
       {#if stages.length > 1}
         <div class="pickrow" id="plot-stages">
           <span class="clabel">Stages</span>
@@ -467,6 +512,12 @@
 </div>
 
 <style>
+  .small {
+    font-size: calc(12px * var(--text));
+  }
+  .dragnote {
+    margin: 4px 0 0;
+  }
   .holder {
     flex: 1;
     min-width: 0;

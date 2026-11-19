@@ -42,6 +42,8 @@ public final class Designs {
 		public final History history = new History();
 		/** What OpenRocket reported while reading the file (older versions, RockSim imports); empty for most files. */
 		public final List<String> loadWarnings = new ArrayList<>();
+		/** Motors the file names that the motor database does not have yet; put back when their file is imported. */
+		public final List<MissingMotors.Use> missingMotors = new java.util.concurrent.CopyOnWriteArrayList<>();
 		/** What a RocketMaxxing project (.rmx) brought besides the design, for the app to offer: standards, plots, logs. */
 		public com.google.gson.JsonObject project;
 		/** The file it was imported from when that is not an .ork (a RockSim .rkt); it is saved as .ork elsewhere. */
@@ -121,6 +123,9 @@ public final class Designs {
 			d.importedFrom = p;
 		}
 		d.loadWarnings.addAll(warnings);
+		if (ork) {
+			findMissingMotors(d, p);
+		}
 		try {
 			ImportCheck.Report report = ImportCheck.check(p, doc, warnings);
 			if (!ork || !report.findings().isEmpty()) {
@@ -130,6 +135,53 @@ public final class Designs {
 			// The check is advice: a design it cannot look at still opens.
 		}
 		return d;
+	}
+
+	/**
+	 * Which motors the file names that OpenRocket left out (not in the database), put back the ones the team's imported
+	 * motors already have, and say plainly what is still missing and how to put it back.
+	 */
+	static void findMissingMotors(Design d, Path file) {
+		d.missingMotors.addAll(MissingMotors.missing(d.doc.getRocket(), MissingMotors.read(file)));
+		if (d.missingMotors.isEmpty()) {
+			return;
+		}
+		List<String> back = MissingMotors.restore(d);
+		d.doc.setSaved(true); // the design is as the file has it, not changed
+		d.loadWarnings.removeIf(w -> w.startsWith("No motor with designation"));
+		if (!back.isEmpty()) {
+			d.loadWarnings.add("Put back from the motors imported before: " + String.join("; ", back) + ".");
+		}
+		java.util.Map<String, List<String>> still = new java.util.LinkedHashMap<>();
+		for (MissingMotors.Use u : d.missingMotors) {
+			still.computeIfAbsent(u.label() + " in " + u.mountName(), k -> new ArrayList<>())
+					.add(u.configName().isEmpty() ? u.configId() : "\"" + u.configName() + "\"");
+		}
+		for (var e : still.entrySet()) {
+			d.loadWarnings.add("The motor " + e.getKey() + " (configuration " + String.join(", ", e.getValue())
+					+ ") is not in the motor database: it is a motor imported into OpenRocket elsewhere. Import its .rse or "
+					+ ".eng file (Motors page, Import motor file) and it goes back in its place.");
+		}
+	}
+
+	/** After a motor file is imported: every open design gets back the motors it was waiting for. */
+	public synchronized List<String> restoreMissingMotors() {
+		List<String> out = new ArrayList<>();
+		for (Design d : all()) {
+			if (d.missingMotors.isEmpty()) {
+				continue;
+			}
+			boolean saved = d.doc.isSaved();
+			List<String> back = MissingMotors.restore(d);
+			d.doc.setSaved(saved);
+			for (String b : back) {
+				out.add(d.name() + ": " + b);
+			}
+			if (back.size() > 0) {
+				d.loadWarnings.removeIf(w -> w.startsWith("The motor ") && d.missingMotors.stream().noneMatch(u -> w.contains(u.label())));
+			}
+		}
+		return out;
 	}
 
 	public synchronized Design openExample(String name) throws Exception {
