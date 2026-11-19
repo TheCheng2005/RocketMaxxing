@@ -36,7 +36,10 @@
     if (sc) scaling = sc.detail ?? "rocket";
     if (take("aero")) {
       setOpen("design.aero", true);
-      setTimeout(() => document.querySelector('[data-panel="design.aero"]')?.scrollIntoView({ block: "start", behavior: reducedMotion() ? "auto" : "smooth" }), 100);
+      // again once the summary and rule check above it have loaded and pushed it down
+      const show = (smooth: boolean) => document.querySelector('[data-panel="design.aero"]')?.scrollIntoView({ block: "start", behavior: smooth && !reducedMotion() ? "smooth" : "auto" });
+      setTimeout(() => show(true), 100);
+      setTimeout(() => show(false), 1200);
     }
   });
 

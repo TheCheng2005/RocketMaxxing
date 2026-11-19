@@ -43,7 +43,7 @@ public final class Designs {
 		/** What OpenRocket reported while reading the file (older versions, RockSim imports); empty for most files. */
 		public final List<String> loadWarnings = new ArrayList<>();
 		/** Motors the file names that the motor database does not have yet; put back when their file is imported. */
-		public final List<MissingMotors.Use> missingMotors = new ArrayList<>();
+		public final List<MissingMotors.Use> missingMotors = new java.util.concurrent.CopyOnWriteArrayList<>();
 		/** What a RocketMaxxing project (.rmx) brought besides the design, for the app to offer: standards, plots, logs. */
 		public com.google.gson.JsonObject project;
 		/** The file it was imported from when that is not an .ork (a RockSim .rkt); it is saved as .ork elsewhere. */

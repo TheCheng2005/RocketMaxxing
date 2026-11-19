@@ -388,7 +388,8 @@ public final class AppTools {
 				}));
 		add(s, new ToolDef("app_series", "App: flight data", "Flight data of a simulation for plotting, in SI.",
 				Schema.object().str("designId", DESIGN, true).integer("simulation", "Index.", true)
-						.integer("branch", "Branch (stage) index, default 0.", false).build(),
+						.integer("branch", "Branch (stage) index, default 0.", false)
+						.bool("openRocketDrag", "The same flight on OpenRocket's own drag (when the design flies on a RASAero table or the high-speed model), to plot beside it.", false).build(),
 				true, a -> AppFlights.series(ctx, a)));
 		add(s, new ToolDef("app_choose_file", "App: choose a file", "The system's open or save dialog; returns the chosen path.",
 				Schema.object().enumStr("mode", "open, save or folder.", true, "open", "save", "folder").str("name", "Suggested file name.", false)

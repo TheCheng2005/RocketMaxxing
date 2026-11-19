@@ -167,7 +167,7 @@ public final class MissingMotors {
 		}
 	}
 
-	static MotorMount mount(Rocket rocket, Use u) {
+	public static MotorMount mount(Rocket rocket, Use u) {
 		for (RocketComponent c : rocket) {
 			if (c.getID().toString().equals(u.mountId()) && c instanceof MotorMount mm) {
 				return mm;

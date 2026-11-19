@@ -93,6 +93,16 @@ final class AppMotors {
 		out.put("mounts", mounts);
 		out.put("recovery", recovery);
 		out.put("stages", stages);
+		// Motors the file has that the database lacks (a team motor imported elsewhere): the page shows them in their mount.
+		List<Map<String, Object>> missing = new ArrayList<>();
+		for (io.github.openrocketmcp.or.MissingMotors.Use u : d.missingMotors) {
+			MotorMount mm = io.github.openrocketmcp.or.MissingMotors.mount(r, u);
+			if (mm != null) {
+				missing.add(Map.of("configuration", u.configId(), "mount", Components.shortId((RocketComponent) mm), "manufacturer",
+						u.manufacturer(), "designation", u.designation()));
+			}
+		}
+		out.put("missing", missing);
 		return out;
 	}
 

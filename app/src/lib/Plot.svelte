@@ -158,7 +158,11 @@
       scales: { x: { time: false } },
       legend: { show: false },
       // A box zooms both ways; a drag that stays within 30 px of level (or of upright) zooms along that direction only.
-      cursor: { drag: untrack(() => mode) === "both" ? { x: true, y: true, uni: 30 } : { x: untrack(() => mode) === "x", y: untrack(() => mode) === "y" } },
+      // The zoom box is drawn and followed here (box(), below), not by uPlot: its drag ended only on a mouse-up inside the
+      // window, so one let go outside it (or a redraw mid-drag) left the box stuck on the plot.
+      // The zoom box is ours (box() below). uPlot's own mousedown would start its drag too, and its next mousemove would
+      // clear the box we draw: it never starts.
+      cursor: { drag: { x: false, y: false, setScale: false }, bind: { mousedown: () => () => null } },
       series: [
         xy ? {} : { label: xLabel },
         ...series.map((s) =>
@@ -264,6 +268,7 @@
     over.addEventListener("dblclick", reset);
     over.addEventListener("wheel", wheel, { passive: false });
     over.addEventListener("mousedown", grab, true);
+    over.addEventListener("pointerdown", box);
     over.addEventListener("mouseleave", () => (readout = null));
     // Each axis by itself: the wheel over it zooms it, a double-click fits it again.
     const keys = ["x", "left", ...(hasRight ? ["right"] : [])];
@@ -367,6 +372,75 @@
     const fx = (e.clientX - box.left) / box.width, fy = 1 - (e.clientY - box.top) / box.height;
     const k = Math.exp(Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 60) * 0.004);
     zoomBy(k, scalesFor(e.ctrlKey || e.metaKey ? "both" : mode), fx, fy);
+  }
+
+  /**
+   * Drag a box to zoom to it. A box zooms both ways; a drag within 30 px of level (or of upright) zooms along that
+   * direction only; X only and Y only zoom that axis whatever the shape. The pointer is captured, so letting go
+   * anywhere (outside the window too) ends it, and Escape drops the box.
+   */
+  function box(e: PointerEvent) {
+    const p = plot;
+    if (!p || e.button !== 0 || e.shiftKey || e.pointerType === "touch") return;
+    const u: uPlot = p;
+    const over = u.over;
+    const r = over.getBoundingClientRect();
+    const w = r.width, h = r.height;
+    const x0 = e.clientX - r.left, y0 = e.clientY - r.top;
+    const m = mode;
+    let sel = { left: 0, top: 0, width: 0, height: 0 };
+    let useX = false, useY = false;
+    try {
+      over.setPointerCapture(e.pointerId);
+    } catch {
+      /* not capturable: window listeners below still end it */
+    }
+    const clamp = (v: number, hi: number) => Math.max(0, Math.min(hi, v));
+    const move = (ev: PointerEvent) => {
+      if (plot !== u) return end(false); // redrawn with new data meanwhile
+      const x1 = clamp(ev.clientX - r.left, w), y1 = clamp(ev.clientY - r.top, h);
+      const dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+      useX = m !== "y";
+      useY = m !== "x";
+      if (m === "both") {
+        if (dy < 30 && dx > dy) useY = false;
+        else if (dx < 30 && dy > dx) useX = false;
+      }
+      sel = { left: useX ? Math.min(x0, x1) : 0, top: useY ? Math.min(y0, y1) : 0, width: useX ? dx : w, height: useY ? dy : h };
+      u.setSelect(sel, false);
+    };
+    const key = (ev: KeyboardEvent) => ev.key === "Escape" && end(false);
+    const done = () => end(true);
+    const cancel = () => end(false);
+    function end(apply: boolean) {
+      over.removeEventListener("pointermove", move);
+      over.removeEventListener("pointerup", done);
+      over.removeEventListener("pointercancel", cancel);
+      over.removeEventListener("lostpointercapture", done);
+      removeEventListener("pointerup", done);
+      removeEventListener("keydown", key, true);
+      removeEventListener("blur", cancel);
+      if (plot !== u) return;
+      u.setSelect({ left: 0, top: 0, width: 0, height: 0 }, false);
+      // a click, or a box too thin to mean anything, zooms nothing
+      if (!apply || (useX && sel.width < 4) || (useY && sel.height < 4) || (!useX && !useY)) return;
+      const want: Record<string, [number, number]> = {};
+      if (useX) want.x = [u.posToVal(sel.left, "x"), u.posToVal(sel.left + sel.width, "x")];
+      if (useY) {
+        for (const [k] of ranges(u)) {
+          if (k !== "x") want[k] = [u.posToVal(sel.top + sel.height, k), u.posToVal(sel.top, k)];
+        }
+      }
+      setScales(u, want);
+      zoomed = true;
+    }
+    over.addEventListener("pointermove", move);
+    over.addEventListener("pointerup", done);
+    over.addEventListener("pointercancel", cancel);
+    over.addEventListener("lostpointercapture", done);
+    addEventListener("pointerup", done);
+    addEventListener("keydown", key, true);
+    addEventListener("blur", cancel);
   }
 
   /** Shift-drag, or the middle button, moves the view without changing its size. */

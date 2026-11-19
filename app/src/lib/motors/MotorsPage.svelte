@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Flame, Layers, Umbrella, Plus, Copy, PencilLine, Trash2, X } from "@lucide/svelte";
+  import { Flame, Layers, Umbrella, Plus, Copy, PencilLine, Trash2, X, FileUp, TriangleAlert } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { call } from "../api";
   import { act, app, ask, run, selectConfig } from "../state.svelte";
@@ -43,6 +43,7 @@
     mounts: Mount[];
     recovery: Recovery[];
     stages: Stage[];
+    missing?: { configuration: string; mount: string; manufacturer: string; designation: string }[];
   }
 
   let data = $state<Configs | null>(null);
@@ -201,133 +202,134 @@
   ]);
 </script>
 
-{#snippet configCell(c: { id: string; name: string }, table: string)}
-  <td class="cfg" use:context={() => configItems(c.id)}>
-    <label class="radio">
-      <input type="radio" name="active-{table}" checked={c.id === data?.selected} onchange={() => selectConfig(c.id)} />
-      <span>{c.name}</span>
-    </label>
-  </td>
-{/snippet}
-
 <div class="page">
   <div class="toolbar">
-    <button class="btn" onclick={newConfig}><Plus size={15} /> New configuration</button>
-    <button class="btn" disabled={!data} onclick={() => data && act("app_config", { action: "copy", configuration: data.selected })}><Copy size={15} /> Copy</button>
+    <!-- One configuration at a time: choose it here (it becomes the active one everywhere), then everything below is it. -->
+    <label class="cfgpick" use:context={() => (data ? configItems(data.selected) : [])}>
+      <span>Configuration</span>
+      <select class="select" value={data?.selected ?? ""} disabled={!data} onchange={(e) => selectConfig((e.target as HTMLSelectElement).value)} aria-label="Flight configuration">
+        {#each data?.configurations ?? [] as c (c.id)}<option value={c.id}>{c.name}{data?.missing?.some((x) => x.configuration === c.id) ? " (motor missing)" : c.hasMotors ? "" : " (no motor)"}</option>{/each}
+      </select>
+    </label>
+    {#if data}<span class="muted note">{data.configurations.length} configuration{data.configurations.length === 1 ? "" : "s"}</span>{/if}
+    <span class="grow"></span>
+    <button class="btn" onclick={newConfig}><Plus size={15} /> New</button>
+    <button class="btn" disabled={!data} onclick={() => data && act("app_config", { action: "copy", configuration: data.selected })} title="A copy of this configuration, to change one thing"><Copy size={15} /> Copy</button>
     <button class="btn" disabled={!data} onclick={() => rename()}><PencilLine size={15} /> Rename</button>
     <button class="btn" disabled={(data?.configurations.length ?? 0) < 2} onclick={() => data && act("app_config", { action: "remove", configuration: data.selected })}><Trash2 size={15} /> Delete</button>
-    <span class="muted note">Copy, rename and delete act on the selected configuration.</span>
   </div>
 
   {#if data}
+    {@const cid = data.selected}
     <Panel id="motors.motors" icon={Flame} title="Motors">
-      <table class="grid">
-        <thead>
-          <tr>
-            <th class="cfg">Configuration</th>
-            {#each data.mounts as m (m.id)}<th>{m.name} <span class="sub">({m.stage}, Ø {fmt(m.innerDiameter, "LENGTH")})</span></th>{/each}
-          </tr>
-        </thead>
-        <tbody>
-          {#each data.configurations as c (c.id)}
-            <tr class:sel={c.id === data.selected}>
-              {@render configCell(c, "motors")}
-              {#each data.mounts as m (m.id)}
-                {@const mo = m.motors[c.id]}
-                <td class="cell" use:context={() => motorItems(m, c.id)}>
-                  {#if mo?.designation}
-                    <div class="motor">
-                      <button class="pick" onclick={() => (picking = { mount: m, configuration: c.id })} title="Change motor">
-                        <b>{mo.manufacturer} {mo.designation}</b>
-                        <span class="muted">{fmt(mo.totalImpulse, "IMPULSE")}, {fmt(mo.burnTime, "TIME", 3)}</span>
-                      </button>
-                      <select class="select delay" title="Ejection delay" value={mo.plugged ? "plugged" : String(mo.ejectionDelay)} onchange={(e) => setDelay(m, c.id, (e.target as HTMLSelectElement).value)}>
-                        {#each delays(mo) as d}<option value={String(d)}>{num(d, 3)} s</option>{/each}
-                        <option value="plugged">Plugged</option>
-                      </select>
-                      <button class="x" title="Remove motor" onclick={() => act("app_motor_delay", { mount: m.id, configuration: c.id, remove: true })}><X size={14} /></button>
-                    </div>
+      {#if data.mounts.length === 0}
+        <p class="muted pad">No motor mount. Tick "This is a motor mount" on an inner tube or body tube (Design page).</p>
+      {:else}
+        <div class="cards">
+          {#each data.mounts as m (m.id)}
+            {@const mo = m.motors[cid]}
+            <div class="card" use:context={() => motorItems(m, cid)}>
+              <div class="ch"><b>{m.name}</b><span class="sub">{m.stage} · mount Ø {fmt(m.innerDiameter, "LENGTH")}</span></div>
+              {#if mo?.designation}
+                <div class="mname">{mo.manufacturer} <b>{mo.designation}</b></div>
+                <dl class="stats">
+                  <dt>Total impulse</dt><dd>{fmt(mo.totalImpulse, "IMPULSE")}</dd>
+                  <dt>Average thrust</dt><dd>{fmt(mo.averageThrust, "FORCE")}</dd>
+                  <dt>Burn time</dt><dd>{fmt(mo.burnTime, "TIME", 3)}</dd>
+                  <dt>Size</dt><dd>Ø {fmt(mo.diameter, "LENGTH")} × {fmt(mo.length, "LENGTH")}</dd>
+                  <dt>Ejection delay</dt>
+                  <dd>
+                    <select class="select delay" title="Ejection delay" value={mo.plugged ? "plugged" : String(mo.ejectionDelay)} onchange={(e) => setDelay(m, cid, (e.target as HTMLSelectElement).value)}>
+                      {#each delays(mo) as d}<option value={String(d)}>{num(d, 3)} s</option>{/each}
+                      <option value="plugged">Plugged</option>
+                    </select>
+                  </dd>
+                </dl>
+                <div class="acts">
+                  <button class="btn small" onclick={() => (picking = { mount: m, configuration: cid })}>Change motor…</button>
+                  <button class="btn small" onclick={() => { pickerStart = "import"; picking = { mount: m, configuration: cid }; }}><FileUp size={13} /> Import motor file…</button>
+                  <button class="btn small ghost" title="Remove the motor from this mount" onclick={() => act("app_motor_delay", { mount: m.id, configuration: cid, remove: true })}><X size={13} /> Remove</button>
+                </div>
+              {:else}
+                {@const lost = data.missing?.find((x) => x.configuration === cid && x.mount === m.id)}
+                {#if lost}
+                  <div class="lost">
+                    <TriangleAlert size={15} />
+                    <span>The design file has <b>{lost.manufacturer} {lost.designation}</b> here, but it is not in the motor database (a motor
+                      imported into OpenRocket on another computer). Import its .rse or .eng file and it goes back in this mount, in every configuration that uses it.</span>
+                  </div>
+                {:else}
+                  <p class="none">No motor in this mount for this configuration.</p>
+                {/if}
+                <div class="acts">
+                  {#if lost}
+                    <button class="btn small primary" onclick={() => { pickerStart = "import"; picking = { mount: m, configuration: cid }; }}><FileUp size={13} /> Import {lost.designation} (.rse, .eng)…</button>
+                    <button class="btn small" onclick={() => (picking = { mount: m, configuration: cid })}>Choose another motor…</button>
                   {:else}
-                    <button class="empty" onclick={() => (picking = { mount: m, configuration: c.id })}>None (click to choose)</button>
+                    <button class="btn small primary" onclick={() => (picking = { mount: m, configuration: cid })}>Choose motor…</button>
+                    <button class="btn small" onclick={() => { pickerStart = "import"; picking = { mount: m, configuration: cid }; }}><FileUp size={13} /> Import motor file (.rse, .eng)…</button>
                   {/if}
-                </td>
-              {/each}
-              {#if data.mounts.length === 0}<td class="muted">No motor mount. Tick "This is a motor mount" on an inner tube or body tube.</td>{/if}
-            </tr>
+                </div>
+              {/if}
+              <div class="pos">
+                <label class="over" for="overhang-{m.id}" title="Where the motor sits along its mount. It is the same in every configuration, as in OpenRocket.">Overhang
+                  <QuantityInput id="overhang-{m.id}" value={m.overhang} dim="LENGTH" commit={(v) => act("app_edit", { component: m.id, key: "motorOverhang", value: v })} />
+                </label>
+                <div class="fit" class:warn={mo?.length && m.length + m.overhang - mo.length < -1e-6}>{sits(m, mo)}</div>
+              </div>
+            </div>
           {/each}
-        </tbody>
-        {#if data.mounts.length}
-          <tfoot>
-            <tr>
-              <th class="cfg" title="Where the motor sits along its mount. It is the same in every configuration, as in OpenRocket.">Position in the mount</th>
-              {#each data.mounts as m (m.id)}
-                {@const mo = m.motors[data.selected]}
-                <td class="cell pos">
-                  <label class="over" for="overhang-{m.id}">Overhang
-                    <QuantityInput id="overhang-{m.id}" value={m.overhang} dim="LENGTH" commit={(v) => act("app_edit", { component: m.id, key: "motorOverhang", value: v })} />
-                  </label>
-                  <div class="fit" class:warn={mo?.length && m.length + m.overhang - mo.length < -1e-6}>{sits(m, mo)}</div>
-                </td>
-              {/each}
-            </tr>
-          </tfoot>
-        {/if}
-      </table>
+        </div>
+      {/if}
     </Panel>
 
     <Panel id="motors.recovery" icon={Umbrella} title="Recovery">
-      <table class="grid">
-        <thead>
-          <tr>
-            <th class="cfg">Configuration</th>
-            {#each data.recovery as r (r.id)}<th>{r.name} <span class="sub">({r.type === "Parachute" ? "parachute" : "streamer"})</span></th>{/each}
-          </tr>
-        </thead>
-        <tbody>
-          {#each data.configurations as c (c.id)}
-            <tr class:sel={c.id === data.selected}>
-              {@render configCell(c, "recovery")}
-              {#each data.recovery as r (r.id)}
-                {@const d = r.deployment[c.id]}
-                <td class="cell" use:context={() => deployItems(r, c.id)}>
-                  <button class="pick" onclick={() => (editing = { kind: "deploy", id: r.id, name: r.name, configuration: c.id, event: d.event, altitude: d.altitude, delay: d.delay, all: false })}>
-                    {deployText(d)}
-                  </button>
-                </td>
-              {/each}
-              {#if data.recovery.length === 0}<td class="muted">No parachute or streamer.</td>{/if}
-            </tr>
+      {#if data.recovery.length === 0}
+        <p class="muted pad">No parachute or streamer.</p>
+      {:else}
+        <div class="rows">
+          {#each data.recovery as r (r.id)}
+            {@const d = r.deployment[cid]}
+            <div class="line" use:context={() => deployItems(r, cid)}>
+              <span class="ln">{r.name} <span class="sub">{r.type === "Parachute" ? "parachute" : "streamer"}</span></span>
+              <button class="btn small val" onclick={() => (editing = { kind: "deploy", id: r.id, name: r.name, configuration: cid, event: d.event, altitude: d.altitude, delay: d.delay, all: false })} title="Change when it deploys">{deployText(d)}</button>
+            </div>
           {/each}
-        </tbody>
-      </table>
+        </div>
+      {/if}
     </Panel>
 
-    <Panel id="motors.stages" icon={Layers} title="Stages" initial={stages.length > 0}>
-      {#if stages.length === 0}
-        <p class="muted pad">Single stage: nothing separates.</p>
-      {:else}
+    {#if stages.length}
+      <Panel id="motors.stages" icon={Layers} title="Stage separation">
+        <div class="rows">
+          {#each stages as st (st.id)}
+            {@const sp = st.separation[cid]}
+            <div class="line" use:context={() => stageItems(st, cid)}>
+              <span class="ln">{st.name}</span>
+              <button class="btn small val" onclick={() => (editing = { kind: "sep", id: st.id, name: st.name, configuration: cid, event: sp.event, altitude: 0, delay: sp.delay, all: false })} title="Change when it separates">{SEP[sp.event] ?? sp.event}{sp.delay > 0 ? " + " + num(sp.delay, 3) + " s" : ""}</button>
+            </div>
+          {/each}
+        </div>
+      </Panel>
+    {/if}
+
+    <!-- Every configuration side by side, for a look across them; closed until wanted. -->
+    <details class="all">
+      <summary>All {data.configurations.length} configurations at a glance</summary>
+      <div class="tablewrap">
         <table class="grid">
-          <thead>
-            <tr><th class="cfg">Configuration</th>{#each stages as s (s.id)}<th>{s.name} <span class="sub">(separation)</span></th>{/each}</tr>
-          </thead>
+          <thead><tr><th>Configuration</th>{#each data.mounts as m (m.id)}<th>{m.name}</th>{/each}</tr></thead>
           <tbody>
             {#each data.configurations as c (c.id)}
-              <tr class:sel={c.id === data.selected}>
-                {@render configCell(c, "stages")}
-                {#each stages as s (s.id)}
-                  {@const sp = s.separation[c.id]}
-                  <td class="cell" use:context={() => stageItems(s, c.id)}>
-                    <button class="pick" onclick={() => (editing = { kind: "sep", id: s.id, name: s.name, configuration: c.id, event: sp.event, altitude: 0, delay: sp.delay, all: false })}>
-                      {SEP[sp.event] ?? sp.event}{sp.delay > 0 ? " + " + num(sp.delay, 3) + " s" : ""}
-                    </button>
-                  </td>
-                {/each}
+              <tr class:sel={c.id === cid} onclick={() => selectConfig(c.id)} use:context={() => configItems(c.id)} title="Choose this configuration">
+                <td>{c.name}</td>
+                {#each data.mounts as m (m.id)}{@const mo = m.motors[c.id]}<td class:muted={!mo?.designation}>{mo?.designation ? `${mo.manufacturer} ${mo.designation}` : "none"}</td>{/each}
               </tr>
             {/each}
           </tbody>
         </table>
-      {/if}
-    </Panel>
+      </div>
+    </details>
   {/if}
 </div>
 
@@ -359,6 +361,131 @@
 {/if}
 
 <style>
+  .cfgpick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+  }
+  .cfgpick .select {
+    min-width: 260px;
+    max-width: 420px;
+    font-weight: 400;
+  }
+  .grow {
+    flex: 1;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(320px * var(--text)), 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    padding: 10px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .ch {
+    display: flex;
+    flex-direction: column;
+  }
+  .ch .sub {
+    font-size: calc(12px * var(--text));
+  }
+  .mname {
+    font-size: calc(16px * var(--text));
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 14px;
+    margin: 0;
+    align-items: center;
+  }
+  .stats dt {
+    color: var(--ink-3);
+    font-size: calc(12.5px * var(--text));
+  }
+  .stats dd {
+    margin: 0;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .lost {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--warn, #c98a00) 12%, transparent);
+    color: var(--ink);
+    font-size: calc(13px * var(--text));
+    line-height: 1.4;
+  }
+  .lost :global(svg) {
+    flex: none;
+    margin-top: 2px;
+    color: var(--warn, #c98a00);
+  }
+  .none {
+    margin: 0;
+    color: var(--ink-3);
+  }
+  .acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .btn.small {
+    height: calc(28px * var(--text));
+    padding: 0 10px;
+    font-size: calc(12.5px * var(--text));
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .pos {
+    border-top: 1px solid var(--line);
+    padding-top: 8px;
+  }
+  .rows {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 12px 10px;
+  }
+  .line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .line:last-child {
+    border-bottom: 0;
+  }
+  .ln .sub {
+    margin-left: 6px;
+    font-size: calc(12px * var(--text));
+  }
+  .all > summary {
+    cursor: pointer;
+    color: var(--ink-2);
+    padding: 4px 2px;
+  }
+  .tablewrap {
+    overflow-x: auto;
+    margin-top: 6px;
+  }
+  .all tr {
+    cursor: pointer;
+  }
   .page {
     flex: 1;
     min-height: 0;
@@ -382,77 +509,8 @@
     font-weight: 400;
     color: var(--ink-3);
   }
-  .cfg {
-    width: 240px;
-    min-width: 180px;
-  }
-  .radio {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .radio input {
-    accent-color: var(--select);
-  }
-  .cell {
-    min-width: 230px;
-  }
-  .motor {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-  .pick {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    border: 1px solid transparent;
-    background: transparent;
-    border-radius: var(--radius);
-    padding: 2px 6px;
-    text-align: left;
-    min-width: 0;
-  }
-  .pick:hover {
-    border-color: var(--line-strong);
-    background: var(--surface);
-  }
-  .pick b {
-    font-weight: 600;
-  }
-  .pick .muted {
-    font-size: calc(12px * var(--text));
-  }
   .delay {
     width: 92px;
-  }
-  .x {
-    display: grid;
-    place-items: center;
-    width: 24px;
-    height: 24px;
-    border: 0;
-    background: transparent;
-    color: var(--ink-3);
-    border-radius: 3px;
-  }
-  .x:hover {
-    background: var(--surface-3);
-    color: var(--bad);
-  }
-  .empty {
-    border: 1px dashed var(--line-strong);
-    background: transparent;
-    border-radius: var(--radius);
-    padding: 4px 8px;
-    color: var(--ink-3);
-    width: 100%;
-    text-align: left;
-  }
-  .empty:hover {
-    border-color: var(--select);
-    color: var(--ink);
   }
   .pad {
     padding: 8px 10px;
@@ -495,16 +553,6 @@
     display: flex;
     justify-content: flex-end;
     gap: 6px;
-  }
-  tfoot th,
-  tfoot td {
-    border-top: 1px solid var(--line-strong);
-    vertical-align: top;
-    text-align: left;
-  }
-  tfoot th {
-    font-weight: 600;
-    padding-top: 10px;
   }
   .over {
     display: inline-flex;
