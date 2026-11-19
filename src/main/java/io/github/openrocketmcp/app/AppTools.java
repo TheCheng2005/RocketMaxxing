@@ -378,6 +378,12 @@ public final class AppTools {
 		add(s, new ToolDef("app_sim_run", "App: run simulations", "Run one simulation, or all of them.",
 				Schema.object().str("designId", DESIGN, true).integer("simulation", "Index (omit for all).", false).build(), false,
 				a -> AppFlights.simRun(ctx, a)));
+		add(s, new ToolDef("app_clear", "App: start fresh",
+				"configurations: every flight configuration but the active one goes, and that one is emptied (no motors, deployment and "
+						+ "separation back to each part's default, name automatic); simulations stay, with their launch conditions, and fly "
+						+ "it. simulations: every simulation is deleted; configurations and motors stay.",
+				Schema.object().str("designId", DESIGN, true).enumStr("what", "configurations or simulations.", true, "configurations", "simulations")
+						.build(), false, a -> AppMotors.clear(ctx, a)));
 		add(s, new ToolDef("app_sim_delete", "App: delete a simulation", "Delete a simulation.",
 				Schema.object().str("designId", DESIGN, true).integer("simulation", "Index.", true).build(), false, a -> {
 					Designs.Design d = ctx.designs.get(a.str("designId"));

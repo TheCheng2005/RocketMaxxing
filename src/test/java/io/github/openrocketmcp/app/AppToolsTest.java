@@ -201,6 +201,40 @@ class AppToolsTest {
 	}
 
 	@Test
+	void clearingStartsFresh() {
+		String d = call("open_design", "{\"path\":\"docs/examples/maple-10k.ork\"}").get("designId").getAsString();
+		String id = "{\"designId\":\"" + d + "\"";
+		JsonObject cfg = call("app_configs", id + "}");
+		String sel = cfg.get("selected").getAsString();
+		call("app_config", id + ",\"action\":\"copy\",\"configuration\":\"" + sel + "\"}");
+		int before = call("app_configs", id + "}").getAsJsonArray("configurations").size();
+		assertTrue(before >= 2);
+		int sims = call("app_sims", id + "}").getAsJsonArray("simulations").size();
+		assertTrue(sims > 0);
+
+		// Configurations: one left, empty, and every simulation flies it.
+		JsonObject cleared = call("app_clear", id + ",\"what\":\"configurations\"}");
+		JsonObject after = call("app_configs", id + "}");
+		assertEquals(1, after.getAsJsonArray("configurations").size(), after.toString());
+		String kept = after.get("selected").getAsString();
+		assertEquals(kept, cleared.get("selected").getAsString());
+		assertFalse(after.getAsJsonArray("configurations").get(0).getAsJsonObject().get("hasMotors").getAsBoolean(), after.toString());
+		for (var s : call("app_sims", id + "}").getAsJsonArray("simulations")) {
+			assertEquals(kept, s.getAsJsonObject().get("configuration").getAsString());
+		}
+		assertTrue(call("app_sim_run", id + ",\"simulation\":0}").getAsJsonArray("runs").get(0).getAsJsonObject().has("error"),
+				"an empty configuration does not fly");
+		// Undo brings the configurations and motors back.
+		call("undo", id + "}");
+		assertEquals(before, call("app_configs", id + "}").getAsJsonArray("configurations").size());
+
+		// Simulations: none left; configurations untouched.
+		assertEquals(sims, call("app_clear", id + ",\"what\":\"simulations\"}").get("deleted").getAsInt());
+		assertEquals(0, call("app_sims", id + "}").getAsJsonArray("simulations").size());
+		assertEquals(before, call("app_configs", id + "}").getAsJsonArray("configurations").size());
+	}
+
+		@Test
 	void motorsSimulationsAndFlightData() {
 		String d = call("open_design", "{\"path\":\"docs/examples/maple-10k.ork\"}").get("designId").getAsString();
 		JsonObject quick = call("app_quick_flight", "{\"designId\":\"" + d + "\"}");

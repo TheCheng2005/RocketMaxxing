@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { Flame, Layers, Umbrella, Plus, Copy, PencilLine, Trash2, X, FileUp, TriangleAlert } from "@lucide/svelte";
+  import { Flame, Layers, Umbrella, Plus, Copy, PencilLine, Trash2, X, FileUp, TriangleAlert, Eraser } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { call } from "../api";
-  import { act, app, ask, run, selectConfig } from "../state.svelte";
+  import { act, app, ask, confirmIt, run, selectConfig } from "../state.svelte";
   import { fmt, num, type Dim } from "../units.svelte";
   import Panel from "../Panel.svelte";
   import MotorPicker from "./MotorPicker.svelte";
@@ -11,6 +11,7 @@
   import { analysis } from "../analysis/store.svelte";
   import { ui, take } from "../search/ui.svelte";
   import { toast } from "../state.svelte";
+  import { keys } from "../keys";
 
   // OpenRocket's "Motors & Configuration" tab: a row per flight configuration; motors per mount, recovery
   // deployment per device and separation per stage.
@@ -194,8 +195,21 @@
     picking = { mount: m, configuration: data.selected };
   });
 
+  /** Start fresh: one empty configuration (the active one, emptied), simulations kept and pointed at it. */
+  async function clearConfigs() {
+    if (!data) return;
+    const n = data.configurations.length;
+    const sure = await confirmIt(
+      "Clear all configurations",
+      `${n > 1 ? `The other ${n - 1} configuration${n === 2 ? "" : "s"} are deleted and this one is emptied` : "This configuration is emptied"}: no motors, and parachute deployment and stage separation back to each part's own setting. The simulations stay, with their launch conditions, and fly this configuration once it has motors. Undo (${keys("Z")}) brings the configurations back.`,
+      "Clear configurations",
+    );
+    if (sure) await act("app_clear", { what: "configurations" });
+  }
+
   pageMenu(() => [
     { label: "New configuration…", run: newConfig },
+    { label: "Clear all configurations…", danger: true, off: !data && "Loading", run: clearConfigs },
     { label: "Copy the active configuration", off: !data && "Loading", run: () => data && act("app_config", { action: "copy", configuration: data.selected }) },
     { label: "Rename the active configuration…", off: !data && "Loading", run: () => rename() },
     { label: "Rank motors for this rocket", run: toAnalysis("rank_motors") },
@@ -208,7 +222,7 @@
     <label class="cfgpick" use:context={() => (data ? configItems(data.selected) : [])}>
       <span>Configuration</span>
       <select class="select" value={data?.selected ?? ""} disabled={!data} onchange={(e) => selectConfig((e.target as HTMLSelectElement).value)} aria-label="Flight configuration">
-        {#each data?.configurations ?? [] as c (c.id)}<option value={c.id}>{c.name}{data?.missing?.some((x) => x.configuration === c.id) ? " (motor missing)" : c.hasMotors ? "" : " (no motor)"}</option>{/each}
+        {#each data?.configurations ?? [] as c (c.id)}<option value={c.id}>{c.name}{data?.missing?.some((x) => x.configuration === c.id) ? " (motor missing)" : c.hasMotors || /no motors/i.test(c.name) ? "" : " (no motor)"}</option>{/each}
       </select>
     </label>
     {#if data}<span class="muted note">{data.configurations.length} configuration{data.configurations.length === 1 ? "" : "s"}</span>{/if}
@@ -217,6 +231,7 @@
     <button class="btn" disabled={!data} onclick={() => data && act("app_config", { action: "copy", configuration: data.selected })} title="A copy of this configuration, to change one thing"><Copy size={15} /> Copy</button>
     <button class="btn" disabled={!data} onclick={() => rename()}><PencilLine size={15} /> Rename</button>
     <button class="btn" disabled={(data?.configurations.length ?? 0) < 2} onclick={() => data && act("app_config", { action: "remove", configuration: data.selected })}><Trash2 size={15} /> Delete</button>
+    <button class="btn" disabled={!data} onclick={clearConfigs} title="Start fresh: one empty configuration"><Eraser size={15} /> Clear all…</button>
   </div>
 
   {#if data}
