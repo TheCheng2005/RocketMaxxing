@@ -2,7 +2,7 @@
   import { X, Search, FileUp, FlaskConical } from "@lucide/svelte";
   import CustomMotorDialog from "./CustomMotorDialog.svelte";
   import { call } from "../api";
-  import { act, app, run } from "../state.svelte";
+  import { act, app, run, refresh, toast } from "../state.svelte";
   import { fmt, num, pretty, toShown, unitOf } from "../units.svelte";
   import Plot from "../Plot.svelte";
 
@@ -90,7 +90,14 @@
       /* no file dialog here */
     }
     if (!path) return;
-    const r = await run(() => call<{ file: string; motors: MotorRow[] }>("app_import_motor", { path }));
+    const r = await run(() => call<{ file: string; motors: MotorRow[]; putBack?: string[] }>("app_import_motor", { path }));
+    // A design made in OpenRocket elsewhere names this motor: it is back in its mount now, nothing more to choose.
+    if (r?.putBack?.length) {
+      await refresh();
+      toast(`Put back in the design: ${r.putBack.join("; ")}`);
+      close();
+      return;
+    }
     if (r?.motors.length) show(r.motors[0].designation);
   }
 

@@ -247,6 +247,7 @@ final class AppMotors {
 		} catch (IOException e) {
 			io.github.openrocketmcp.mcp.Log.info("Could not read " + dir + ": " + e.getMessage());
 		}
+		ctx.designs.restoreMissingMotors(); // a design opened before the team's motors were loaded
 	}
 
 	/** Imports a motor file and keeps a copy in the designs folder's motors/, so it is there next time. */
@@ -269,7 +270,9 @@ final class AppMotors {
 		for (ThrustCurveMotor m : found) {
 			motors.add(motorInfo(m));
 		}
-		return Map.of("file", kept.toString(), "motors", motors);
+		// A design that names one of these (made in OpenRocket elsewhere) gets it back where the file had it.
+		List<String> back = ctx.designs.restoreMissingMotors();
+		return Map.of("file", kept.toString(), "motors", motors, "putBack", back);
 	}
 
 	static Map<String, Object> motorInfo(ThrustCurveMotor m) {

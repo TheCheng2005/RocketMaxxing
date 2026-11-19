@@ -189,7 +189,9 @@ public final class MotorTools {
 					for (ThrustCurveMotor m : motors) {
 						out.add(Motors.describe(m));
 					}
-					return Map.of("imported", out);
+					// A design that names one of these (made in OpenRocket elsewhere) gets it back in its mount.
+					List<String> back = ctx.designs.restoreMissingMotors();
+					return back.isEmpty() ? Map.of("imported", out) : Map.of("imported", out, "putBack", back);
 				}));
 
 		s.tool(new ToolDef("create_custom_motor", "Create a custom engine (liquid, hybrid, research)",
