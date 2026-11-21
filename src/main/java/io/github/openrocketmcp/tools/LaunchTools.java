@@ -14,6 +14,7 @@ import io.github.openrocketmcp.mcp.Schema;
 import io.github.openrocketmcp.mcp.ToolDef;
 import io.github.openrocketmcp.mcp.ToolException;
 import io.github.openrocketmcp.or.Designs;
+import io.github.openrocketmcp.or.LaunchPlan;
 import io.github.openrocketmcp.or.RailButtons;
 import io.github.openrocketmcp.or.Sims;
 import io.github.openrocketmcp.or.Weather;
@@ -114,6 +115,79 @@ public final class LaunchTools {
 					return out;
 				}));
 
+		s.tool(new ToolDef("launch_planner", "Launch planner: landing areas from the ensemble forecast",
+				"Where the rocket lands on launch day, from the ensemble weather forecast for the site and hour: the design flown "
+						+ "many times (default 500), each flight in one of the ensemble's forecasts (ECMWF's 51, with winds at every height, "
+						+ "15 days ahead; or NOAA GEFS's 31, 10 days, ground wind per forecast), with the launch angle dispersed. Returns "
+						+ "the areas holding 50, 95 and 99% of landings per stage (as map polygons), every landing point, the flight in "
+						+ "the forecast as it stands (trajectory, apogee, landing), apogee and flight-time spread, and the winds by "
+						+ "height with the ensemble's range. Needs the site's GPS coordinates (or the team standards' launch site).",
+				SimTools.simSelect(Schema.object())
+						.num("latitude", "Launch site latitude, decimal degrees (default: launchSite.latitude).", false)
+						.num("longitude", "Launch site longitude, decimal degrees (default: launchSite.longitude).", false)
+						.str("time", "Launch time in the site's local time, e.g. \"2027-08-21T10:00\" (default: next hour).", false)
+						.enumStr("model", "ecmwf (default: 51 forecasts with winds aloft, 15 days) or gfs (NOAA GEFS, 31 forecasts, 10 days).",
+								false, "ecmwf", "gfs")
+						.integer("runs", "Flights to simulate (default 500, at most 2000).", false)
+						.qty("launchAngleSd", "Launch angle spread, 1 sd (default 1 deg).", false)
+						.qty("launchDirectionSd", "Rod direction spread, 1 sd (default 5 deg).", false)
+						.qty("radius", "Distance from the pad the landings should stay within (the range's recovery area), to count those beyond.", false)
+						.str("ensembleJson", "Open-Meteo ensemble JSON (or a path to it), if the computer has no internet access.", false)
+						.str("forecastJson", "With model gfs: Open-Meteo deterministic JSON for the winds aloft, if offline.", false)
+						.str("savePath", "Also save the plan (inputs and results, JSON) here, e.g. \"plans/2027-08-21-launch.json\".", false)
+						.build(),
+				true, a -> {
+					var std = ctx.standards();
+					double lat = a.num("latitude", std.q("launchSite.latitude", Dim.DIMENSIONLESS, Double.NaN));
+					double lon = a.num("longitude", std.q("launchSite.longitude", Dim.DIMENSIONLESS, Double.NaN));
+					LaunchPlan.Model model = LaunchPlan.Model.of(a.str("model", null));
+					String time = a.str("time", null);
+					JsonObject ens;
+					if (a.has("ensembleJson")) {
+						ens = json(ctx, a.str("ensembleJson"), "ensembleJson");
+						if ((Double.isNaN(lat) || Double.isNaN(lon)) && ens.has("latitude")) {
+							lat = ens.get("latitude").getAsDouble();
+							lon = ens.get("longitude").getAsDouble();
+						}
+					} else {
+						if (Double.isNaN(lat) || Double.isNaN(lon)) {
+							throw new ToolException("I need the launch site's GPS coordinates: give latitude and longitude in decimal "
+									+ "degrees (e.g. 48.47, -81.33), or set launchSite.latitude / longitude in the team standards.");
+						}
+						if (!(Math.abs(lat) <= 90) || !(Math.abs(lon) <= 180)) {
+							throw new ToolException("Latitude must be -90..90 and longitude -180..180 (decimal degrees).");
+						}
+						String date = time == null || time.length() < 10 ? null : time.substring(0, 10);
+						ens = LaunchPlan.fetch(LaunchPlan.url(model, lat, lon, date));
+					}
+					Weather.Forecast aloft = null;
+					if (!model.aloft) {
+						JsonObject det = a.has("forecastJson") ? json(ctx, a.str("forecastJson"), "forecastJson") : Weather.fetch(lat, lon);
+						aloft = Weather.parse(det, time);
+					}
+					LaunchPlan.Ensemble e = LaunchPlan.parse(ens, model, time, aloft);
+					int runs = Math.max(10, Math.min(2000, a.integer("runs", 500)));
+					LaunchPlan.Settings st = new LaunchPlan.Settings(runs, a.qty("launchAngleSd", Dim.ANGLE, Math.toRadians(1)),
+							a.qty("launchDirectionSd", Dim.ANGLE, Math.toRadians(5)), 20270821L, a.qtyOrNaN("radius", Dim.DISTANCE));
+					Designs.Design d = ctx.designs.get(a.str("designId", null));
+					Simulation base = Sims.prepare(d, a.str("simulation", null), a.str("configuration", null), Sims.Overrides.none(), std);
+					Map<String, Object> out = LaunchPlan.plan(base, d.doc, e, st, lat, lon);
+					out.put("design", d.doc.getRocket().getName());
+					out.put("simulation", base.getName());
+					if (a.has("savePath")) {
+						java.nio.file.Path p = ctx.path(a.str("savePath"));
+						if (p.getParent() != null) {
+							java.nio.file.Files.createDirectories(p.getParent());
+						}
+						Map<String, Object> saved = new LinkedHashMap<>();
+						saved.put("savedAt", java.time.Instant.now().toString());
+						saved.put("plan", out);
+						java.nio.file.Files.writeString(p, new com.google.gson.GsonBuilder().serializeSpecialFloatingPointValues().create().toJson(saved));
+						out.put("saved", p.toAbsolutePath().toString());
+					}
+					return out;
+				}));
+
 		s.tool(new ToolDef("rail_buttons", "Rail button placement",
 				"Lay out the rail buttons for the most rail exit speed and the cleanest departure, or check a layout. The rocket "
 						+ "is guided until the AFT button leaves the rail, so the aft button goes as far aft as a body tube allows "
@@ -175,5 +249,22 @@ public final class LaunchTools {
 							+ Units.fmt(o.getLaunchAltitude(), Dim.DISTANCE) + " MSL";
 					return FlightCard.write(d, sim, ctx.standards(), ctx.path(a.str("path", "flight-card.md")), site);
 				}));
+	}
+
+	/** JSON given inline or as a path to a file. */
+	static JsonObject json(Context ctx, String v, String what) {
+		String text = v.trim();
+		if (!text.startsWith("{")) {
+			try {
+				text = java.nio.file.Files.readString(ctx.path(text));
+			} catch (java.io.IOException e) {
+				throw new ToolException(what + " is neither JSON nor a file I can read: " + v);
+			}
+		}
+		try {
+			return JsonParser.parseString(text).getAsJsonObject();
+		} catch (RuntimeException e) {
+			throw new ToolException(what + " is not an Open-Meteo JSON object (the whole response, starting with '{').");
+		}
 	}
 }
