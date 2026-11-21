@@ -43,6 +43,7 @@ export const ANALYSIS_KEYS: Record<string, string> = {
   fin_flutter: "flutter divergence fin speed shear modulus thickness",
   fin_fea: "FEA finite element stress Ansys Abaqus CalculiX deflection natural frequency vibration modal structural",
   structural_loads: "airframe loads bending moment axial compression coupler buckling max q structure",
+  load_diagrams: "load diagrams shear bending moment diagram axial force utat load calculation aerolab lift distribution max q",
   aero_heating: "heating temperature thermal stagnation",
   compare_materials: "material carbon fiberglass fibreglass G10 aluminum aluminium trade study layup",
   pressure_vessel: "tank COPV burst proof MEOP chamber Barlow",

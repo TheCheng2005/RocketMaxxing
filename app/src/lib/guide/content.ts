@@ -143,6 +143,7 @@ export const QUESTIONS: { q: string; why: string; tools: [string, string][] }[] 
       ["fin_flutter", "fin flutter speed against the speed flown"],
       ["fin_fea", "stress, deflection and vibration of one fin (needs CalculiX for the full result)"],
       ["structural_loads", "axial and bending loads at every joint"],
+      ["load_diagrams", "shear and bending moment diagrams by the team's UTAT method"],
       ["compare_materials", "fins or airframe in other materials and thicknesses"],
       ["aero_heating", "nose and fin temperatures, from about Mach 2"],
       ["pressure_vessel", "tank and chamber burst and proof margins"],

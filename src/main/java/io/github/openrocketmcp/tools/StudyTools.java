@@ -19,6 +19,7 @@ import io.github.openrocketmcp.or.Components;
 import io.github.openrocketmcp.or.Designs;
 import io.github.openrocketmcp.or.Diff;
 import io.github.openrocketmcp.or.Heating;
+import io.github.openrocketmcp.or.LoadDiagrams;
 import io.github.openrocketmcp.or.Loads;
 import io.github.openrocketmcp.or.MaterialStudy;
 import io.github.openrocketmcp.or.Requirements;
@@ -27,6 +28,7 @@ import io.github.openrocketmcp.or.Sections;
 import io.github.openrocketmcp.or.Shapes;
 import io.github.openrocketmcp.or.Sims;
 import io.github.openrocketmcp.units.Dim;
+import io.github.openrocketmcp.units.Units;
 
 /** Design studies: aerodynamic shape trade, recovery sections, structural loads. */
 public final class StudyTools {
@@ -159,6 +161,68 @@ public final class StudyTools {
 	}
 
 	static void registerMore(McpServer s, Context ctx) {
+		s.tool(new ToolDef("load_diagrams", "Load, shear and bending moment diagrams (UTAT method)",
+				"Transverse load, shear, bending moment and axial force along the rocket at max q, by the University of Toronto "
+						+ "Aerospace Team's load calculation (Load_calculations.py, github.com/ArthurJWH/UTAT-Rocketry, by Fred Chun, edited "
+						+ "by Nat Espinosa, Alexander Boldis and Nadim Hatoum): the vehicle at a set angle of attack (default 5 degrees), "
+						+ "each lifting part's lift at its centre of pressure, the parts' inertia answering as a rigid body. Parts, masses, "
+						+ "lift slopes and CPs come from the design and the flight state from its simulation; or give the team's own "
+						+ "files (parts .dat, OpenRocket conditions .dat, AeroLab CP, lift-slope and CD tables) to run them as the script "
+						+ "does. Returns the maxima, values at every joint and the stations to plot.",
+				SimTools.simSelect(Schema.object())
+						.qty("angleOfAttack", "Angle of attack at max q (default 5 deg, as the team's script).", false)
+						.bool("withThrust", "Include the motor's thrust at max q in the axial force (default false: coast, as the script).", false)
+						.str("partsFile", "The team's parts file (.dat: Length, Reference Area, Rocket_Part, mass_m, x_cm; cm and kg).", false)
+						.str("conditionsFile", "With partsFile: the OpenRocket conditions file (.dat: rho_inf, velocity_v_inf, gust, T_inf, cg_x).", false)
+						.str("cpFile", "AeroLab centres of pressure by Mach (.DAT, cm).", false)
+						.str("clFile", "AeroLab lift-curve slopes by Mach (.DAT, per rad).", false)
+						.str("cdFile", "AeroLab drag coefficient by Mach (.dat).", false)
+						.array("joints", "With the files: joints to report, [{name, x}] with x from the nose tip (\"1.01 m\", or metres).",
+								Schema.object().str("name", "Joint, e.g. \"Rec Bay/UEB Joint\".", true).qty("x", "Station from the nose tip.", true).item(), false)
+						.str("csvPath", "Also write the stations as CSV (SI: station, transverse load, shear, bending moment, axial force).", false)
+						.build(),
+				true, a -> {
+					double alpha = a.has("angleOfAttack") ? a.qty("angleOfAttack", Dim.ANGLE) : Math.toRadians(5);
+					LoadDiagrams.Input in;
+					String source;
+					if (a.has("partsFile")) {
+						for (String k : List.of("conditionsFile", "cpFile", "clFile", "cdFile")) {
+							if (!a.has(k)) {
+								throw new ToolException("With partsFile, give " + k + " too (the script needs all five files).");
+							}
+						}
+						List<LoadDiagrams.Joint> joints = new java.util.ArrayList<>();
+						if (a.has("joints")) {
+							for (var j : a.objList("joints")) {
+								joints.add(new LoadDiagrams.Joint(j.str("name"), j.qty("x", Dim.LENGTH)));
+							}
+						}
+						in = LoadDiagrams.fromFiles(ctx.path(a.str("partsFile")), ctx.path(a.str("conditionsFile")), ctx.path(a.str("cpFile")),
+								ctx.path(a.str("clFile")), ctx.path(a.str("cdFile")), alpha, joints);
+						source = "From the team's files: parts " + a.str("partsFile") + ", conditions " + a.str("conditionsFile")
+								+ ", AeroLab CP, lift slopes and CD at Mach " + Units.num(in.state().mach()) + ".";
+					} else if (a.has("conditionsFile") || a.has("cpFile") || a.has("clFile") || a.has("cdFile")) {
+						throw new ToolException("The AeroLab and conditions files go with partsFile; without it the design gives everything.");
+					} else {
+						Simulation sim = SimTools.runSelected(ctx, a);
+						in = LoadDiagrams.fromSimulation(sim, alpha, a.bool("withThrust", false));
+						source = "From the design: " + sim.getName() + ", max q at t=" + Units.num(in.state().time()) + " s; parts are the "
+								+ "airframe pieces with everything inside them (motor at its mass then), lift slopes and CPs from "
+								+ "OpenRocket at that Mach.";
+					}
+					StringBuilder csv = a.has("csvPath") ? new StringBuilder() : null;
+					Map<String, Object> out = LoadDiagrams.report(LoadDiagrams.compute(in), in, source, csv);
+					if (csv != null) {
+						Path p = ctx.path(a.str("csvPath"));
+						if (p.getParent() != null) {
+							Files.createDirectories(p.getParent());
+						}
+						Files.writeString(p, csv.toString());
+						out.put("csv", p.toAbsolutePath().toString());
+					}
+					return out;
+				}));
+
 		s.tool(new ToolDef("compare_designs", "Design diff between two revisions",
 				"Compare the design under review with a baseline - another open design, another .ork file, or an earlier git "
 						+ "revision of the same file (e.g. \"HEAD~1\", a tag like \"PDR\", a branch). Both are flown in the same "

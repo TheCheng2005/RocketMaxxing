@@ -162,6 +162,13 @@ export const GUIDES: Record<string, Guide> = {
     how: "Quasi-static rigid-body loads with inertial relief, from the simulated flight.",
     not: "Not a stress analysis of the joint hardware itself: use the forces to size couplers, screws and bulkheads.",
   },
+  load_diagrams: {
+    needs: [MOTOR, "Or the team's own files: the parts .dat, the OpenRocket conditions .dat and AeroLab's CP, lift-slope and CD tables (under More)."],
+    gives: ["The largest bending moment, shear and compression and where they are; at every joint between airframe parts the shear, bending moment and axial force; the four diagrams along the rocket (transverse load, shear, bending moment, axial force).", "The flight state it used (max q, Mach, angle of attack, mass, CG, lift and drag) and each part's lift and centre of pressure. Optionally the stations as CSV."],
+    how: "The University of Toronto Aerospace Team's load calculation (Load_calculations.py by Fred Chun, edited by Nat Espinosa, Alexander Boldis and Nadim Hatoum; github.com/ArthurJWH/UTAT-Rocketry), after Aspire Space's \"Rocket vehicle loads and airframe design\": the rocket at max q at a set angle of attack, each part's lift at its centre of pressure, the parts' inertia answering as a rigid body. From the design, parts are the airframe pieces with everything inside them and the aerodynamics are OpenRocket's; with the team's files it runs them as the script does, and gives the script's numbers.",
+    not: "Quasi-static at one instant: no gust history, flutter or parachute-opening loads (Airframe loads covers the whole flight with a gust; Recovery loads the openings). Thrust is off unless you tick it, as in the script.",
+    example: "The team's Discovery files at 5° (the script's own inputs): drag 260 N, largest bending moment 209 N·m at the lower engineering bay, shear 317 N at the injector bay.",
+  },
   aero_heating: {
     needs: [MOTOR],
     gives: ["Stagnation temperature at the nose tip and fin leading edges and recovery temperature on the body along the flight, against each part's material limit (e.g. epoxy glass transition), and the nose-tip heat flux and heat load."],

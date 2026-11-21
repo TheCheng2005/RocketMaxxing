@@ -659,7 +659,9 @@
           {/each}
         {/if}
         {#if outcome}
-          {#if entry.plot}<ResultPlot data={outcome.data} spec={entry.plot} name={entry.label} />{/if}
+          {@const keyed = Array.isArray(outcome.data?.summary) && outcome.data.summary.length && typeof outcome.data.summary[0] === "object"}
+          {#if entry.plot && !keyed}<ResultPlot data={outcome.data} spec={entry.plot} name={entry.label} />{/if}
+          {#if !keyed}{#each entry.plots ?? [] as spec (spec.title ?? spec.list)}<ResultPlot data={outcome.data} {spec} name={spec.title ?? entry.label} />{/each}{/if}
           {#each outcome.images as img}<img src={img.src} alt="Plot" />{/each}
           {#if entry.tool === "check_requirements" && Array.isArray(outcome.data?.checks)}
             <!-- The same list as the Design page's panel, not a generic table. -->
@@ -680,6 +682,9 @@
                 </div>
               {/each}
             </div>
+            <!-- With key numbers: they come first, then the plots, then everything else folded. -->
+            {#if entry.plot}<ResultPlot data={outcome.data} spec={entry.plot} name={entry.label} />{/if}
+            {#each entry.plots ?? [] as spec (spec.title ?? spec.list)}<ResultPlot data={outcome.data} {spec} name={spec.title ?? entry.label} />{/each}
             <details class="more">
               <summary>All the numbers, and how they were found</summary>
               <Result value={noted(withoutSummary(outcome.data))} />

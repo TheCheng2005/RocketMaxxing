@@ -481,6 +481,11 @@ def scenario_studies(s, d):
     check(sc, "fiberglass airframe has positive margin", all("OK" in j.get("margin", "OK") for j in ld["joints"]),
           json.dumps([j.get("margin") for j in ld["joints"]]))
 
+    dg = s.call("load_diagrams", {"designId": d})
+    check(sc, "load diagrams (UTAT method): maxima, joints and stations", "maxBendingMoment" in dg and len(dg["joints"]) >= 2
+          and len(dg["stations"]) > len(dg["joints"]), str(dg)[:200])
+    check(sc, "load diagrams cite the team's script", any("Fred Chun" in n and "UTAT-Rocketry" in n for n in dg["notes"]))
+
 
 def scenario_launch_day(s, d, tmp):
     """'Here are our launch site coordinates: what will the winds do, and give us the flight card.'"""

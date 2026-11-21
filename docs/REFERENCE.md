@@ -8,7 +8,7 @@ points to everything.
 
 ## Tools
 
-The 93 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
+The 94 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
 from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Session
@@ -282,6 +282,22 @@ from the model by hosts that show views). Bold marks the main job of each tool.
   energy, the energy if the main fails, the bay fill and a black powder estimate.
 - `structural_loads`: **axial and bending loads at every joint**, for boost and for max q with a gust. It includes
   inertial relief, wall stress and margin. `csvPath` writes the load cases for tube and coupler FEA.
+- `load_diagrams`: **load, shear, bending moment and axial force diagrams at max q**, by the University of Toronto
+  Aerospace Team's load calculation (`Load_calculations.py` in
+  [ArthurJWH/UTAT-Rocketry](https://github.com/ArthurJWH/UTAT-Rocketry), by Fred Chun, edited by Nat Espinosa, Alexander
+  Boldis and Nadim Hatoum; after Aspire Space's "Rocket vehicle loads and airframe design").
+  - **Method:** the rocket at max q at a set angle of attack (`angleOfAttack`, default 5°). Each part's lift
+    (C_Nα α q S) acts at its centre of pressure. The parts' inertia answers as a rigid body (each part a slender bar
+    plus the parallel-axis term), and the rotary inertia goes in as a concentrated moment. Shear is summed from the
+    nose and the bending moment is its integral. Axial force comes from drag (shared by part length) and inertia,
+    with thrust off as in the script unless `withThrust`.
+  - **From the design:** parts are the airframe pieces with everything inside them (the motor at its mass at max
+    q). Lift slopes and CPs are OpenRocket's at that Mach (fins with body interference), the flight state is the
+    simulation's, and the joints are the design's.
+  - **From the team's files:** `partsFile`, `conditionsFile`, `cpFile`, `clFile` and `cdFile` (AeroLab tables) are
+    read as the script reads them, with `joints` to report. On the script's Discovery inputs it gives the script's
+    numbers to 10⁻⁶ (`LoadDiagramsTest`).
+  - **Output:** maxima with their stations, values at each joint, every station to plot, and `csvPath` for a CSV.
 
 ### Mass
 
