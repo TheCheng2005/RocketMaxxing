@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { House, Rocket, Flame, ChartSpline, FileChartLine, Target, BookOpenCheck, ClipboardCheck, LifeBuoy, History } from "@lucide/svelte";
+  import { House, Rocket, Flame, ChartSpline, MapPinned, FileChartLine, Target, BookOpenCheck, ClipboardCheck, LifeBuoy, History } from "@lucide/svelte";
   import { app, toast, type Page } from "./state.svelte";
   import { call } from "./api";
   import { updates, checkNow } from "./updates.svelte";
@@ -36,6 +36,7 @@
     { id: "design", label: "Design", hint: "Rocket design", icon: Rocket },
     { id: "motors", label: "Motors", hint: "Motors & configuration", icon: Flame },
     { id: "flights", label: "Flights", hint: "Flight simulations", icon: ChartSpline },
+    { id: "launch", label: "Launch", hint: "Launch planner: where it lands in the forecast", icon: MapPinned },
     { id: "targets", label: "Targets", hint: "The team's targets and the competition rules", icon: Target },
     { id: "standards", label: "Standards", hint: "Rule set, launch site, safety factors, ratings and materials", icon: BookOpenCheck },
     { id: "analysis", label: "Analysis", hint: "Rule check, recovery, structures, studies", icon: ClipboardCheck },

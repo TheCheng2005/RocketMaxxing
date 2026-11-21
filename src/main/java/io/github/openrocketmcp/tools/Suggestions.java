@@ -84,6 +84,7 @@ public final class Suggestions {
 			new Feature("radio_link", "Electronics", "Will we hear the GPS tracker all the way down and after landing?"),
 
 			new Feature("weather_forecast", "Launch day", "What will the winds do at our launch site on launch day?"),
+			new Feature("launch_planner", "Launch day", "Where will it land on Saturday? Show the landing areas from the forecast."),
 			new Feature("flight_card", "Launch day", "Make the launch-day flight card."),
 			new Feature("rail_buttons", "Launch day", "Where should the rail buttons go, and what is our real rail exit speed?"),
 
@@ -125,7 +126,8 @@ public final class Suggestions {
 			Map.entry("sensor_check", List.of("sensor_data", "altimeter_settings")),
 			Map.entry("power_budget", List.of("radio_link", "altimeter_settings")),
 			Map.entry("radio_link", List.of("power_budget", "monte_carlo")),
-			Map.entry("weather_forecast", List.of("flight_card", "monte_carlo", "rail_buttons")),
+			Map.entry("weather_forecast", List.of("launch_planner", "flight_card", "monte_carlo", "rail_buttons")),
+			Map.entry("launch_planner", List.of("flight_card", "weather_forecast", "recovery_analysis")),
 			Map.entry("monte_carlo", List.of("weather_forecast", "flight_card", "descent_energy")),
 			Map.entry("flight_card", List.of("weather_forecast", "rail_buttons", "altimeter_settings")),
 			Map.entry("fin_flutter", List.of("compare_materials", "fin_fea", "optimize_fins")),

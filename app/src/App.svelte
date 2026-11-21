@@ -35,6 +35,7 @@
     design: () => import("./lib/design/DesignPage.svelte"),
     motors: () => import("./lib/motors/MotorsPage.svelte"),
     flights: () => import("./lib/flights/FlightsPage.svelte"),
+    launch: () => import("./lib/launch/LaunchPage.svelte"),
     flightdata: () => import("./lib/flightdata/FlightDataPage.svelte"),
     standards: () => import("./lib/standards/StandardsPage.svelte"),
     targets: () => import("./lib/targets/TargetsPage.svelte"),
@@ -53,7 +54,7 @@
   function prefetch() {
     for (const f of [PAGE_CODE.design, ...Object.values(PAGE_CODE), issuesCode, assistantCode, searchCode, guideCode]) load(f).catch(() => {});
   }
-  const PAGES: Page[] = ["home", "design", "motors", "flights", "flightdata", "targets", "standards", "analysis", "history"];
+  const PAGES: Page[] = ["home", "design", "motors", "flights", "launch", "flightdata", "targets", "standards", "analysis", "history"];
   /** The start: designs handed over meanwhile wait for it. */
   let started: Promise<unknown> = Promise.resolve();
 
@@ -119,9 +120,9 @@
     } else if (mod && e.key.toLowerCase() === "o") {
       e.preventDefault();
       openDialog();
-    } else if (mod && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key) && !overlay()) {
-      // Ctrl+1 to Ctrl+9: the pages in the left rail's order
-      const p = PAGE_KEYS[Number(e.key) - 1];
+    } else if (mod && !e.shiftKey && !e.altKey && /^[0-9]$/.test(e.key) && !overlay()) {
+      // Ctrl+1 to Ctrl+9, then Ctrl+0: the pages in the left rail's order
+      const p = PAGE_KEYS[e.key === "0" ? 9 : Number(e.key) - 1];
       if (p && (p === "home" || p === "history" || app.design)) {
         e.preventDefault();
         app.page = p;

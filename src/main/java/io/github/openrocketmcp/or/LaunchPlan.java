@@ -392,7 +392,7 @@ public final class LaunchPlan {
 		Map<String, Object> first = areas.get(0);
 		@SuppressWarnings("unchecked")
 		Map<String, Object> r95 = ((List<Map<String, Object>>) first.get("areas")).get(1);
-		out.put("verdict", "95% of " + ((List<?>) first.get("points")).size() + " flights land inside an area " + r95.get("size") + ", centred "
+		out.put("verdict", "95% of " + first.get("landings") + " flights land inside an area " + r95.get("size") + ", centred "
 				+ first.get("centre") + (areas.size() > 1 ? " (" + first.get("branch") + ")" : "") + ".");
 		out.put("landing", areas);
 
@@ -446,6 +446,26 @@ public final class LaunchPlan {
 				"The forecast as it stands is the ensemble's control forecast, flown without dispersion.",
 				"Forecast: " + e.model().label + " via Open-Meteo (open-meteo.com, CC BY 4.0). " + e.note()));
 		return out;
+	}
+
+	/** The plan without what only a map needs (landing points, outlines, trajectories): the numbers stay. */
+	@SuppressWarnings("unchecked")
+	public static void withoutMapData(Map<String, Object> plan) {
+		for (Map<String, Object> a : (List<Map<String, Object>>) plan.getOrDefault("landing", List.of())) {
+			a.remove("points");
+			a.remove("centreLatLon");
+			for (Map<String, Object> r : (List<Map<String, Object>>) a.getOrDefault("areas", List.of())) {
+				r.remove("polygon");
+			}
+		}
+		Object f = plan.get("forecastAsIs");
+		if (f instanceof Map<?, ?> m) {
+			for (Map<String, Object> t : (List<Map<String, Object>>) ((Map<String, Object>) m).getOrDefault("tracks", List.of())) {
+				t.remove("path");
+				t.remove("apogee");
+				t.remove("landing");
+			}
+		}
 	}
 
 	static Simulation flight(Simulation base, OpenRocketDocument doc, Ensemble e, Member m, double angle, double dir, int seed, double lat,

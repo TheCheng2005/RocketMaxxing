@@ -193,7 +193,7 @@ export interface Session {
   notices?: string | null;
 }
 
-export type Page = "home" | "design" | "motors" | "flights" | "flightdata" | "targets" | "standards" | "analysis" | "history";
+export type Page = "home" | "design" | "motors" | "flights" | "launch" | "flightdata" | "targets" | "standards" | "analysis" | "history";
 
 export const app = $state({
   session: null as Session | null,
@@ -358,7 +358,7 @@ export function toast(text: string, kind: "error" | "info" = "info") {
 
 /** Runs an engine action, showing its error (if any) instead of throwing. */
 const PAGES: Record<Page, string> = {
-  home: "Start", design: "Design", motors: "Motors", flights: "Flights", flightdata: "Flight data", targets: "Targets",
+  home: "Start", design: "Design", motors: "Motors", flights: "Flights", launch: "Launch planner", flightdata: "Flight data", targets: "Targets",
   standards: "Standards", analysis: "Analysis", history: "History",
 };
 

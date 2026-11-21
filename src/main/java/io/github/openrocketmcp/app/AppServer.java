@@ -80,7 +80,24 @@ public final class AppServer {
 		}
 	}
 
+	/** Map tiles wait on the internet: their own threads, so a slow tile never holds up the page's calls. */
+	private final java.util.concurrent.ExecutorService tilePool = Executors.newFixedThreadPool(4, r -> {
+		Thread t = new Thread(r, "map-tiles");
+		t.setDaemon(true);
+		return t;
+	});
+
 	private void handle(HttpExchange ex) throws IOException {
+		if (ex.getRequestURI().getRawPath().startsWith("/tiles/")) {
+			tilePool.submit(() -> {
+				try (ex) {
+					tiles(ex);
+				} catch (IOException | RuntimeException e) {
+					// the page went away, or the tile could not be written
+				}
+			});
+			return;
+		}
 		try (ex) {
 			try {
 				route(ex);
@@ -117,6 +134,34 @@ public final class AppServer {
 			return;
 		}
 		file(ex, path);
+	}
+
+	/** GET /tiles/{source}/{z}/{x}/{y}?token=...: a map tile (see MapTiles); the token comes in the query, as for /file. */
+	private void tiles(HttpExchange ex) throws IOException {
+		var h = ex.getResponseHeaders();
+		h.add("X-Content-Type-Options", "nosniff");
+		h.add("Referrer-Policy", "no-referrer");
+		String given = query(ex.getRequestURI().getRawQuery()).getOrDefault("token", "");
+		if (!MessageDigest.isEqual(given.getBytes(StandardCharsets.UTF_8), token.getBytes(StandardCharsets.UTF_8))) {
+			send(ex, 403, "text/plain", "Forbidden".getBytes(StandardCharsets.UTF_8));
+			return;
+		}
+		String[] p = ex.getRequestURI().getRawPath().split("/");
+		byte[] body = null;
+		String source = p.length == 6 ? p[2] : "";
+		try {
+			if (p.length == 6) {
+				body = MapTiles.tile(source, Integer.parseInt(p[3]), Integer.parseInt(p[4]), Integer.parseInt(p[5].replaceAll("\\..*$", "")));
+			}
+		} catch (NumberFormatException e) {
+			body = null;
+		}
+		if (body == null) {
+			send(ex, 404, "text/plain", "No tile".getBytes(StandardCharsets.UTF_8));
+			return;
+		}
+		h.add("Cache-Control", "private, max-age=86400");
+		send(ex, 200, MapTiles.SOURCES.get(source).type(), body);
 	}
 
 	private boolean originOk(HttpExchange ex) {

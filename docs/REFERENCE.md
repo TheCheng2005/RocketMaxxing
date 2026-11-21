@@ -8,7 +8,7 @@ points to everything.
 
 ## Tools
 
-The 94 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
+The 95 tools, grouped by what a team is doing (one of them, `workbench_data`, serves the interactive view and is hidden
 from the model by hosts that show views). Bold marks the main job of each tool.
 
 ### Session
@@ -504,6 +504,26 @@ from the model by hosts that show views). Bold marks the main job of each tool.
     button, and the change from the current layout.
   - **Check or apply:** `forward` / `aft` check a layout of your own; `apply` moves the design's buttons there (or adds
     a Delrin pair), and undo reverts it.
+- `launch_planner`: **where it lands on launch day, from the ensemble forecast**.
+  - **Forecast:** Open-Meteo's ensemble API for the site and hour (free, no key). By default it uses ECMWF's IFS
+    ensemble: 51 forecasts, each with its own winds at 10 m, 100 m and on pressure levels up to 100 hPa, up to 15 days
+    ahead. `model: gfs` uses NOAA's GEFS instead: 31 forecasts, 10 days. Its forecasts carry ground wind only, so each
+    one's winds aloft are the deterministic forecast's, moved by its difference from the ensemble at the ground.
+  - **Flights:** the design is flown `runs` times (default 500), each flight in one forecast in turn, with the launch
+    angle (`launchAngleSd`, default 1°) and rod direction (`launchDirectionSd`, default 5°) dispersed. Turbulence
+    comes from each forecast's gusts. The control forecast is also flown without dispersion, as the forecast as it
+    stands.
+  - **Output:**
+    - per stage, the ellipses holding 50, 95 and 99% of the landings, as map polygons, and every landing point (latitude and longitude)
+    - the forecast-as-is trajectory, apogee and landing
+    - the apogee, flight-time, top-speed and landing-speed spread
+    - the farthest landing
+    - the winds by height, with the ensemble's range
+    - with `radius`, how many land beyond the recovery area
+  - **Map data:** `mapData: true` adds every landing point, the areas' outlines and the trajectory in latitude and
+    longitude. It is off by default, so an assistant gets the numbers without thousands of coordinates.
+  - **Offline:** `ensembleJson` (inline or a file); with `model: gfs`, also `forecastJson`. `savePath` keeps the plan.
+    The app's Launch page shows it on a satellite map and keeps saved plans in the designs folder's `plans/`.
 - `weather_forecast`: a **site forecast by GPS coordinates** from Open-Meteo: ground wind, gusts, temperature, pressure
   and winds at pressure levels up to the jet stream. It is applied to the simulation as a wind profile, with the site's
   altitude, temperature and pressure. Without internet, paste the JSON, or enter winds by hand with `wind_profile`.

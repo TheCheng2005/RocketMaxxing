@@ -134,6 +134,8 @@ public final class LaunchTools {
 						.qty("radius", "Distance from the pad the landings should stay within (the range's recovery area), to count those beyond.", false)
 						.str("ensembleJson", "Open-Meteo ensemble JSON (or a path to it), if the computer has no internet access.", false)
 						.str("forecastJson", "With model gfs: Open-Meteo deterministic JSON for the winds aloft, if offline.", false)
+						.bool("mapData", "Include the map's data: every landing point, the areas' outlines and the trajectory in latitude and "
+								+ "longitude (default false: the numbers only; the app's map asks for it).", false)
 						.str("savePath", "Also save the plan (inputs and results, JSON) here, e.g. \"plans/2027-08-21-launch.json\".", false)
 						.build(),
 				true, a -> {
@@ -174,6 +176,9 @@ public final class LaunchTools {
 					Map<String, Object> out = LaunchPlan.plan(base, d.doc, e, st, lat, lon);
 					out.put("design", d.doc.getRocket().getName());
 					out.put("simulation", base.getName());
+					if (!a.bool("mapData", false)) {
+						LaunchPlan.withoutMapData(out);
+					}
 					if (a.has("savePath")) {
 						java.nio.file.Path p = ctx.path(a.str("savePath"));
 						if (p.getParent() != null) {

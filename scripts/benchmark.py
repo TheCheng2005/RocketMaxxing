@@ -494,6 +494,12 @@ def scenario_launch_day(s, d, tmp):
     check(sc, "asks for GPS coordinates when the site is unknown", "GPS coordinates" in ask, ask[:120])
     sample = open(os.path.join(ROOT, "src", "test", "resources", "open-meteo-sample.json")).read()
     wx = s.call("weather_forecast", {"designId": d, "forecastJson": sample, "time": "2027-08-21T15:00"})
+    ens = os.path.join(ROOT, "src", "test", "resources", "open-meteo-ensemble-sample.json")
+    lp = s.call("launch_planner", {"designId": d, "ensembleJson": ens, "time": "2027-08-21T10:00", "runs": 40, "radius": "2 km"})
+    check(sc, "launch planner: 50/95/99% landing areas from the ensemble", [r["percent"] for r in lp["landing"][0]["areas"]] == [50, 95, 99]
+          and lp["landing"][0]["landings"] == 40 and "points" not in lp["landing"][0], str(lp)[:200])
+    check(sc, "launch planner: forecast as is, winds by height, count beyond the recovery radius",
+          "forecastAsIs" in lp and len(lp["winds"]) >= 5 and "beyondRadius" in lp["landing"][0], str(lp.get("summary"))[:200])
     check(sc, "forecast parsed: ground wind, gusts, winds aloft, rule-limit check",
           all(k in wx["ground"] for k in ("wind", "gusts", "vsRuleLimit")) and len(wx["windsAloft"]) >= 8, json.dumps(wx["ground"]))
     check(sc, "forecast applied and the flight re-simulated", "flightInForecast" in wx)
