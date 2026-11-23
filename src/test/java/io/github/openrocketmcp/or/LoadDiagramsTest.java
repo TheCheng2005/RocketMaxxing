@@ -72,6 +72,20 @@ class LoadDiagramsTest {
 	}
 
 	@Test
+	void aWrongFileSaysWhatIsWrong(@org.junit.jupiter.api.io.TempDir Path tmp) throws Exception {
+		Path parts = tmp.resolve("parts.dat");
+		java.nio.file.Files.writeString(parts, "Length,Reference Area,Rocket_Part,mass_m,x_cm\n441,16.5,Nosecone\n");
+		var e = org.junit.jupiter.api.Assertions.assertThrows(io.github.openrocketmcp.mcp.ToolException.class,
+				() -> LoadDiagrams.fromFiles(parts, DIR.resolve("Open_rocket_info.dat"), DIR.resolve("Discovery_Centres_of_Pressure.DAT"),
+						DIR.resolve("Discovery_Lift_Coefficient_Curve_Slopes.DAT"), DIR.resolve("Discovery_Cd.dat"), 0.0872665, JOINTS));
+		assertTrue(e.getMessage().contains("5 columns"), e.getMessage());
+		var e2 = org.junit.jupiter.api.Assertions.assertThrows(io.github.openrocketmcp.mcp.ToolException.class,
+				() -> LoadDiagrams.fromFiles(DIR.resolve("Discovery_part_info.dat"), DIR.resolve("Open_rocket_info.dat"), DIR.resolve("Discovery_Cd.dat"),
+						DIR.resolve("Discovery_Lift_Coefficient_Curve_Slopes.DAT"), DIR.resolve("Discovery_Cd.dat"), 0.0872665, JOINTS));
+		assertTrue(e2.getMessage().contains("centres of pressure"), "a CD table given as the CP table: " + e2.getMessage());
+	}
+
+	@Test
 	@SuppressWarnings("unchecked")
 	void fromADesignTheDiagramsClose() throws Exception {
 		OrRuntime.init();

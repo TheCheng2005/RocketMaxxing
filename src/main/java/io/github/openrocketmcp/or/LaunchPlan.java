@@ -274,7 +274,9 @@ public final class LaunchPlan {
 		sims.add(flight(base, doc, e, e.members().get(0), bo.getLaunchRodAngle(), bo.getLaunchRodDirection(), 1, lat, lon));
 		memberOf.add(0);
 		for (int i = 0; i < s.runs(); i++) {
-			int k = i % e.members().size();
+			// Each forecast in turn; with fewer flights than forecasts, spread over all of them rather than the first few.
+			int n = e.members().size();
+			int k = s.runs() >= n ? i % n : (int) ((long) i * n / s.runs());
 			double angle = Math.min(Math.toRadians(60), Math.abs(MonteCarlo.gauss(rnd, bo.getLaunchRodAngle(), s.launchAngleSd())));
 			double dir = MonteCarlo.gauss(rnd, bo.getLaunchRodDirection(), s.launchDirectionSd());
 			sims.add(flight(base, doc, e, e.members().get(k), angle, dir, rnd.nextInt(), lat, lon));

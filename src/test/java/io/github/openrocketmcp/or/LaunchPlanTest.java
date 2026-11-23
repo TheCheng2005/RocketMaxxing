@@ -87,6 +87,31 @@ class LaunchPlanTest {
 	}
 
 	@Test
+	void fewerFlightsThanForecastsStillUseThemAll() throws Exception {
+		OrRuntime.init();
+		Designs ds = new Designs();
+		Designs.Design d = ds.openExample("Dual parachute");
+		var base = Sims.prepare(d, null, null, Sims.Overrides.none(), io.github.openrocketmcp.standards.Standards.defaults());
+		// 30 forecasts, the 10 last with an east wind: 10 flights spread over all of them reach those too.
+		JsonObject j = ensemble(29, true);
+		JsonObject h = j.getAsJsonObject("hourly");
+		for (int m = 20; m <= 29; m++) {
+			String sfx = String.format("_member%02d", m);
+			for (String k : List.of("wind_direction_10m", "wind_direction_100m", "wind_direction_925hPa", "wind_direction_850hPa",
+					"wind_direction_700hPa", "wind_direction_500hPa")) {
+				put(h, k + sfx, 90);
+			}
+		}
+		LaunchPlan.Ensemble e = LaunchPlan.parse(j, LaunchPlan.Model.ECMWF, "2027-08-21T10:00", null);
+		Map<String, Object> out = LaunchPlan.plan(base, d.doc, e, new LaunchPlan.Settings(10, 0, 0, 3, Double.NaN), 47.97, -81.85);
+		@SuppressWarnings("unchecked")
+		List<double[]> pts = (List<double[]>) ((List<Map<String, Object>>) out.get("landing")).get(0).get("points");
+		assertTrue(pts.stream().anyMatch(p -> p[1] < -81.85) && pts.stream().anyMatch(p -> p[1] > -81.85),
+				"flights in the last forecasts too (landing west of the pad in their east wind)");
+		ds.close(d.id);
+	}
+
+	@Test
 	@SuppressWarnings("unchecked")
 	void landingAreasDownwind() throws Exception {
 		OrRuntime.init();

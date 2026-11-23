@@ -56,7 +56,9 @@
   });
 
   $effect(() => {
-    const p = plan, s = site, r = radius;
+    // The pad of the plan on the map (the site boxes may have moved since); the typed site before any plan.
+    const p = plan, r = radius;
+    const s: [number, number] | null = p ? [p.site.latitude, p.site.longitude] : site;
     if (!map || !layer) return;
     layer.clearLayers();
     const bounds: L.LatLngExpression[] = [];

@@ -77,6 +77,16 @@
   });
   let radius = $derived(Number(launch.radius));
 
+  // A radius typed with its unit ("2 km", "1.5 mi") is turned into metres here, so the map can draw it.
+  const LENGTHS: Record<string, number> = { m: 1, km: 1000, ft: 0.3048, mi: 1609.344, yd: 0.9144, nmi: 1852, in: 0.0254 };
+  function setRadius(v: number | string) {
+    if (typeof v === "number") return void (launch.radius = Number.isFinite(v) && v > 0 ? String(v) : "");
+    const m = v.trim().replace(",", ".").match(/^([-+]?\d*\.?\d+)\s*([a-zA-Z]+)$/);
+    const f = m ? LENGTHS[m[2].toLowerCase()] : undefined;
+    if (m && f) launch.radius = String(Number(m[1]) * f);
+    else toast(`Type the radius as a number, or with a unit: 2 km, 6000 ft, 1.5 mi (not "${v}")`, "error");
+  }
+
   async function plan() {
     if (!app.design || running) return;
     if (!site) {
@@ -188,7 +198,7 @@
           </label>
           <label for="launch-radius">Recovery area radius
             <QuantityInput id="launch-radius" value={launch.radius === "" || !Number.isFinite(radius) ? null : radius} dim="DISTANCE"
-              commit={(v) => (launch.radius = v === "" || v === null ? "" : String(v))} />
+              commit={setRadius} />
           </label>
         </div>
         <div class="row">

@@ -450,14 +450,27 @@ public final class LoadDiagrams {
 			throw new ToolException("The parts file has no parts: " + partsFile);
 		}
 		double length = num(rows.get(0)[0]) / 100, diameter = num(rows.get(0)[1]) / 100;
+		if (!(length > 0) || !(diameter > 0)) {
+			throw new ToolException("The parts file's first row needs the rocket's length and reference diameter in cm (Length, "
+					+ "Reference Area columns): " + partsFile);
+		}
 		List<Part> parts = new ArrayList<>();
 		for (String[] r : rows) {
-			parts.add(new Part(r[2].trim(), num(r[3]), num(r[4]) / 100, num(r[0]) / 100));
+			if (r.length < 5 || Double.isNaN(num(r[3])) || Double.isNaN(num(r[4]))) {
+				throw new ToolException("Each row of the parts file needs 5 columns (Length, Reference Area, Rocket_Part, mass_m, x_cm): "
+						+ String.join(",", r));
+			}
+			parts.add(new Part(r[2].trim(), num(r[3]), num(r[4]) / 100, Double.isNaN(num(r[0])) ? 0 : num(r[0]) / 100));
 		}
-		String[] c = csv(conditionsFile, ",").get(0);
-		double rho = num(c[0]), v = num(c[1]), temperature = num(c[3]);
+		List<String[]> cond = csv(conditionsFile, ",");
+		String[] c = cond.isEmpty() ? new String[0] : cond.get(0);
+		double rho = c.length > 3 ? num(c[0]) : Double.NaN, v = c.length > 3 ? num(c[1]) : Double.NaN, temperature = c.length > 3 ? num(c[3]) : Double.NaN;
+		if (!(rho > 0) || !(v > 0) || !(temperature > 0)) {
+			throw new ToolException("The conditions file needs a row of rho_inf (kg/m3), velocity_v_inf (m/s), gust, T_inf (K), cg_x: " + conditionsFile);
+		}
 		double mach = v / Math.sqrt(1.4 * 287 * temperature);
-		double[][] cp = table(cpFile), cl = table(clFile), cd = table(cdFile);
+		double[][] cp = table(cpFile, 5, "the centres of pressure (Mach, rocket, nose/body, wing, body-wing)"),
+				cl = table(clFile, 5, "the lift-curve slopes (Mach, rocket, nose/body, wing, body-wing)"), cd = table(cdFile, 2, "the drag coefficient (Mach, CD)");
 		List<Lift> lifts = List.of(
 				new Lift("Nose/body", interp(mach, cl, 2), interp(mach, cp, 2) / 100),
 				new Lift("Wing", interp(mach, cl, 3), interp(mach, cp, 3) / 100),
@@ -476,6 +489,15 @@ public final class LoadDiagrams {
 			}
 		}
 		return out;
+	}
+
+	static double[][] table(Path p, int columns, String what) throws IOException {
+		double[][] t = table(p);
+		if (t.length == 0 || java.util.Arrays.stream(t).anyMatch(r -> r.length < columns || java.util.Arrays.stream(r).limit(columns).anyMatch(Double::isNaN))) {
+			throw new ToolException(p.getFileName() + " should be AeroLab's table of " + what + ": a header line, then " + columns
+					+ " numbers per line.");
+		}
+		return t;
 	}
 
 	static double[][] table(Path p) throws IOException {

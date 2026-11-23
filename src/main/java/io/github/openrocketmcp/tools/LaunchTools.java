@@ -164,8 +164,15 @@ public final class LaunchTools {
 					}
 					Weather.Forecast aloft = null;
 					if (!model.aloft) {
-						JsonObject det = a.has("forecastJson") ? json(ctx, a.str("forecastJson"), "forecastJson") : Weather.fetch(lat, lon);
-						aloft = Weather.parse(det, time);
+						if (a.has("forecastJson")) {
+							aloft = Weather.parse(json(ctx, a.str("forecastJson"), "forecastJson"), time);
+						} else {
+							try {
+								aloft = Weather.parse(Weather.fetch(lat, lon), time);
+							} catch (ToolException ex) {
+								aloft = null; // offline or no hour: ground wind at every height, and the note says so
+							}
+						}
 					}
 					LaunchPlan.Ensemble e = LaunchPlan.parse(ens, model, time, aloft);
 					int runs = Math.max(10, Math.min(2000, a.integer("runs", 500)));
