@@ -1,0 +1,9 @@
+Length,Reference Area,Rocket_Part,mass_m,x_cm
+441.0,16.5,Nosecone,3.647,34.575
+0.0,0.0,Recovery Bay,4.599,73.05
+0.0,0.0,Upper Engineering Bay,4.8600,117.5
+0.0,0.0,Fuel Tank,6.015,196
+0.0,0.0,Lower Engineering Bay,2.401,272.85
+0.0,0.0,Oxidizer Tank,5.698,319.7
+0.0,0.0,Injector Bay,7.348,378.67
+0.0,0.0,Fin Can,9.78,423.32

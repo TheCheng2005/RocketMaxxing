@@ -20,15 +20,16 @@ export const PAGE_HELP: { page: Page; title: string; text: string }[] = [
   { page: "design", title: "Design", text: "The parts list, the 3-D view (Side, Back, 3D, cut-away, exploded), the selected part's properties, the summary (stability, apogee, rail exit) and the live rule check. Add parts from Add part; select one first and the new part goes into it. Drag parts in the list to move them into another part; drag the selected part along the rocket in the view to slide it, lined up with its neighbours. Properties › Appearance gives a part its paint and a decal (a picture: logo, stickers, texture). Picture makes review images and, in its Photo studio, a poster shot with sky, sun, flame and smoke. Templates prints full-size fins, rings and shrouds; right-click › Scale resizes the rocket." },
   { page: "motors", title: "Motors", text: "Flight configurations: the motor in each mount, ejection delays, when each parachute deploys and when stages separate." },
   { page: "flights", title: "Flights", text: "Saved simulations with their launch conditions (wind, rail, site), and plots of any flight variable. Each simulation's Extensions add an air-start, roll control or a script of your own (scripts stay off until you turn them on)." },
+  { page: "launch", title: "Launch planner", text: "Launch day: your design flown hundreds of times in the ensemble weather forecast for the site and hour (ECMWF's 51 forecasts or NOAA's 31), with the areas holding 50, 95 and 99% of landings on a satellite map, the flight in the forecast as it stands, and the winds by height. Plans can be saved to compare days. The map keeps the tiles it has shown, so a site looked at once still shows at the field." },
   { page: "targets", title: "Targets", text: "Your team's own goals (apogee window, rail exit, stability…) with live margins next to the competition's rules." },
   { page: "standards", title: "Standards", text: "The numbers every check uses: rule set, launch site, recovery factors and pin ratings, material properties, electronics." },
-  { page: "analysis", title: "Analysis", text: "53 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
+  { page: "analysis", title: "Analysis", text: "54 analyses: rules, stability, recovery, structures, launch day, electronics, studies, files. Each has an ⓘ saying what it needs and gives." },
   { page: "flightdata", title: "Flight data", text: "Altimeter logs compared with the simulation, and your past rockets with predicted against measured apogee." },
   { page: "history", title: "History", text: "What changed since the last save, the edits you can still undo (back to any point), and everything that happened to your designs and the team standards, by you or the assistant. A change to the standards or targets can be put back from here." },
 ];
 
-/** The pages in the left rail's order, for Ctrl+1 to Ctrl+9. */
-export const PAGE_KEYS: Page[] = ["home", "design", "motors", "flights", "targets", "standards", "analysis", "flightdata", "history"];
+/** The pages in the left rail's order, for Ctrl+1 to Ctrl+9 and Ctrl+0. */
+export const PAGE_KEYS: Page[] = ["home", "design", "motors", "flights", "launch", "targets", "standards", "analysis", "flightdata", "history"];
 
 /** Every keyboard shortcut, by where it works. */
 export const SHORTCUTS: { where: string; keys: [string, string][] }[] = [
@@ -41,7 +42,7 @@ export const SHORTCUTS: { where: string; keys: [string, string][] }[] = [
       [keys("S", true), "Save as (OpenRocket, RockSim, RASAero or a RocketMaxxing project)"],
       [keys("Z"), "Undo, including edits an analysis or the assistant made"],
       [`${keys("Z", true)} or ${keys("Y")}`, "Redo"],
-      [`${keys("1")} … ${keys("9")}`, "Go to a page in the left rail's order: Start, Design, Motors, Flights, Targets, Standards, Analysis, Flight data, History"],
+      [`${keys("1")} … ${keys("9")}, ${keys("0")}`, "Go to a page in the left rail's order: Start, Design, Motors, Flights, Launch, Targets, Standards, Analysis, Flight data, History"],
       ["?", "These shortcuts"],
       ["Esc", "Close a dialog, menu, search or the tour"],
     ],
@@ -143,6 +144,7 @@ export const QUESTIONS: { q: string; why: string; tools: [string, string][] }[] 
       ["fin_flutter", "fin flutter speed against the speed flown"],
       ["fin_fea", "stress, deflection and vibration of one fin (needs CalculiX for the full result)"],
       ["structural_loads", "axial and bending loads at every joint"],
+      ["load_diagrams", "shear and bending moment diagrams by the team's UTAT method"],
       ["compare_materials", "fins or airframe in other materials and thicknesses"],
       ["aero_heating", "nose and fin temperatures, from about Mach 2"],
       ["pressure_vessel", "tank and chamber burst and proof margins"],

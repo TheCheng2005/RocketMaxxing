@@ -267,6 +267,13 @@ public final class AppTools {
 						+ "standards file, keeping the rest of that file as the team wrote it.",
 				Schema.object().obj("targets", "Targets to change; null clears a limit.", true).build(), true,
 				a -> AppTeam.setTargets(ctx, a.obj("targets").raw())));
+		add(s, new ToolDef("app_plans", "App: saved launch plans",
+				"The launch plans saved in the designs folder's plans/: list (default), save one (a launch_planner result), load one "
+						+ "(its whole result), or delete one.",
+				Schema.object().enumStr("action", "list (default), save, load or delete.", false, "list", "save", "load", "delete")
+						.str("name", "The plan's name (save) or file name (load, delete).", false)
+						.obj("plan", "save: the launch_planner result to keep.", false).build(),
+				false, a -> AppPlans.plans(ctx, a)));
 		add(s, new ToolDef("app_flight_log", "App: flight log against the simulation",
 				"compare_flight with both altitude curves on one time grid and the numbers in SI, for the Flight data page.",
 				Schema.object().str("designId", DESIGN, true).str("path", "Altimeter CSV.", true)

@@ -39,6 +39,11 @@ const token = readToken();
 let nextId = 1;
 
 /** Where the page can load a picture or video the engine wrote in the designs folder. */
+/** A map tile source for Leaflet, through the app (which fetches and keeps the tiles): "satellite" or "map". */
+export function tileUrl(source: "satellite" | "map"): string {
+  return `/tiles/${source}/{z}/{x}/{y}?token=${encodeURIComponent(token)}`;
+}
+
 export function fileUrl(path: string): string {
   return `/file?token=${encodeURIComponent(token)}&path=${encodeURIComponent(path)}&v=${Date.now()}`;
 }

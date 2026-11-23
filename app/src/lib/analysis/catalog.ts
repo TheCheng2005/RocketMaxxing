@@ -4,6 +4,8 @@
 /** A plot of a list in the result: x column (default the first), columns on the left and right axes. */
 export interface PlotSpec {
   list: string;
+  /** Its heading, when a result has several plots. */
+  title?: string;
   x?: string;
   left: string[];
   right?: string[];
@@ -16,6 +18,8 @@ export interface Analysis {
   main: string[];
   defaults?: (name: string) => Record<string, string>;
   plot?: PlotSpec;
+  /** Several plots of the result, one under the other. */
+  plots?: PlotSpec[];
   /** Inputs of which at least one is needed (the engine checks the combination). */
   oneOf?: string[];
   /**
@@ -107,6 +111,14 @@ export const CATALOG: Group[] = [
       { tool: "fin_flutter", label: "Fin flutter", blurb: "Fin flutter speed against airspeed along the flight.", main: ["finSet", "shearModulus", "thickness"] },
       { tool: "fin_fea", label: "Fin stress (FEA)", blurb: "Stress, tip deflection and vibration of one fin under the worst load of the simulated flight.", main: ["finSet", "thickness", "safetyFactor", "gustSpeed", "run"], defaults: (n) => ({ plotPath: `plots/${n}-fin-stress.svg` }) },
       { tool: "structural_loads", label: "Airframe loads", blurb: "Axial and bending loads at each airframe joint, at max q with a gust.", main: ["gustSpeed", "safetyFactor", "allowableStress"] },
+      { tool: "load_diagrams", label: "Load diagrams (UTAT method)", blurb: "Load, shear, bending moment and axial force along the rocket at max q, by the team's load calculation.",
+        main: ["angleOfAttack", "simulation", "withThrust", "csvPath"],
+        plots: [
+          { list: "stations", title: "Transverse shear", x: "station", left: ["shear"] },
+          { list: "stations", title: "Bending moment", x: "station", left: ["bendingMoment"] },
+          { list: "stations", title: "Axial force", x: "station", left: ["axialForce"] },
+          { list: "stations", title: "Transverse load", x: "station", left: ["load"] },
+        ] },
       { tool: "aero_heating", label: "Aerodynamic heating", blurb: "Skin temperature screen for the nose and fins.", main: ["noseTipRadius"] },
       { tool: "compare_materials", label: "Material trade", blurb: "Flies the fins or airframe in other materials and thicknesses.", main: ["parts", "materials", "thicknesses"] },
       { tool: "pressure_vessel", label: "Pressure vessel", blurb: "Burst and proof margins of a tank or motor case.", main: ["meop", "burstPressure", "outerDiameter", "wallThickness", "ultimateStrength"],
