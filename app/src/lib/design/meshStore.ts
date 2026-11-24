@@ -14,8 +14,9 @@ export function knownMeshes(): string[] {
 }
 
 /** Whether every part's mesh is either in the reply or kept here. */
-export function complete(parts: { mesh?: string; meshId?: string }[]): boolean {
-  return parts.every((p) => p.mesh !== undefined || (p.meshId !== undefined && store.has(p.meshId)));
+export function complete(parts: { mesh?: string; meshId?: string; openMesh?: string; openMeshId?: string }[]): boolean {
+  const has = (mesh?: string, id?: string) => mesh !== undefined || (id !== undefined && store.has(id));
+  return parts.every((p) => has(p.mesh, p.meshId) && (p.openMeshId === undefined || has(p.openMesh, p.openMeshId)));
 }
 
 /** Whether a geometry is kept here (then the view must not dispose it). */

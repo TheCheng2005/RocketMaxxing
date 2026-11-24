@@ -10,7 +10,19 @@
   import { analysis } from "../analysis/store.svelte";
   import ComponentIcon from "../ComponentIcon.svelte";
   import { PART_GROUPS } from "./parts";
-  import { context, type MenuItem } from "../menu/menu.svelte";
+  import { context, openMenu, type MenuItem } from "../menu/menu.svelte";
+  import { HARDWARE, hardwareProps } from "./hardware";
+
+  // Recovery hardware: a menu of fittings, each added as a recovery-hardware mass with a typical size and mass.
+  function hardwareMenu(e: MouseEvent) {
+    const items: MenuItem[] = [];
+    for (const g of HARDWARE) {
+      items.push({ header: g.group });
+      for (const h of g.items) items.push({ label: `${h.name} · ${Math.round(h.mass * 1000)} g`, run: () => addPart("MassComponent", hardwareProps(h)) });
+    }
+    const b = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    openMenu(b.left, b.bottom + 4, items);
+  }
 
   // Right-click on a tile: add it where it would go, or add it and name it straight away.
   function tileItems(type: string, label: string): MenuItem[] {
@@ -68,6 +80,11 @@
       <button class="tile" title="Coupler, bulkheads, altimeters with batteries and switches, charges and tracker, laid out between two tubes" onclick={avionicsBay}>
         <ComponentIcon type="TubeCoupler" size={32} />
         <span>Avionics bay</span>
+      </button>
+      <button class="tile" disabled={!can["MassComponent"]} title={can["MassComponent"] ? `Eyebolts, U-bolts, eye nuts, swivels, quick links and shackles: add to ${can["MassComponent"]}` : "Select a part it fits in (a tube or bulkhead)"}
+        onclick={hardwareMenu}>
+        <ComponentIcon type="RecoveryHardware" size={32} />
+        <span>Hardware</span>
       </button>
     </div>
   </div>

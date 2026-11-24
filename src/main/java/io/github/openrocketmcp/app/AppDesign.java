@@ -272,11 +272,13 @@ final class AppDesign {
 				p.remove("mass");
 				// An edit usually changes one part: the window keeps the meshes (and what it built from them) by id, and
 				// gets only the new ones.
-				if (p.get("mesh") instanceof String mesh) {
-					String id = meshId(mesh);
-					p.put("meshId", id);
-					if (known.contains(id)) {
-						p.remove("mesh");
+				for (String k : List.of("mesh", "openMesh")) {
+					if (p.get(k) instanceof String mesh) {
+						String id = meshId(mesh);
+						p.put(k + "Id", id);
+						if (known.contains(id)) {
+							p.remove(k);
+						}
 					}
 				}
 				if (p.get("id") instanceof String id) {

@@ -190,6 +190,9 @@ public final class Workbench {
 				m.put("props", motorProps(fc, p.name));
 			}
 			m.put("mesh", mesh(p.tris));
+			if (!p.open.isEmpty()) {
+				m.put("openMesh", mesh(p.open)); // a parachute open, for the exploded view
+			}
 			parts.add(m);
 		}
 		r.put("parts", parts);

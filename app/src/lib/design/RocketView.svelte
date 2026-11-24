@@ -54,7 +54,8 @@
   /** Each part's place at full explosion, relative to where it is installed. */
   let apart = new Map<Part, THREE.Vector3>();
   /** One per drawn piece: a part, or one fin of a fin set (fin: its index). */
-  type Piece = { mesh: THREE.Mesh; edges: THREE.LineSegments; part: Part; fin: number | null; owned: Built | null };
+  /** {@code packed} and {@code open}: a parachute's two shapes, packed in the rocket and open in the exploded view. */
+  type Piece = { mesh: THREE.Mesh; edges: THREE.LineSegments; part: Part; fin: number | null; owned: Built | null; packed: Built; open: Built | null };
   let meshes: Piece[] = [];
   let webgl = $state(true);
 
@@ -85,6 +86,8 @@
       const built = geometry(p.meshId, p.mesh);
       if (!built) continue;
       if (p.meshId) inUse.add(p.meshId);
+      const open = p.openMeshId || p.openMesh ? geometry(p.openMeshId, p.openMesh) : null;
+      if (p.openMeshId && open) inUse.add(p.openMeshId);
       const n = p.plateDirs?.length ?? 0;
       const pieces: [Built, number | null][] = n > 1 ? finPieces(built, n).map((b, k) => [b, k]) : [[built, null]];
       for (const [b, fin] of pieces) {
@@ -113,7 +116,7 @@
         if (p.cutOpen) (edges.material as THREE.LineBasicMaterial).clippingPlanes = clip;
         mesh.userData.part = p;
         rocket.add(mesh, edges);
-        meshes.push({ mesh, edges, part: p, fin, owned: fin === null ? built : null });
+        meshes.push({ mesh, edges, part: p, fin, owned: fin === null ? built : null, packed: b, open: fin === null ? open : null });
         const bb = b.geo.boundingBox!;
         r = Math.max(r, Math.abs(bb.max.y), Math.abs(bb.min.y), Math.abs(bb.max.z), Math.abs(bb.min.z));
       }
@@ -147,9 +150,9 @@
   function layOut() {
     apart = new Map();
     const box = new Map<Part, THREE.Box3>();
-    for (const { mesh, part } of meshes) {
+    for (const { part, packed, open } of meshes) {
       const b = box.get(part) ?? new THREE.Box3();
-      b.union(mesh.geometry.boundingBox!);
+      b.union((open ?? packed).geo.boundingBox!); // a parachute takes the room it has open
       box.set(part, b);
     }
     let body = 0.005;
@@ -194,7 +197,13 @@
     const e = explode;
     const moving = drag?.ids ?? held?.ids;
     const shift = drag?.dx ?? held?.dx ?? 0;
-    for (const { mesh, edges, part, fin } of meshes) {
+    for (const { mesh, edges, part, fin, packed, open } of meshes) {
+      // Past halfway apart, a parachute opens; back together, it is packed again.
+      const shape = e > 0.5 && open ? open : packed;
+      if (mesh.geometry !== shape.geo) {
+        mesh.geometry = shape.geo;
+        edges.geometry = shape.edges;
+      }
       const o = (apart.get(part) ?? new THREE.Vector3()).clone().multiplyScalar(e);
       if (fin !== null && part.plateDirs) {
         const d = part.plateDirs[fin];
@@ -1007,7 +1016,8 @@
       // What this visit put on the graphics card goes; part shapes kept for the next build (meshes.ts) stay.
       const keptShapes = new Set<THREE.BufferGeometry>();
       for (const m of meshes) {
-        keptShapes.add(m.mesh.geometry).add(m.edges.geometry);
+        keptShapes.add(m.mesh.geometry).add(m.edges.geometry).add(m.packed.geo).add(m.packed.edges);
+        if (m.open) keptShapes.add(m.open.geo).add(m.open.edges);
         if (m.owned && !kept(m.part.meshId)) disposeBuilt(m.owned);
       }
       scene.traverse((o) => {

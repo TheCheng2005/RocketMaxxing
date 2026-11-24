@@ -174,4 +174,39 @@ class Model3dTest {
 				.orElseThrow(() -> new AssertionError("the shock cord is drawn"));
 		assertTrue(cord.tris.size() > 500, "a coiled cord: " + cord.tris.size());
 	}
+
+	@Test
+	void parachutesOpenWhenExplodedAndHardwareHasItsOwnShape() throws Exception {
+		Designs.Design d = new Designs().openExample("Dual parachute");
+		Rocket r = d.doc.getRocket();
+		BodyTube tube = first(r, BodyTube.class);
+		String[] names = { "Eyebolt 5/16\"", "Forged eye nut 1/4\"", "Swivel 1000 lb", "Quick link 1/4\"", "Bow shackle 1/4\"", "U-bolt 1/4\"" };
+		for (String n : names) {
+			MassComponent m = new MassComponent(0.06, 0.015, 0.03);
+			m.setName(n);
+			m.setMassComponentType(MassComponent.MassComponentType.RECOVERYHARDWARE);
+			tube.addChild(m);
+		}
+		FlightConfiguration fc = r.getSelectedConfiguration();
+		List<Model3d.Part> parts = Model3d.build(fc, 32);
+		java.util.Set<Integer> sizes = new java.util.HashSet<>();
+		for (String n : names) {
+			Model3d.Part p = part(parts, n);
+			assertFalse(p.tris.isEmpty(), n);
+			assertTrue(p.x1 - p.x0 <= 0.06 + 1e-6, n + " stays within its length");
+			sizes.add(p.tris.size());
+		}
+		assertEquals(names.length, sizes.size(), "each fitting is drawn its own way: " + sizes);
+
+		Model3d.Part chute = parts.stream().filter(p -> p.component instanceof info.openrocket.core.rocketcomponent.Parachute).findFirst()
+				.orElseThrow();
+		assertFalse(chute.open.isEmpty(), "a parachute has its open shape");
+		double packedR = chute.rMax, packedLen = chute.x1 - chute.x0;
+		chute.opened();
+		assertTrue(chute.x1 - chute.x0 > packedLen && chute.rMax > packedR, "open, it is longer (its lines) and wider than packed");
+		Model3d.Part streamer = parts.stream().filter(p -> p.component instanceof info.openrocket.core.rocketcomponent.Streamer).findFirst().orElse(null);
+		if (streamer != null) {
+			assertTrue(streamer.open.isEmpty(), "a streamer stays rolled");
+		}
+	}
 }

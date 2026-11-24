@@ -87,6 +87,9 @@ public final class Model3d {
 		int axialStage;
 		String stageName = "";
 		final List<double[]> tris = new ArrayList<>();
+		/** A parachute's other shape, open, for the exploded view (empty for other parts), and its scale to life. */
+		final List<double[]> open = new ArrayList<>();
+		double openScale = 1;
 		double x0 = Double.MAX_VALUE, x1 = -Double.MAX_VALUE, rMax;
 		double mass;
 		/** How deep it sits: 0 for the airframe and fins, 1 for a part in the airframe, 2 for one inside that, ... */
@@ -124,6 +127,21 @@ public final class Model3d {
 				x0 = Math.min(x0, t[3 * v]);
 				x1 = Math.max(x1, t[3 * v]);
 				rMax = Math.max(rMax, Math.hypot(t[3 * v + 1], t[3 * v + 2]));
+			}
+		}
+
+		/** For the exploded view: the open shape in place of the packed one (a parachute), its extent with it. */
+		void opened() {
+			if (open.isEmpty()) {
+				return;
+			}
+			List<double[]> o = new ArrayList<>(open);
+			tris.clear();
+			x0 = Double.MAX_VALUE;
+			x1 = -Double.MAX_VALUE;
+			rMax = 0;
+			for (double[] t : o) {
+				add(t);
 			}
 		}
 
@@ -216,10 +234,7 @@ public final class Model3d {
 			p.radius = mr;
 			for (Coordinate a : at) {
 				double aft = a.x + mount.getLength() + mc.getMount().getMotorOverhang();
-				cylinder(p, aft - ml, aft - 0.06 * ml, 0, mr, a.y, a.z, segments);
-				// Nozzle: a short dark cone at the aft end.
-				lathe(p, new double[][] { { aft - 0.06 * ml, 0 }, { aft - 0.06 * ml, mr }, { aft, 0.62 * mr }, { aft, 0.4 * mr },
-						{ aft - 0.03 * ml, 0.3 * mr } }, a.y, a.z, segments, true);
+				motor(p, aft - ml, ml, mr, a.y, a.z, segments);
 			}
 			p.mass = mc.getMotor().getLaunchMass();
 			out.add(p);
@@ -358,6 +373,17 @@ public final class Model3d {
 		p.cy = at[0].y;
 		p.cz = at[0].z;
 		p.radius = Math.max(rs[0], rs[n]);
+		if (c instanceof info.openrocket.core.rocketcomponent.Parachute pc && at.length > 0) {
+			// Open in the exploded view: as wide as the canopy up to a few body diameters; a bigger one shrinks gently, so
+			// a main still shows bigger than its drogue. Lines as long as the canopy's, scaled with it, and long enough to see.
+			double d = pc.getDiameter() > 0 ? pc.getDiameter() : 6 * room, cap = 6 * room;
+			double shown = d <= cap ? d : cap * Math.sqrt(d / cap);
+			double lines = (pc.getLineLength() > 0 ? pc.getLineLength() : d) * shown / d;
+			Part open = new Part(c, c.getName(), kind, true, stage);
+			Shapes3d.canopy(open, at[0].x, at[0].y, at[0].z, shown, pc.getLineCount(), Math.max(0.8 * shown, Math.min(lines, 1.2 * shown)), seg);
+			p.open.addAll(open.tris);
+			p.openScale = shown / d;
+		}
 		return p;
 	}
 
@@ -415,6 +441,18 @@ public final class Model3d {
 	/** A shoulder's wall: as entered, or the component's own wall where none is given (OpenRocket's default 0). */
 	static double shoulderWall(Transition t, double thickness) {
 		return thickness > 0 ? thickness : Math.max(t.getThickness(), 1e-3);
+	}
+
+	/**
+	 * A reloadable motor as it looks: the forward closure's rounded edge, the case, the thrust ring at the aft end, the
+	 * aft closure, and the nozzle's bell with its throat inside.
+	 */
+	static void motor(Part p, double x0, double ml, double mr, double cy, double cz, int seg) {
+		double aft = x0 + ml, caseEnd = aft - 0.075 * ml, ring = Math.min(0.015 * ml, mr * 0.25), lip = Math.min(0.012 * ml, mr * 0.12);
+		double noz = Math.min(0.06 * ml, mr * 1.1);
+		lathe(p, new double[][] { { x0, 0 }, { x0, 0.8 * mr }, { x0 + lip, mr }, { caseEnd, mr }, { caseEnd, 1.06 * mr }, { caseEnd + ring, 1.06 * mr },
+				{ caseEnd + ring, 0.9 * mr }, { aft - noz, 0.9 * mr }, { aft - noz * 0.85, 0.72 * mr }, { aft, 0.6 * mr }, { aft, 0.5 * mr },
+				{ aft - noz * 0.6, 0.2 * mr }, { aft - noz, 0.16 * mr }, { aft - noz * 1.05, 0 } }, cy, cz, seg, false);
 	}
 
 	/** A tube (or a solid cylinder when rIn = 0) from x0 to x1. */

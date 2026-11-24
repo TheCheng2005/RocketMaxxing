@@ -153,6 +153,9 @@ export interface Part {
   /** Left out when the window already has it (see design/meshes.ts). */
   mesh?: string;
   meshId?: string;
+  /** A parachute's open shape, drawn in the exploded view instead of the packed one. */
+  openMesh?: string;
+  openMeshId?: string;
 }
 
 export interface Model {
@@ -715,7 +718,7 @@ export function placement(type: string): { parent: string; index: number } | nul
   return null;
 }
 
-export async function addPart(type: string) {
+export async function addPart(type: string, properties: Record<string, unknown> = {}) {
   const d = app.design;
   const at = placement(type);
   if (!d || !at) return;
@@ -723,7 +726,7 @@ export async function addPart(type: string) {
     type,
     parent: at.parent === "rocket" ? d.tree.name : at.parent,
     index: at.index,
-    properties: {},
+    properties,
   });
   app.hover = null;
   if (r?.id) await select(r.id, true);
