@@ -67,13 +67,15 @@ final class Shapes3d {
 	 * lines gathered out of one end to the swivel on its riser.
 	 */
 	static void packedChute(Model3d.Part p, double x0, double len, double r, double cy, double cz, int seg) {
-		double body = len * 0.8;
+		double body = len * 0.8, end = x0 + len;
 		pillow(p, x0, body, r * 0.94, cy, cz, Math.max(seg, 30), 10, 0.08, 6);
-		double rc = Math.max(r * 0.16, 1e-3), end = x0 + len;
-		double lx1 = Math.max(x0 + body + rc, end - 2.4 * Math.min(r * 0.35, len * 0.08));
-		Model3d.cylinder(p, x0 + body - rc, lx1, 0, rc, cy, cz, 12); // the lines, gathered
-		double R = Math.max(1e-3, Math.min((end - lx1) / 2.2, r * 0.35));
-		ring(p, lx1 + R, cy, cz, R, Math.max(R * 0.22, 4e-4), false); // the swivel's eye
+		// the swivel's eye at the very end, the gathered lines between it and the bundle, all within the part's length
+		double R = Math.min(r * 0.35, len * 0.06), w = Math.max(R * 0.22, 4e-4);
+		double rc = Math.min(Math.max(r * 0.16, 1e-3), r * 0.3), lx0 = x0 + body - rc, lx1 = end - 2 * R - w;
+		if (lx1 > lx0) {
+			Model3d.cylinder(p, lx0, lx1, 0, rc, cy, cz, 12); // the lines, gathered
+		}
+		ring(p, end - R - w, cy, cz, R, w, false); // the swivel's eye
 	}
 
 	/**

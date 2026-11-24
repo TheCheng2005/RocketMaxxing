@@ -11,14 +11,18 @@
   import ComponentIcon from "../ComponentIcon.svelte";
   import { PART_GROUPS } from "./parts";
   import { context, openMenu, type MenuItem } from "../menu/menu.svelte";
-  import { HARDWARE, hardwareProps } from "./hardware";
+  import { CONNECTORS, connectorProps } from "./connectors";
+  import { units } from "../units.svelte";
 
-  // Recovery hardware: a menu of fittings, each added as a recovery-hardware mass with a typical size and mass.
-  function hardwareMenu(e: MouseEvent) {
+  /** A small fitting's mass: grams, or ounces for an imperial team. */
+  const grams = (kg: number) => (units.system === "imperial" ? `${(kg / 0.028349523).toFixed(2)} oz` : `${Math.round(kg * 1000)} g`);
+
+  // Connectors: a menu of recovery fittings, each added as a recovery-hardware mass with a typical size and mass.
+  function connectorMenu(e: MouseEvent) {
     const items: MenuItem[] = [];
-    for (const g of HARDWARE) {
+    for (const g of CONNECTORS) {
       items.push({ header: g.group });
-      for (const h of g.items) items.push({ label: `${h.name} · ${Math.round(h.mass * 1000)} g`, run: () => addPart("MassComponent", hardwareProps(h)) });
+      for (const h of g.items) items.push({ label: `${h.name} · ${grams(h.mass)}`, run: () => addPart("MassComponent", connectorProps(h)) });
     }
     const b = (e.currentTarget as HTMLElement).getBoundingClientRect();
     openMenu(b.left, b.bottom + 4, items);
@@ -81,10 +85,10 @@
         <ComponentIcon type="TubeCoupler" size={32} />
         <span>Avionics bay</span>
       </button>
-      <button class="tile" disabled={!can["MassComponent"]} title={can["MassComponent"] ? `Eyebolts, U-bolts, eye nuts, swivels, quick links and shackles: add to ${can["MassComponent"]}` : "Select a part it fits in (a tube or bulkhead)"}
-        onclick={hardwareMenu}>
+      <button class="tile" disabled={!can["MassComponent"]} title={can["MassComponent"] ? `Connectors (eyebolts, U-bolts, eye nuts, quick links, swivels, shackles): add to ${can["MassComponent"]}` : "Select a part they fit in (a tube or bulkhead)"}
+        onclick={connectorMenu}>
         <ComponentIcon type="RecoveryHardware" size={32} />
-        <span>Hardware</span>
+        <span>Connectors</span>
       </button>
     </div>
   </div>

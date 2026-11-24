@@ -83,7 +83,7 @@
 <rect class="switch" x="40" y="408" width="14" height="9"/><text class="t2" x="60" y="416">arming switch</text>
 <rect class="chute" x="300" y="408" width="14" height="9"/><text class="t2" x="320" y="416">parachute / streamer</text>
 <rect class="cord" x="560" y="408" width="14" height="9"/><text class="t2" x="580" y="416">shock cord</text>
-<rect class="hw" x="820" y="408" width="14" height="9"/><text class="t2" x="840" y="416">recovery hardware / sled</text>
+<rect class="hw" x="820" y="408" width="14" height="9"/><text class="t2" x="840" y="416">connector / sled</text>
 <rect class="mass" x="40" y="426" width="14" height="9"/><text class="t2" x="60" y="434">mass / ballast</text>
 <rect class="motor" x="300" y="426" width="14" height="9"/><text class="t2" x="320" y="434">motor</text>
 <rect class="struct" x="560" y="426" width="14" height="9"/><text class="t2" x="580" y="434">coupler, bulkhead, ring, mount</text>

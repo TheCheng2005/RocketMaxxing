@@ -75,7 +75,7 @@ public final class Drawing {
 		m.put("switch", "arming switch");
 		m.put("chute", "parachute / streamer");
 		m.put("cord", "shock cord");
-		m.put("hw", "recovery hardware / sled");
+		m.put("hw", "connector / sled");
 		m.put("payload", "payload");
 		m.put("mass", "mass / ballast");
 		m.put("motor", "motor");

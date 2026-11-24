@@ -202,6 +202,8 @@ class Model3dTest {
 				.orElseThrow();
 		assertFalse(chute.open.isEmpty(), "a parachute has its open shape");
 		double packedR = chute.rMax, packedLen = chute.x1 - chute.x0;
+		assertTrue(packedLen <= ((info.openrocket.core.rocketcomponent.Parachute) chute.component).getLength() + 1e-6,
+				"packed, lines and swivel included, it stays within its length");
 		chute.opened();
 		assertTrue(chute.x1 - chute.x0 > packedLen && chute.rMax > packedR, "open, it is longer (its lines) and wider than packed");
 		Model3d.Part streamer = parts.stream().filter(p -> p.component instanceof info.openrocket.core.rocketcomponent.Streamer).findFirst().orElse(null);
