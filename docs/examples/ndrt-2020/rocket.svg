@@ -89,7 +89,7 @@
 <rect class="switch" x="40" y="354" width="14" height="9"/><text class="t2" x="60" y="362">arming switch</text>
 <rect class="chute" x="300" y="354" width="14" height="9"/><text class="t2" x="320" y="362">parachute / streamer</text>
 <rect class="cord" x="560" y="354" width="14" height="9"/><text class="t2" x="580" y="362">shock cord</text>
-<rect class="hw" x="820" y="354" width="14" height="9"/><text class="t2" x="840" y="362">recovery hardware / sled</text>
+<rect class="hw" x="820" y="354" width="14" height="9"/><text class="t2" x="840" y="362">connector / sled</text>
 <rect class="payload" x="40" y="372" width="14" height="9"/><text class="t2" x="60" y="380">payload</text>
 <rect class="mass" x="300" y="372" width="14" height="9"/><text class="t2" x="320" y="380">mass / ballast</text>
 <rect class="motor" x="560" y="372" width="14" height="9"/><text class="t2" x="580" y="380">motor</text>

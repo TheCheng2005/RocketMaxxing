@@ -85,6 +85,9 @@ public final class View3d {
 				stages = Math.max(stages, p.axialStage);
 			}
 			double metresPerPixel = (length + (pieces + STAGE_GAP * stages) * gap) / (width - 2.0 * PAD);
+			for (Model3d.Part p : parts) {
+				p.opened(); // parachutes laid out open
+			}
 			layOut(parts, gap, maxR, metresPerPixel, guides);
 		}
 		// Camera: looking at the rocket's side (nose to the left), turned toward the nose and down from above.
@@ -141,7 +144,9 @@ public final class View3d {
 		g.setColor(new Color(0x5f5e57));
 		String sub = switch (mode) {
 			case EXPLODED -> "Exploded view: airframe pieces pulled apart along the axis, fins slid out, internal parts laid out below "
-					+ "their piece (dashed lines show where they fit)";
+					+ "their piece (dashed lines show where they fit)" + (parts.stream().anyMatch(p -> !p.open.isEmpty())
+							? parts.stream().anyMatch(p -> !p.open.isEmpty() && p.openScale < 0.999) ? "; parachutes shown open, smaller than life" : "; parachutes shown open"
+							: "");
 			case CUTAWAY -> "Cut-away view: the near half of the airframe removed";
 			case ASSEMBLED -> "Assembled view";
 		};

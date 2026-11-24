@@ -83,7 +83,7 @@ export function analysisText(a: Analysis, group: string): string {
 
 const PAGES: { id: Page; title: string; sub: string; keys: string }[] = [
   { id: "home", title: "Start", sub: "Recent files and examples", keys: "home recent examples open file" },
-  { id: "design", title: "Design", sub: "The rocket's parts, the 3-D view and the rule check", keys: "parts components edit 3D view tree" },
+  { id: "design", title: "Design", sub: "The rocket's parts, the 3-D view and the rule check", keys: "parts components edit 3D view tree connectors eyebolt u-bolt quick link swivel shackle eye nut recovery hardware" },
   { id: "motors", title: "Motors", sub: "Motors, configurations, deployment and staging", keys: "motor configuration delay ignition staging separation deployment" },
   { id: "flights", title: "Flights", sub: "Simulations, launch conditions and plots", keys: "simulation simulate flight apogee plot launch conditions custom plot compare simulations stages booster sustainer zoom export png csv flight log units" },
   { id: "launch", title: "Launch planner", sub: "Where it lands in the ensemble forecast, on a satellite map", keys: "launch day planner landing area ellipse dispersion forecast ensemble gefs ecmwf noaa wind map satellite recovery waiver drift where will it land" },

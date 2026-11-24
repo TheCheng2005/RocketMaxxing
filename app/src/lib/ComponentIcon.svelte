@@ -10,7 +10,7 @@
     LaunchLug: "outside", RailButton: "outside",
     InnerTube: "inside", TubeCoupler: "inside", CenteringRing: "inside", Bulkhead: "inside", EngineBlock: "inside",
     Parachute: "recovery", Streamer: "recovery", ShockCord: "recovery",
-    MassComponent: "mass",
+    MassComponent: "mass", RecoveryHardware: "recovery",
   };
   let family = $derived(FAMILY[type] ?? "body");
 </script>
@@ -87,6 +87,12 @@
   {:else if type === "ShockCord"}
     <path class="line" d="M4 30c4-12 8-12 10 0s6 12 10 0 6-12 10 0 6 12 10 0" />
     <circle class="line" cx="4" cy="30" r="2" /><circle class="line" cx="44" cy="30" r="2" />
+  {:else if type === "RecoveryHardware"}
+    <!-- connectors: an eyebolt through a bulkhead, a quick link hooked into its eye -->
+    <path class="line" d="M6 14v20M6 24h14" />
+    <path class="thin" d="M3 18h6M3 30h6" />
+    <circle class="line" cx="25" cy="24" r="5" />
+    <rect class="line" x="27" y="17" width="17" height="14" rx="7" />
   {:else if type === "MassComponent"}
     <path class="fill" d="M10 18h28l4 22H6z" />
     <path class="line" d="M10 18h28l4 22H6z" />
