@@ -13,7 +13,7 @@ OpenRocket `.ork` files. Built for student competition teams and amateur rockete
 
 ## What you can do
 
-Each item links to a worked example on the [Examples page](docs/EXAMPLES.md), where one made-up 10,000 ft rocket goes
+Most items link to a worked example on the [Examples page](docs/EXAMPLES.md), where one made-up 10,000 ft rocket goes
 from a blank page to launch day with real output at every step.
 
 - **Design in 3-D.** The parts list, the rocket with its CG and CP, and the selected part's properties side by side.
