@@ -137,6 +137,7 @@ public final class LaunchTools {
 						.bool("mapData", "Include the map's data: every landing point, the areas' outlines and the trajectory in latitude and "
 								+ "longitude (default false: the numbers only; the app's map asks for it).", false)
 						.str("savePath", "Also save the plan (inputs and results, JSON) here, e.g. \"plans/2027-08-21-launch.json\".", false)
+						.str("plotPath", "Also draw the landings and their 95% area east and north of the pad (SVG), e.g. \"plots/landing.svg\".", false)
 						.build(),
 				true, a -> {
 					var std = ctx.standards();
@@ -180,7 +181,7 @@ public final class LaunchTools {
 							a.qty("launchDirectionSd", Dim.ANGLE, Math.toRadians(5)), 20270821L, a.qtyOrNaN("radius", Dim.DISTANCE));
 					Designs.Design d = ctx.designs.get(a.str("designId", null));
 					Simulation base = Sims.prepare(d, a.str("simulation", null), a.str("configuration", null), Sims.Overrides.none(), std);
-					Map<String, Object> out = LaunchPlan.plan(base, d.doc, e, st, lat, lon);
+					Map<String, Object> out = LaunchPlan.plan(base, d.doc, e, st, lat, lon, a.has("plotPath") ? ctx.path(a.str("plotPath")) : null);
 					out.put("design", d.doc.getRocket().getName());
 					out.put("simulation", base.getName());
 					if (!a.bool("mapData", false)) {

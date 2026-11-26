@@ -180,11 +180,14 @@ public final class StudyTools {
 						.array("joints", "With the files: joints to report, [{name, x}] with x from the nose tip (\"1.01 m\", or metres).",
 								Schema.object().str("name", "Joint, e.g. \"Rec Bay/UEB Joint\".", true).qty("x", "Station from the nose tip.", true).item(), false)
 						.str("csvPath", "Also write the stations as CSV (SI: station, transverse load, shear, bending moment, axial force).", false)
+						.str("plotPath", "Also draw the bending moment diagram (SVG) here, with the shear diagram beside it (-shear.svg), e.g. "
+								+ "\"plots/bending-moment.svg\".", false)
 						.build(),
 				true, a -> {
 					double alpha = a.has("angleOfAttack") ? a.qty("angleOfAttack", Dim.ANGLE) : Math.toRadians(5);
 					LoadDiagrams.Input in;
 					String source;
+					String title = "Load diagrams";
 					if (a.has("partsFile")) {
 						for (String k : List.of("conditionsFile", "cpFile", "clFile", "cdFile")) {
 							if (!a.has(k)) {
@@ -206,12 +209,26 @@ public final class StudyTools {
 					} else {
 						Simulation sim = SimTools.runSelected(ctx, a);
 						in = LoadDiagrams.fromSimulation(sim, alpha, a.bool("withThrust", false));
+						title = sim.getRocket().getName();
 						source = "From the design: " + sim.getName() + ", max q at t=" + Units.num(in.state().time()) + " s; parts are the "
 								+ "airframe pieces with everything inside them (motor at its mass then), lift slopes and CPs from "
 								+ "OpenRocket at that Mach.";
 					}
 					StringBuilder csv = a.has("csvPath") ? new StringBuilder() : null;
-					Map<String, Object> out = LoadDiagrams.report(LoadDiagrams.compute(in), in, source, csv);
+					Map<String, Object> res = LoadDiagrams.compute(in);
+					Map<String, Object> out = LoadDiagrams.report(res, in, source, csv);
+					if (a.has("plotPath")) {
+						Path p = ctx.path(a.str("plotPath"));
+						if (p.getParent() != null) {
+							Files.createDirectories(p.getParent());
+						}
+						String[] svg = LoadDiagrams.svgs(res, in, title);
+						String f = p.getFileName().toString();
+						Path shear = p.resolveSibling((f.endsWith(".svg") ? f.substring(0, f.length() - 4) : f) + "-shear.svg");
+						Files.writeString(p, svg[0]);
+						Files.writeString(shear, svg[1]);
+						out.put("plots", List.of(p.toAbsolutePath().toString(), shear.toAbsolutePath().toString()));
+					}
 					if (csv != null) {
 						Path p = ctx.path(a.str("csvPath"));
 						if (p.getParent() != null) {

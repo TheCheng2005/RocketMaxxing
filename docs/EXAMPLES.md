@@ -7,8 +7,9 @@ Units follow the team setting (here metric with imperial in brackets). In Claude
 appear right in the chat, and long runs (optimizers, Monte Carlo) show their progress and can be stopped. Not sure what
 to ask? Ask Claude what it can do: it also offers related things as you work.
 
-Using [RocketMaxxing](ROCKETMAXXING.md), the desktop app? Every step below is an analysis on its Analysis page too:
-open the same design and run them there, no assistant needed.
+Using [RocketMaxxing](ROCKETMAXXING.md), the desktop app? Nearly every step below is an analysis on its Analysis page
+too, and the rest are on its Design, Flights and Launch pages: open the same design and do them there, no assistant
+needed.
 
 The Maple 10K is a made-up rocket. For a real one, checked against the log of its flight, see the
 [worked example](WORKED_EXAMPLE.md).
@@ -152,9 +153,28 @@ A cut-away from the OpenRocket model itself: every part is drawn where it is, el
 
 > Shear pins on the main bay: **3 x 4-40 nylon** (they must hold while the drogue opens). Black powder for a 4 × 12 in bay at 15 psi: **1.75 g** primary, 2.187 g backup. The harness rating is twice the opening load, for shock cord, quick links and eye bolts.
 
+### 12. "Add the connectors: a forged 1/4 in eyebolt on the nose bulkhead and the motor's forward closure, 1/4 in quick links at both ends of each shock cord and a swivel on each chute."
+
+<sub>Tools Claude uses: `add_component`</sub>
+
+> 8 connectors, 196 g in all, each where it hangs (the bay's U-bolts came with it in step 2). The harnesses need a rating of 778 lbf, so the swivels are the 1,000 lb ones.
+
+| Connector | Joins |
+|---|---|
+| Eyebolt 1/4"-20, forged | on the nose bulkhead |
+| Quick link 1/4" (6 mm) | main harness to the nose |
+| Swivel, ball-bearing (1,000 lb) | main to its harness |
+| Quick link 1/4" (6 mm) | main harness to the bay |
+| Quick link 1/4" (6 mm) | drogue harness to the bay |
+| Swivel, ball-bearing (1,000 lb) | drogue to its harness |
+| Quick link 1/4" (6 mm) | drogue harness to the motor |
+| Eyebolt 1/4"-20, forged | in the motor's forward closure |
+
+Connectors are mass components marked as recovery hardware, so they count in the mass, CG and descent rates, and the 3-D views draw each one as what it is. In RocketMaxxing they are one click away: **Add part → Connectors** lists eyebolts (#10-24 to 1/2"), U-bolts, eye nuts, quick links (3.5 to 10 mm), swivels and shackles with real masses, in grams or ounces.
+
 ## Flight and rules
 
-### 12. "Does it pass Launch Canada?"
+### 13. "Does it pass Launch Canada?"
 
 <sub>Tools Claude uses: `check_requirements`</sub>
 
@@ -164,30 +184,30 @@ A cut-away from the OpenRocket model itself: every part is drawn where it is, el
 |---|---|---|---|
 | WARN | Within the models' range | OpenRocket warns: Body calculations may not be entirely accurate at supersonic speeds. |  |
 | WARN | Launch site altitude | 0 m (0 ft) used by this simulation |  |
-| WARN | Ascent stability (maximum, over-stability) | 5.723 cal | R10.3.1, R10.4.1 |
-| WARN | Ascent stability in 8.333 m/s (27.34 ft/s) wind (maximum, over-stability) | 5.724 cal | R10.3.1, R10.4.1 |
-| WARN | Maximum Mach number | 1.166 |  |
+| WARN | Ascent stability (maximum, over-stability) | 5.818 cal | R10.3.1, R10.4.1 |
+| WARN | Ascent stability in 8.333 m/s (27.34 ft/s) wind (maximum, over-stability) | 5.817 cal | R10.3.1, R10.4.1 |
+| WARN | Maximum Mach number | 1.156 |  |
 | PASS | Simulated launch angle | 6 deg | R10.1.1 |
-| PASS | Rail departure velocity | 40.82 m/s (133.9 ft/s) | R10.2.1 |
-| PASS | Thrust-to-weight at liftoff (avg thrust / liftoff weight) | 10.83 | R10.2.2, R3.1.2, R3.1.3; 2027 Edicts (Advanced Specific) |
-| PASS | Ascent stability (minimum, rail exit to apogee while airspeed > 100 ft/s) | 3.534 cal at t=0.335 s, Mach 0.1208; angle of attack 3.174 deg there (wind / rail exit): OpenRocket's CP moves forward at high angle of attack. Zero-AoA margin: 4.032 cal | R10.3.1, R10.4.1 |
-| PASS | Ascent stability in 8.333 m/s (27.34 ft/s) wind (minimum, rail exit to apogee while airspeed > 100 ft/s) | 2.406 cal at t=0.335 s, Mach 0.1257; angle of attack 12.54 deg there (wind / rail exit): OpenRocket's CP moves forward at high angle of attack. Zero-AoA margin: 4.032 cal | R10.3.1, R10.4.1 |
-| PASS | Fin flutter margin (Fins, Carbon fiber) | 2.462 at 939.2 m (3081 ft), 392.4 m/s (1287 ft/s) | structures.flutterMinMargin |
+| PASS | Rail departure velocity | 41.48 m/s (136.1 ft/s) | R10.2.1 |
+| PASS | Thrust-to-weight at liftoff (avg thrust / liftoff weight) | 10.64 | R10.2.2, R3.1.2, R3.1.3; 2027 Edicts (Advanced Specific) |
+| PASS | Ascent stability (minimum, rail exit to apogee while airspeed > 100 ft/s) | 3.636 cal at t=0.345 s, Mach 0.1227; angle of attack 3.1 deg there (wind / rail exit): OpenRocket's CP moves forward at high angle of attack. Zero-AoA margin: 4.123 cal | R10.3.1, R10.4.1 |
+| PASS | Ascent stability in 8.333 m/s (27.34 ft/s) wind (minimum, rail exit to apogee while airspeed > 100 ft/s) | 2.525 cal at t=0.345 s, Mach 0.1275; angle of attack 12.26 deg there (wind / rail exit): OpenRocket's CP moves forward at high angle of attack. Zero-AoA margin: 4.124 cal | R10.3.1, R10.4.1 |
+| PASS | Fin flutter margin (Fins, Carbon fiber) | 2.483 at 931.4 m (3056 ft), 389.1 m/s (1276 ft/s) | Team standard |
 | PASS | Length-to-diameter ratio | 21.89 | 2027 Edicts, Stability: L:D Ratio |
 
-### 13. "Simulate the flight and plot it."
+### 14. "Simulate the flight and plot it."
 
 <sub>Tools Claude uses: `run_simulation`</sub>
 
-> Apogee **2998 m (9836 ft)** at 20.55 s. Top speed 392.3 m/s (1287 ft/s) (Mach 1.166), 15.33 G peak, 40.82 m/s (133.9 ft/s) off the rail.
+> Apogee **3002 m (9849 ft)** at 20.65 s. Top speed 388.9 m/s (1276 ft/s) (Mach 1.156), 15.04 G peak, 41.48 m/s (136.1 ft/s) off the rail.
 
 ![Altitude against time with burnout, apogee and both deployments marked](examples/flight-profile.svg)
 
-### 14. "Where will it land in a 15 km/h west wind? Include our build and motor uncertainty, and give us a map for Google Earth."
+### 15. "Where will it land in a 15 km/h west wind? Include our build and motor uncertainty, and give us a map for Google Earth."
 
 <sub>Tools Claude uses: `monte_carlo`</sub>
 
-> Over 200 simulated flights the median landing is 211 m (692.1 ft) from the pad and 95% land within 505.7 m (1659 ft); the landings centre 561 ft west of the pad (the rail is tilted into the wind, so it flies upwind and drifts back under the drogue). Apogee 2982 m (9782 ft) ± 200 m (656.1 ft).
+> Over 200 simulated flights the median landing is 225.6 m (740.1 ft) from the pad and 95% land within 519.8 m (1705 ft); the landings centre 623 ft west of the pad (the rail is tilted into the wind, so it flies upwind and drifts back under the drogue). Apogee 2984 m (9789 ft) ± 199.2 m (653.5 ft).
 
 ![200 simulated landings around the pad with the 2-sigma ellipse](examples/landing.svg)
 
@@ -197,33 +217,33 @@ Claude also reports what drives the spread (correlation of each uncertain input 
 
 | Uncertain input | Apogee | Min stability | Landing distance |
 |---|---|---|---|
-| windSpeed | -0.1363 | -0.9657 | -0.7174 |
-| launchAngle | -0.1505 | -0.005545 | 0.3506 |
-| structureMass | -0.05261 | 0.1284 | 0.09882 |
-| airframeDrag | -0.9239 | 0.04311 | -0.1806 |
-| motorThrust | 0.3206 | 0.07675 | -0.01767 |
-| parachuteCd | -0.03247 | 0.03013 | -0.09622 |
+| windSpeed | -0.1409 | -0.9661 | -0.7438 |
+| launchAngle | -0.1528 | -0.005575 | 0.3807 |
+| structureMass | -0.05467 | 0.1312 | 0.1094 |
+| airframeDrag | -0.9219 | 0.04424 | -0.1842 |
+| motorThrust | 0.3231 | 0.07166 | -0.02155 |
+| parachuteCd | -0.03611 | 0.03 | -0.109 |
 
 <sub>Correlation from -1 to 1: the closer to ±1, the more that input drives the result.</sub>
 
 ## Design studies
 
-### 15. "Would a different nose cone or fin shape fly higher?"
+### 16. "Would a different nose cone or fin shape fly higher?"
 
 <sub>Tools Claude uses: `compare_shapes`</sub>
 
-> Best that keeps the stability: **Von Karman (Haack LD) nose with airfoil fin edges: 3718 m (12198 ft) (+24.01% vs current)**. Every nose profile and fin edge was flown; CD at the design Mach (1.166) shows where the gain comes from.
+> Best that keeps the stability: **Von Karman (Haack LD) nose with airfoil fin edges: 3721 m (12209 ft) (+23.97% vs current)**. Every nose profile and fin edge was flown; CD at the design Mach (1.156) shows where the gain comes from.
 
 | Nose | Fin edges | Apogee | vs current | CD | Min stability |
 |---|---|---|---|---|---|
-| Von Karman (Haack LD) | airfoil | 3718 m (12198 ft) | 24.01% | 1.072 | 3.623 cal |
-| tangent ogive (current) | airfoil | 3717 m (12196 ft) | 23.99% | 1.087 | 3.619 cal |
-| tangent ogive (current) | rounded | 3584 m (11760 ft) | 19.56% | 1.146 | 3.54 cal |
-| Von Karman (Haack LD) | square (current) | 3013 m (9886 ft) | 0.5105% | 1.337 | 3.538 cal |
-| 1/2 power | square (current) | 3012 m (9883 ft) | 0.4735% | 1.336 | 3.549 cal |
-| LV-Haack | square (current) | 3005 m (9858 ft) | 0.2182% | 1.352 | 3.544 cal |
-| 3/4 power | square (current) | 3000 m (9841 ft) | 0.05224% | 1.357 | 3.528 cal |
-| parabolic | square (current) | 2999 m (9839 ft) | 0.03261% | 1.365 | 3.533 cal |
+| Von Karman (Haack LD) | airfoil | 3721 m (12209 ft) | 23.97% | 1.072 | 3.702 cal |
+| tangent ogive (current) | airfoil | 3717 m (12195 ft) | 23.82% | 1.092 | 3.698 cal |
+| tangent ogive (current) | rounded | 3585 m (11762 ft) | 19.43% | 1.152 | 3.642 cal |
+| Von Karman (Haack LD) | square (current) | 3018 m (9901 ft) | 0.5285% | 1.338 | 3.64 cal |
+| 1/2 power | square (current) | 3017 m (9897 ft) | 0.4901% | 1.336 | 3.651 cal |
+| LV-Haack | square (current) | 3009 m (9872 ft) | 0.242% | 1.352 | 3.645 cal |
+| 3/4 power | square (current) | 3004 m (9856 ft) | 0.07587% | 1.359 | 3.632 cal |
+| parabolic | square (current) | 3004 m (9855 ft) | 0.06569% | 1.365 | 3.636 cal |
 
 <details><summary>Claude's shape guidance (from the tool)</summary>
 
@@ -236,19 +256,37 @@ Claude also reports what drives the spread (correlation of each uncertain input 
 
 ## Structures and CFD
 
-### 16. "Check the fins in FEA: our quasi-isotropic laminate has E = 45 GPa and Poisson's ratio 0.3. And give us the joint loads for the airframe FEA."
+### 17. "Check the fins in FEA: our quasi-isotropic laminate has E = 45 GPa and Poisson's ratio 0.3. And give us the joint loads for the airframe FEA."
 
 <sub>Tools Claude uses: `fin_fea`, `structural_loads`</sub>
 
-> **PASS**, margin of safety 8.722 with the team's safety factor of 2. Design load 208.7 N (46.93 lbf) (limit load; the most loaded fin), from the crosswind gust at max q at t=3.93 s, Mach 1.165, q 86.11 kPa (12.49 psi), angle of attack 1.217 deg. Tip deflection 1.097 mm; peak stress 23.14 MPa. Natural frequencies: 183.8 Hz (1st bending), 643.7 Hz (1st torsion), 1074 Hz (2nd bending).
+> **PASS**, margin of safety 8.699 with the team's safety factor of 2. Design load 209.2 N (47.04 lbf) (limit load; the most loaded fin), from the crosswind gust at max q at t=3.943 s, Mach 1.155, q 84.71 kPa (12.29 psi), angle of attack 1.227 deg. Tip deflection 1.099 mm; peak stress 23.2 MPa. Natural frequencies: 183.8 Hz (1st bending), 643.7 Hz (1st torsion), 1074 Hz (2nd bending).
 
 ![The fin coloured by stress under the design load, clamped at the root](examples/fin-stress.svg)
 
 Claude writes a CalculiX model of the fin (8-node shells, clamped root, the flight load) and runs it when CalculiX is installed. The input deck is kept, so a team member can refine it in PrePoMax or Abaqus. The model was checked against cantilever plate theory: deflection, root stress and first frequency agree within 0.2%. The stress peaks at the root, most at its corners, where the real fin's fillet or tab spreads the load.
 
-Joint loads for the airframe: 3 joints, the highest wall stress at Switch band / Lower airframe: 4479 kPa (649.6 psi); the load cases (axial force, bending moments, the flight time, Mach and angle of attack of each) go to a CSV for the tube and coupler FEA.
+Joint loads for the airframe: 3 joints, the highest wall stress at Switch band / Lower airframe: 4539 kPa (658.3 psi); the load cases (axial force, bending moments, the flight time, Mach and angle of attack of each) go to a CSV for the tube and coupler FEA.
 
-### 17. "Export it for CFD, and tell us which cases to run."
+### 18. "Draw the shear and bending moment diagrams at max q, the way our UTAT load script does."
+
+<sub>Tools Claude uses: `load_diagrams`</sub>
+
+> The largest bending moment is **576.4 N·m**, 1827 mm from the nose tip, and the largest shear 1705 N, both where the fins take the lift. That is at max q: 84.71 kPa at Mach 1.155, 3.943 s into the flight, held at 5 deg angle of attack.
+
+![Bending moment along the Maple 10K at max q, with the airframe joints marked](examples/bending-moment.svg)
+
+![Shear along the Maple 10K at max q: a step at each lift and part](examples/bending-moment-shear.svg)
+
+| Joint | Station | Shear | Bending moment | Axial force |
+|---|---|---|---|---|
+| Nose cone / Upper airframe | 457.2 mm | 260.1 N | 56.54 N·m | -100.2 N |
+| Upper airframe / Switch band | 1118 mm | 261.7 N | 246.2 N·m | -217.3 N |
+| Switch band / Lower airframe | 1143 mm | 203.1 N | 252.1 N·m | -167.6 N |
+
+This is the University of Toronto Aerospace Team's load calculation ([`Load_calculations.py`](https://github.com/ArthurJWH/UTAT-Rocketry), by Fred Chun, edited by Nat Espinosa, Alexander Boldis and Nadim Hatoum): the rocket as a rigid body at max q, each lifting part's lift at its centre of pressure and every part's inertia answering it. Here the parts, masses, lift slopes and CPs come from the design; give Claude the team's own parts, conditions and AeroLab files instead and it runs them as the script does (the two agree to a millionth). In RocketMaxxing it is **Load diagrams** on the Analysis page, with the four plots.
+
+### 19. "Export it for CFD, and tell us which cases to run."
 
 <sub>Tools Claude uses: `export_geometry`</sub>
 
@@ -258,22 +296,22 @@ Joint loads for the airframe: 3 joints, the highest wall stress at Switch band /
 
 | Case | Mach | Altitude | Velocity | Reynolds | OpenRocket CD |
 |---|---|---|---|---|---|
-| M0.10 | 0.1 | 4.134 m (13.56 ft) | 34.04 m/s (111.7 ft/s) | 5.21e+06 | 1.056 |
-| M0.30 | 0.3 | 36.98 m (121.3 ft) | 102.1 m/s (334.9 ft/s) | 1.56e+07 | 1.079 |
-| M0.50 | 0.5 | 102.2 m (335.2 ft) | 170 m/s (557.7 ft/s) | 2.58e+07 | 1.124 |
-| M0.70 | 0.7 | 201.3 m (660.5 ft) | 237.7 m/s (779.9 ft/s) | 3.58e+07 | 1.192 |
-| M0.80 | 0.8 | 271.8 m (891.7 ft) | 271.5 m/s (890.6 ft/s) | 4.07e+07 | 1.235 |
-| M0.90 | 0.9 | 362.2 m (1188 ft) | 305.1 m/s (1001 ft/s) | 4.54e+07 | 1.285 |
-| M0.95 | 0.95 | 419.4 m (1376 ft) | 321.8 m/s (1056 ft/s) | 4.77e+07 | 1.306 |
-| M1.00 | 1 | 479.8 m (1574 ft) | 338.5 m/s (1111 ft/s) | 4.99e+07 | 1.329 |
-| M1.05 | 1.05 | 560.5 m (1839 ft) | 355.1 m/s (1165 ft/s) | 5.20e+07 | 1.376 |
-| M1.10 | 1.1 | 662.1 m (2172 ft) | 371.6 m/s (1219 ft/s) | 5.40e+07 | 1.38 |
-| M1.20 | 1.2 | 965.7 m (3168 ft) | 403.9 m/s (1325 ft/s) | 5.73e+07 | 1.33 |
-| max_q | 1.165 | 939.2 m (3081 ft) | 392.4 m/s (1287 ft/s) | 5.57e+07 | 1.353 |
+| M0.10 | 0.1 | 4.053 m (13.3 ft) | 34.04 m/s (111.7 ft/s) | 5.21e+06 | 1.056 |
+| M0.30 | 0.3 | 36.59 m (120.1 ft) | 102.1 m/s (334.9 ft/s) | 1.56e+07 | 1.079 |
+| M0.50 | 0.5 | 106.9 m (350.7 ft) | 170 m/s (557.7 ft/s) | 2.58e+07 | 1.124 |
+| M0.70 | 0.7 | 203.8 m (668.7 ft) | 237.7 m/s (779.9 ft/s) | 3.58e+07 | 1.192 |
+| M0.80 | 0.8 | 275.2 m (902.8 ft) | 271.4 m/s (890.6 ft/s) | 4.07e+07 | 1.235 |
+| M0.90 | 0.9 | 363.6 m (1193 ft) | 305.1 m/s (1001 ft/s) | 4.54e+07 | 1.285 |
+| M0.95 | 0.95 | 426.3 m (1399 ft) | 321.8 m/s (1056 ft/s) | 4.76e+07 | 1.306 |
+| M1.00 | 1 | 488.5 m (1603 ft) | 338.5 m/s (1110 ft/s) | 4.98e+07 | 1.329 |
+| M1.05 | 1.05 | 569 m (1867 ft) | 355.1 m/s (1165 ft/s) | 5.20e+07 | 1.376 |
+| M1.10 | 1.1 | 688.5 m (2259 ft) | 371.4 m/s (1219 ft/s) | 5.38e+07 | 1.38 |
+| M1.20 | 1.2 | 966.3 m (3170 ft) | 403.9 m/s (1325 ft/s) | 5.73e+07 | 1.33 |
+| max_q | 1.155 | 931.4 m (3056 ft) | 389.1 m/s (1276 ft/s) | 5.53e+07 | 1.359 |
 
 ## Build
 
-### 18. "We weighed the parts we've built. Here is our weigh-in sheet; how does it compare with the model? Our launch mass target is 12 kg."
+### 20. "We weighed the parts we've built. Here is our weigh-in sheet; how does it compare with the model? Our launch mass target is 12 kg."
 
 <sub>Tools Claude uses: `mass_budget`</sub>
 
@@ -302,17 +340,17 @@ Paint and primer,90,estimated,no,Upper airframe
 | Fin fillets and tip-to-tip epoxy | 140 g (4.938 oz) (measured) |  |  |  |
 | Paint and primer | 90 g (3.175 oz) (estimated) |  |  |  |
 
-> Projected launch mass **11.63 kg (25.63 lb)**, including 5.645 kg (12.44 lb) of motor and 10% contingency on everything not weighed yet: +372.3 g (13.13 oz) under the target of 12 kg. 2 part(s) differ from the model by more than 10% (flagged). The sheet leaves out 1.468 kg of parts the model has (heaviest: Nose ballast 293 g (10.34 oz), Main 242.8 g (8.564 oz), Motor mount 186.8 g (6.589 oz)), which stay at the model's values.
+> Projected launch mass **11.84 kg (26.11 lb)**, including 5.645 kg (12.44 lb) of motor and 10% contingency on everything not weighed yet: +156.7 g (5.526 oz) under the target of 12 kg. 2 part(s) differ from the model by more than 10% (flagged). The sheet leaves out 1.664 kg of parts the model has (heaviest: Nose ballast 293 g (10.34 oz), Main 242.8 g (8.564 oz), Motor mount 186.8 g (6.589 oz)), which stay at the model's values.
 
-### 19. "Put the weigh-ins into the design."
+### 21. "Put the weigh-ins into the design."
 
 <sub>Tools Claude uses: `mass_budget`</sub>
 
-> Done: 7 changes (mass overrides on the weighed parts, the fillets and paint added as mass components). Launch mass 10.85 kg (23.91 lb) -> 11.47 kg (25.29 lb), CG 1571 mm (61.84 in) -> 1564 mm (61.57 in), stability 3.999 -> 4.067 cal. Every later step flies the rocket as built; `undo` takes it back in one step.
+> Done: 7 changes (mass overrides on the weighed parts, the fillets and paint added as mass components). Launch mass 11.04 kg (24.34 lb) -> 11.67 kg (25.72 lb), CG 1562 mm (61.49 in) -> 1556 mm (61.24 in), stability 4.087 -> 4.149 cal. Every later step flies the rocket as built; `undo` takes it back in one step.
 
 ## Reviews
 
-### 20. "Where do we stand? What's left before CDR?"
+### 22. "Where do we stand? What's left before CDR?"
 
 <sub>Tools Claude uses: `design_status`</sub>
 
@@ -322,12 +360,12 @@ Paint and primer,90,estimated,no,Upper airframe
 |---|---|---|
 | Rules | WARN | Within the models' range: OpenRocket warns: Body calculations may not be entirely accurate at supersonic speeds. |
 | Launch site | WARN | Launch site altitude: 0 m (0 ft) used by this simulation |
-| Stability | WARN | Ascent stability (maximum, over-stability): 5.721 cal (R10.3.1, R10.4.1) |
-| Stability | WARN | Ascent stability in 8.333 m/s (27.34 ft/s) wind (maximum, over-stability): 5.722 cal (R10.3.1, R10.4.1) |
-| Rules | WARN | Maximum Mach number: 1.135 |
+| Stability | WARN | Ascent stability (maximum, over-stability): 5.809 cal (R10.3.1, R10.4.1) |
+| Stability | WARN | Ascent stability in 8.333 m/s (27.34 ft/s) wind (maximum, over-stability): 5.809 cal (R10.3.1, R10.4.1) |
+| Rules | WARN | Maximum Mach number: 1.125 |
 | Electronics | WARN | GPS tracker (1S LiPo 500 mAh): less than 30% to spare: a delay on the pad or a long search uses it up |
 | Standards | TODO | The team standards were changed in this session but are not saved to a file, so the next session and the rest of the team will not have them. |
-| File | TODO | Unsaved changes (22 edit(s) this session, undo available). |
+| File | TODO | Unsaved changes (30 edit(s) this session, undo available). |
 
 Next steps, in order:
 
@@ -338,7 +376,7 @@ Next steps, in order:
 5. update_standards with saveTo (e.g. openrocket-mcp.json), then commit the file.
 6. save_design once the team agrees (history shows what changed).
 
-### 21. "Make the design review package."
+### 23. "Make the design review package."
 
 <sub>Tools Claude uses: `generate_report`</sub>
 
@@ -346,18 +384,18 @@ Claude writes a folder with `report.md` (requirement checks, vehicle, flight, st
 
 ![Stability margin during the ascent with the rule minimum](examples/stability-ascent.svg)
 
-### 22. "What changed since the version we showed at PDR?"
+### 24. "What changed since the version we showed at PDR?"
 
 <sub>Tools Claude uses: `compare_designs`</sub>
 
-- launch mass: 9.978 kg (22 lb) -> 11.47 kg (25.29 lb) (+1.494 kg (3.294 lb) (+14.97%))
-- static stability at launch: 2.66 cal -> 4.067 cal (+1.407 cal)
-- apogee: 3063 m (10050 ft) -> 3007 m (9867 ft) (-56.01 m (183.8 ft) (-1.828%))
-- max Mach: 1.133 -> 1.135 (+0.001898)
-- rail exit velocity: 39.39 m/s (129.2 ft/s) -> 39.79 m/s (130.5 ft/s) (+0.401 m/s (1.316 ft/s) (+1.018%))
-- min stability in flight: 2.08 cal -> 3.593 cal (+1.513 cal)
+- launch mass: 9.978 kg (22 lb) -> 11.67 kg (25.72 lb) (+1.69 kg (3.726 lb) (+16.94%))
+- static stability at launch: 2.66 cal -> 4.149 cal (+1.489 cal)
+- apogee: 3063 m (10050 ft) -> 3009 m (9873 ft) (-54.11 m (177.5 ft) (-1.766%))
+- max Mach: 1.133 -> 1.125 (-0.007699)
+- rail exit velocity: 39.39 m/s (129.2 ft/s) -> 39.61 m/s (129.9 ft/s) (+0.2168 m/s (0.7111 ft/s) (+0.5503%))
+- min stability in flight: 2.08 cal -> 3.676 cal (+1.596 cal)
 - 9 rule check(s) changed status, 2 got worse
-- 10 component(s) added, removed or edited
+- 18 component(s) added, removed or edited
 
 - **Nose cone (Nose Cone)**: massOverridden false -> true; overrideMass 438.8 g (15.48 oz) -> 491 g (1.082 lb)
 - **Upper airframe (Body Tube)**: massOverridden false -> true; overrideMass 768.5 g (1.694 lb) -> 830 g (1.83 lb)
@@ -366,11 +404,11 @@ Claude writes a folder with `report.md` (requirement checks, vehicle, flight, st
 
 ## Launch day
 
-### 23. "We launch at 48.47, -81.33 on August 21 at 3 pm. What will the winds do, and make us the flight card."
+### 25. "We launch at 48.47, -81.33 on August 21 at 3 pm. What will the winds do, and make us the flight card."
 
 <sub>Tools Claude uses: `weather_forecast`, `flight_card`</sub>
 
-> Ground wind 6.75 m/s (22.15 ft/s) (24.3 km/h) from 250 deg, gusts 12 m/s (39.37 ft/s) (43.2 km/h) (mean wind within 30 km/h limit; gusts exceed it). Flown in the forecast winds aloft: apogee 3029 m (9937 ft), landing 109.6 m (359.5 ft) from the pad.
+> Ground wind 6.75 m/s (22.15 ft/s) (24.3 km/h) from 250 deg, gusts 12 m/s (39.37 ft/s) (43.2 km/h) (mean wind within 30 km/h limit; gusts exceed it). Flown in the forecast winds aloft: apogee 3028 m (9935 ft), landing 126.3 m (414.5 ft) from the pad.
 
 <sub>(A recorded forecast is used here so the page is reproducible; with internet access Claude fetches the live one from Open-Meteo.)</sub>
 
@@ -389,28 +427,57 @@ From the one-page flight card (predictions, motor delay, deployment settings, dr
 >
 > | | |
 > |---|---|
-> | Apogee | 3029 m (9937 ft) |
-> | Time to apogee | 20.93 s |
-> | Max velocity | 389 m/s (1276 ft/s) |
-> | Max Mach | 1.14 |
-> | Max acceleration | 142.2 m/s2 (466.6 ft/s2) = 14.5 G |
-> | Rail exit velocity | 39.78 m/s (130.5 ft/s) |
-> | Thrust-to-weight | 12.65 |
+> | Apogee | 3028 m (9935 ft) |
+> | Time to apogee | 21.02 s |
+> | Max velocity | 385.6 m/s (1265 ft/s) |
+> | Max Mach | 1.13 |
+> | Max acceleration | 139.7 m/s2 (458.4 ft/s2) = 14.25 G |
+> | Rail exit velocity | 39.59 m/s (129.9 ft/s) |
+> | Thrust-to-weight | 12.51 |
 
-### 24. "Where should the rail buttons go to get the most out of the rail?"
+### 26. "We could also fly the morning window. A week out, fly it through every forecast of the ensemble for 10 am: where could it land, and does it stay inside the 3 km recovery area?"
+
+<sub>Tools Claude uses: `launch_planner`</sub>
+
+> 95% of 300 flights land inside an area 638.6 m (2095 ft) by 247.3 m (811.5 ft), centred 306.3 m (1005 ft) ESE of the pad. None of the 300 flights land more than 3 km from the pad. Apogee 3020 m (2972 m to 3065 m in 90% of the flights); in the forecast as it stands it lands 287.6 m ESE.
+
+![Every landing east and north of the pad, with the area holding 95% of them](examples/launch-plan.svg)
+
+| Landings inside | Area |
+|---|---|
+| 50% | 318.6 m by 123.4 m |
+| 95% | 638.6 m by 247.3 m |
+| 99% | 846.1 m by 327.7 m |
+
+Winds the forecasts agree on, and how far they spread:
+
+| Height | Wind | Across the forecasts | From |
+|---|---|---|---|
+| 10 m | 4.5 m/s | 3.39 m/s to 5.48 m/s | WSW (250°) |
+| 100 m | 6.3 m/s | 4.75 m/s to 7.68 m/s | WSW (255°) |
+| 780 m | 6.84 m/s | 5.16 m/s to 8.34 m/s | W (266°) |
+| 1500 m | 9 m/s | 6.79 m/s to 10.97 m/s | W (268°) |
+| 3100 m | 13.8 m/s | 10.4 m/s to 16.82 m/s | W (270°) |
+| 4300 m | 17.4 m/s | 13.12 m/s to 21.21 m/s | W (272°) |
+
+Each flight flies one forecast of the ECMWF ensemble (51 forecasts with their own winds aloft, 15 days ahead; or NOAA's GEFS, 31 forecasts), with the launch angle and rod direction dispersed. The spread of the forecasts is the uncertainty in the weather itself, so the area shrinks as the day gets closer. In RocketMaxxing the **Launch** page draws the same areas over satellite imagery of the site, keeps the map for the field without internet, and saves each plan to compare as the day comes.
+
+<sub>(A recorded ensemble of 11 forecasts keeps the page reproducible; with internet access Claude fetches all 51 from Open-Meteo.)</sub>
+
+### 27. "Where should the rail buttons go to get the most out of the rail?"
 
 <sub>Tools Claude uses: `rail_buttons`</sub>
 
-> The aft button goes 15 mm above the aft end and the forward one 955.7 mm up, 940.7 mm apart. The rocket leaves the rail at 39.43 m/s instead of 39.3 m/s with today's layout. OpenRocket says 39.78 m/s because it counts the whole rail and ignores where the buttons are.
+> The aft button goes 15 mm above the aft end and the forward one 955.7 mm up, 940.7 mm apart. The rocket leaves the rail at 39.08 m/s instead of 38.95 m/s with today's layout. OpenRocket says 39.59 m/s because it counts the whole rail and ignores where the buttons are.
 
 |  | Current | Recommended |
 |---|---|---|
 | Forward button | 660.4 mm (26 in) above the aft end (1575 mm (62 in) from the nose tip) (no backing: add a block) | 955.7 mm (37.62 in) above the aft end (1280 mm (50.38 in) from the nose tip) (over Av-bay coupler) |
 | Aft button | 50.8 mm (2 in) above the aft end (2184 mm (86 in) from the nose tip) (no backing: add a block) | 15 mm (0.5906 in) above the aft end (2220 mm (87.41 in) from the nose tip) (no backing: add a block) |
-| Rail exit | 39.3 m/s (128.9 ft/s) | 39.43 m/s (129.4 ft/s) |
-| Tip-off | 1.684 deg/s pitch rate, 0.01342 deg, over 15.93 ms on the aft button alone | 2.746 deg/s pitch rate, 0.03427 deg, over 24.96 ms on the aft button alone |
-| Pointing error at rail exit | 0.1074 deg (tip-off + slop) | 0.09518 deg (tip-off + slop) |
-| Side loads | forward 24.08 N (5.413 lbf), aft 23.15 N (5.203 lbf) | forward 17.14 N (3.853 lbf), aft 29.08 N (6.537 lbf) |
+| Rail exit | 38.95 m/s (127.8 ft/s) | 39.08 m/s (128.2 ft/s) |
+| Tip-off | 1.668 deg/s pitch rate, 0.01346 deg, over 16.13 ms on the aft button alone | 2.713 deg/s pitch rate, 0.03422 deg, over 25.23 ms on the aft button alone |
+| Pointing error at rail exit | 0.1074 deg (tip-off + slop) | 0.09513 deg (tip-off + slop) |
+| Side loads | forward 24.34 N (5.473 lbf), aft 22.78 N (5.121 lbf) | forward 17.31 N (3.892 lbf), aft 28.82 N (6.478 lbf) |
 
 - 'Centering ring 1' is 11.83 mm (0.4656 in) aft of the aft button: move it under the button, or glue a block there, so the screw bites into it.
 - Put a backing block or ring under every button without one (glued inside the tube), or the screw only holds in the tube wall.
@@ -419,15 +486,15 @@ Say "move them" and Claude applies it to the design (`apply`); `undo` takes it b
 
 ## Show it off
 
-### 25. "Make an exploded view for our design review poster, with the parts list."
+### 28. "Make an exploded view for our design review poster, with the parts list."
 
 <sub>Tools Claude uses: `render_3d`</sub>
 
-![Exploded 3-D view of Maple 10K: airframe pieces pulled apart, fins slid out, every internal part laid out below the piece it goes in, with numbered balloons and a parts list with masses](examples/exploded.png)
+![Exploded 3-D view of Maple 10K: airframe pieces pulled apart, fins slid out, every internal part laid out below the piece it goes in, parachutes open, with numbered balloons and a parts list with masses](examples/exploded.png)
 
-37 parts, each with OpenRocket's mass (the weighed values from the mass budget). The heaviest: M1315W (5.645 kg), Lower airframe (1.398 kg), Fins (1.052 kg). Ask for `cutaway` to see them in place instead.
+45 parts, each with OpenRocket's mass (the weighed values from the mass budget). The heaviest: M1315W (5.645 kg), Lower airframe (1.398 kg), Fins (1.052 kg). The parachutes open into canopies on their lines, and the connectors from step 12 hang where they go. Ask for `cutaway` to see everything in place instead.
 
-### 26. "Animate the flight for our social media post."
+### 29. "Animate the flight for our social media post."
 
 <sub>Tools Claude uses: `animate_flight`</sub>
 
@@ -442,16 +509,16 @@ Real time through the burn, slowed down around apogee and each deployment; the c
 | Event | Flight time | In the video |
 |---|---|---|
 | Liftoff | 0.06 s | 1.3 s |
-| Rail clear | 0.345 s | 1.6 s |
-| Mach 1 | 2.882 s | 4.1 s |
-| Max velocity | 4.049 s | 5.3 s |
+| Rail clear | 0.349 s | 1.6 s |
+| Mach 1 | 2.926 s | 4.1 s |
+| Max velocity | 4.037 s | 5.2 s |
 | Motor burnout | 5.949 s | 7.2 s |
-| Apogee | 20.98 s | 10.6 s |
-| Drogue out | 20.98 s | 10.6 s |
-| Main out | 114.4 s | 14.1 s |
-| Touchdown | 160 s | 16.3 s |
+| Apogee | 21.07 s | 10.6 s |
+| Drogue out | 21.08 s | 10.6 s |
+| Main out | 113.7 s | 14.2 s |
+| Touchdown | 157.4 s | 16.3 s |
 
-### 27. "We're also flying a two-stage rocket. Simulate the staging, show it pulled apart and animate it."
+### 30. "We're also flying a two-stage rocket. Simulate the staging, show it pulled apart and animate it."
 
 <sub>Tools Claude uses: `run_simulation`, `render_3d`, `animate_flight`</sub>
 
@@ -473,7 +540,7 @@ Each stage is followed through the whole flight. The captions name the stage (bo
 
 ## Team history
 
-### 28. "Here's our folder of past rockets and flight logs. Which 4 in rockets have we flown, and how good were our apogee predictions over the years?"
+### 31. "Here's our folder of past rockets and flight logs. Which 4 in rockets have we flown, and how good were our apogee predictions over the years?"
 
 <sub>Tools Claude uses: `design_library`</sub>
 
@@ -481,7 +548,7 @@ Each stage is followed through the whole flight. The captions name the stage (bo
 
 | Rocket | File | Year | Motors | Predicted apogee |
 |---|---|---|---|---|
-| Maple 10K | 2026/maple/maple-10k.ork | 2026 | M1315W (M, 6645 Ns (1494 lbf-s)) | 3029 m (9937 ft) (simulated now ('Simulation of [L1250DM-P]')) |
+| Maple 10K | 2026/maple/maple-10k.ork | 2026 | M1315W (M, 6645 Ns (1494 lbf-s)) | 3028 m (9935 ft) (simulated now ('Simulation of [L1250DM-P]')) |
 | Maple 10K | 2025/maple-pdr/maple-pdr.ork | 2025 | L1250DM (L, 4400 Ns (989.2 lbf-s)) | 3122 m (10243 ft) (simulated now in OpenRocket's default conditions (no simulation in the file)) |
 | Two stage high power rocket | 2024/two-stage.ork | 2024 | H148R, H148R (I, 430.4 Ns (96.75 lbf-s)) | 675 m (2214 ft) (saved result of 'Simulation 1') |
 
@@ -500,7 +567,7 @@ Ask for `similarTo` to find the past rocket closest to the one you are designing
 
 ## Electronics
 
-### 29. "Will our flight computer's sensors cope with this flight, and what do we set the altimeters to?"
+### 32. "Will our flight computer's sensors cope with this flight, and what do we set the altimeters to?"
 
 <sub>Tools Claude uses: `sensor_check`, `altimeter_settings`</sub>
 
@@ -508,17 +575,17 @@ Ask for `similarTo` to find the past rocket closest to the one you are designing
 
 | Sensor | Checked | Flight peak | Use of range |  |
 |---|---|---|---|---|
-| Accelerometer, ±16 g | axial acceleration (x), boost and coast | 15.45 g at t=0.815 s (boost) | 96.59% of range | WARN |
-| Accelerometer, ±16 g | lateral acceleration (y, z) | 0.688 g at t=1.75 s (boost) | 4.3% of range | PASS |
-| Accelerometer, ±16 g | parachute openings | 17.59 g at t=114.4 s | 110% of range | WARN |
-| High-g accelerometer, ±200 g | axial acceleration (x), boost and coast | 15.45 g at t=0.815 s (boost) | 7.727% of range | PASS |
-| High-g accelerometer, ±200 g | lateral acceleration (y, z) | 0.688 g at t=1.75 s (boost) | 0.344% of range | PASS |
-| High-g accelerometer, ±200 g | parachute openings | 17.59 g at t=114.4 s | 8.796% of range | PASS |
-| Gyroscope, ±2000 deg/s | roll rate (x) | 0.0008148 deg/s at t=5.19 s | 4.074e-05% of range | PASS |
-| Gyroscope, ±2000 deg/s | pitch / yaw rate (y, z) | 35.54 deg/s at t=0.58 s | 1.777% of range | PASS |
-| Barometer, 30-125 kPa | pressure (lowest at apogee) | 68.21 kPa (9.893 psi) at t=20.93 s |  | PASS |
-| Barometer, 30-125 kPa | static pressure above Mach 0.7 | t=1.84 to 6.95 s (max Mach 1.14) |  | WARN |
-| GPS receiver | speed and altitude (export limits 515 m/s, 18 km) | 389 m/s (1276 ft/s), 3329 m (10921 ft) MSL |  | PASS |
+| Accelerometer, ±16 g | axial acceleration (x), boost and coast | 15.2 g at t=0.815 s (boost) | 94.99% of range | WARN |
+| Accelerometer, ±16 g | lateral acceleration (y, z) | 0.7378 g at t=1.76 s (boost) | 4.611% of range | PASS |
+| Accelerometer, ±16 g | parachute openings | 17.17 g at t=113.7 s | 107.3% of range | WARN |
+| High-g accelerometer, ±200 g | axial acceleration (x), boost and coast | 15.2 g at t=0.815 s (boost) | 7.599% of range | PASS |
+| High-g accelerometer, ±200 g | lateral acceleration (y, z) | 0.7378 g at t=1.76 s (boost) | 0.3689% of range | PASS |
+| High-g accelerometer, ±200 g | parachute openings | 17.17 g at t=113.7 s | 8.584% of range | PASS |
+| Gyroscope, ±2000 deg/s | roll rate (x) | 0.001119 deg/s at t=4.01 s | 5.595e-05% of range | PASS |
+| Gyroscope, ±2000 deg/s | pitch / yaw rate (y, z) | 35.86 deg/s at t=0.58 s | 1.793% of range | PASS |
+| Barometer, 30-125 kPa | pressure (lowest at apogee) | 68.22 kPa (9.894 psi) at t=21.03 s |  | PASS |
+| Barometer, 30-125 kPa | static pressure above Mach 0.7 | t=1.875 to 6.965 s (max Mach 1.13) |  | WARN |
+| GPS receiver | speed and altitude (export limits 515 m/s, 18 km) | 385.6 m/s (1265 ft/s), 3328 m (10919 ft) MSL |  | PASS |
 
 The altimeter card:
 
@@ -527,35 +594,35 @@ The altimeter card:
 | Main | 304.8 m (1000 ft) AGL on the way down | 274.3 m (900 ft) AGL on the way down |
 | Drogue | apogee | apogee + 1 s |
 
-> Mach lockout: 8 s after launch (above Mach 0.7 until t=6.911 s, plus 1 s). Static ports: bay volume 129 in3: 4 ports of 0.142 in (3.6 mm) evenly around the switch band (same area as 1.3 x 1/4 in).
+> Mach lockout: 8 s after launch (above Mach 0.7 until t=6.949 s, plus 1 s). Static ports: bay volume 129 in3: 4 ports of 0.142 in (3.6 mm) evenly around the switch band (same area as 1.3 x 1/4 in).
 
-### 30. "Give us simulated sensor data to test our flight software."
+### 33. "Give us simulated sensor data to test our flight software."
 
 <sub>Tools Claude uses: `sensor_data`</sub>
 
-> 16802 rows x 22 columns at 100 Hz (168 s: 5 s on the pad first), plus the true event times in a separate file. A few rows:
+> 16538 rows x 22 columns at 100 Hz (165.4 s: 5 s on the pad first), plus the true event times in a separate file. A few rows:
 
 |  | time_s | acc_x_g (±16 g) | acc_hi_x_g (±200 g) | baro_pressure_pa | truth_altitude_agl_m | truth_phase |
 |---|---|---|---|---|---|---|
 | on the pad | 1.0000 | 0.99150 | 0.83300 | 97831.12 | 0.00 | pad |
-| boost | 6.0600 | 15.02100 | 15.04300 | 97054.54 | 69.14 | boost |
-| burnout | 11.1500 | -4.85300 | -4.85100 | 80933.70 | 1621.62 | coast |
-| apogee | 25.9800 | -0.07600 | 0.04900 | 68213.02 | 3028.68 | coast |
-| under the main | 155.0000 | -0.99050 | -0.83300 | 97095.44 | 65.18 | descent |
+| boost | 6.0600 | 14.78350 | 14.79800 | 97068.68 | 67.88 | boost |
+| burnout | 11.1500 | -4.75000 | -4.75300 | 81092.88 | 1605.40 | coast |
+| apogee | 26.0700 | -0.05950 | -0.14700 | 68213.86 | 3028.12 | coast |
+| under the main | 152.4000 | -1.03950 | -0.83300 | 97094.36 | 65.73 | descent |
 
-The ±16 g part comes within 3% of clipping at motor start, so a hotter motor or vibration would saturate it; the ±200 g part keeps the boost on scale. Under the main both read about −1 g (the canopy holding the rocket). Columns follow the team's sensors in the standards; pass your own parts with `sensors`.
+The ±16 g part comes within 5% of clipping at motor start, so a hotter motor or vibration would saturate it; the ±200 g part keeps the boost on scale. Under the main both read about −1 g (the canopy holding the rocket). Columns follow the team's sensors in the standards; pass your own parts with `sensors`.
 
-### 31. "Do our batteries last a two-hour pad wait, and will we hear the GPS tracker all the way down?"
+### 34. "Do our batteries last a two-hour pad wait, and will we hear the GPS tracker all the way down?"
 
 <sub>Tools Claude uses: `power_budget`, `radio_link`</sub>
 
-> 2 h on the pad + 2.667 min flight + 2 h until found. Each circuit against its battery (the team's parts, set in the standards):
+> 2 h on the pad + 2.623 min flight + 2 h until found. Each circuit against its battery (the team's parts, set in the standards):
 
 | Circuit | Needs | Usable | Runs for |  |
 |---|---|---|---|---|
-| Primary altimeter (9 V alkaline) | 48.53 mAh (12 mA for 4.044 h) | 440 mAh usable (550 mAh x 0.8) | 36.67 h on the pad and after | PASS |
-| Backup altimeter (2S LiPo 300 mAh) | 48.53 mAh (12 mA for 4.044 h) | 240 mAh usable (300 mAh x 0.8) | 20 h on the pad and after | PASS |
-| GPS tracker (1S LiPo 500 mAh) | 364 mAh (90 mA for 4.044 h) | 400 mAh usable (500 mAh x 0.8) | 4.444 h on the pad and after | WARN |
+| Primary altimeter (9 V alkaline) | 48.52 mAh (12 mA for 4.044 h) | 440 mAh usable (550 mAh x 0.8) | 36.67 h on the pad and after | PASS |
+| Backup altimeter (2S LiPo 300 mAh) | 48.52 mAh (12 mA for 4.044 h) | 240 mAh usable (300 mAh x 0.8) | 20 h on the pad and after | PASS |
+| GPS tracker (1S LiPo 500 mAh) | 363.9 mAh (90 mA for 4.044 h) | 400 mAh usable (500 mAh x 0.8) | 4.444 h on the pad and after | WARN |
 
 E-match: 2.5 A through each e-match (1.6 ohm match, 1.7 ohm battery, 0.3 ohm wiring); the battery holds 4.75 V (from 9 V) while firing.
 
@@ -563,37 +630,37 @@ E-match: 2.5 A through each e-match (1.6 ohm match, 1.7 ohm battery, 0.3 ohm wir
 
 | Flight | Farthest in flight | After landing |  |
 |---|---|---|---|
-| Sustainer | 3176 m (10420 ft) at t=21.63 s (3026 m (9929 ft) up): +42.59 dB margin | 109.6 m (359.5 ft) away on the ground: +48.73 dB margin | PASS |
+| Sustainer | 3179 m (10430 ft) at t=21.72 s (3026 m (9928 ft) up): +42.58 dB margin | 126.3 m (414.5 ft) away on the ground: +46.26 dB margin | PASS |
 
 Ground range: 1019 m (3342 ft) with 10 dB margin once landed (ground station antenna 2 m (6.562 ft) up, rocket antenna 0.1 m (0.3281 ft) off the ground). In the air the path is clear, so free-space loss rules; on the ground the two antennas are near the earth and the signal falls off with the fourth power of distance, which is why a tracker heard at apogee can go quiet once it lands.
 
 ## Parachutes and product links
 
-### 32. "Plot our main's size against descent rate for Cd 0.85, 1.5 and 2.2."
+### 35. "Plot our main's size against descent rate for Cd 0.85, 1.5 and 2.2."
 
 <sub>Tools Claude uses: `parachute_sizes`</sub>
 
-> 8.022 kg (17.69 lb) (simulated mass under Main (Sustainer)); the drogue stays attached under the main, so 0.2076 m2 of drag is counted (calibrated from the simulation). Target 6.096 m/s, below 9.144 m/s (30 ft/s) (R4.3.1).
+> 8.218 kg (18.12 lb) (simulated mass under Main (Sustainer)); the drogue stays attached under the main, so 0.209 m2 of drag is counted (calibrated from the simulation). Target 6.096 m/s, below 9.144 m/s (30 ft/s) (R4.3.1).
 
 ![Descent rate against canopy diameter for three drag coefficients, with the rule limit, the target, catalog parachutes and the current main](examples/parachute-sizes.svg)
 
 | Cd | Size for the target |
 |---|---|
-| 0.85 | 2298 mm (90.47 in) |
-| 1.5 | 1730 mm (68.1 in) |
-| 2.2 | 1428 mm (56.23 in) |
+| 0.85 | 2327 mm (91.6 in) |
+| 1.5 | 1751 mm (68.95 in) |
+| 2.2 | 1446 mm (56.93 in) |
 
 Catalog parachutes closest to the target (each at its own Cd):
 
 | Parachute | Diameter | Cd | Rate |
 |---|---|---|---|
-| Rocketman PA-07 | 2134 mm (84 in) | 0.99 | 6.084 m/s (19.96 ft/s) |
-| Rocketman HX-096 | 2438 mm (96 in) | 0.75 | 6.115 m/s (20.06 ft/s) |
-| Spherachutes HS-096-CL | 2438 mm (96 in) | 0.75 | 6.115 m/s (20.06 ft/s) |
+| Rocketman PA-07 | 2134 mm (84 in) | 0.99 | 6.156 m/s (20.2 ft/s) |
+| Rocketman HX-096 | 2438 mm (96 in) | 0.75 | 6.187 m/s (20.3 ft/s) |
+| Spherachutes HS-096-CL | 2438 mm (96 in) | 0.75 | 6.187 m/s (20.3 ft/s) |
 
 `apply: true` with one Cd sets the main to that size (rounded up to a whole inch) and re-flies the rocket.
 
-### 33. "Here's the chute we want to buy: put it in as our main."
+### 36. "Here's the chute we want to buy: put it in as our main."
 
 <sub>Tools Claude uses: `add_from_link`</sub>
 
@@ -605,17 +672,17 @@ Catalog parachutes closest to the target (each at its own Cd):
 | packedDiameter | 99.06 mm (3.9 in) (catalog: Fruity Chutes IFC-084-S) |
 | packedLength | 157.5 mm (6.2 in) (catalog: Fruity Chutes IFC-084-S) |
 
-> Main -> Iris Ultra 84" Compact Parachute: descent rate 6.536 m/s (21.44 ft/s) -> 4.156 m/s (13.64 ft/s) (simulated). The page named the maker and the size; Cd, weight and packed size came from the matching catalog entry (Fruity Chutes IFC-084-S).
+> Main -> Iris Ultra 84" Compact Parachute: descent rate 6.613 m/s (21.7 ft/s) -> 4.207 m/s (13.8 ft/s) (simulated). The page named the maker and the size; Cd, weight and packed size came from the matching catalog entry (Fruity Chutes IFC-084-S).
 
 <sub>(The product text here is a sample written for this page. With a link, the server reads the shop's page itself; when a shop blocks that, paste the page's text.)</sub>
 
 ## Explore it in the chat
 
-### 34. "Show us the rocket and its flight so we can click through it."
+### 37. "Show us the rocket and its flight so we can click through it."
 
 <sub>Tools Claude uses: `show_design`</sub>
 
-> Apogee 3028 m; Max speed 386.6 m/s; Rail exit 39.26 m/s; Stability (ascent) 2.87–5.83 cal; Max accel. 140.5 m/s2; Drogue descent 29.24 m/s; Iris Ultra 84" Compact Parachute descent 4.156 m/s; Landing 163.6 m. Rule checks: No failures; 5 warning(s).
+> Apogee 3027 m; Max speed 383.2 m/s; Rail exit 39.09 m/s; Stability (ascent) 2.96–5.91 cal; Max accel. 138 m/s2; Drogue descent 29.57 m/s; Iris Ultra 84" Compact Parachute descent 4.207 m/s; Landing 135.8 m. Rule checks: No failures; 6 warning(s).
 
 In Claude Desktop and claude.ai the view opens in the chat. Anywhere else, open the HTML file it writes: [this one](examples/maple-10k-view.html) is the Maple 10K (download it and open it in a browser; it needs no internet).
 
