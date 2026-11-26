@@ -93,7 +93,11 @@ class LoadDiagramsTest {
 		Designs.Design d = ds.openExample("Dual parachute");
 		var sim = d.doc.getSimulations().get(0);
 		Sims.ensure(sim);
-		Map<String, Object> out = LoadDiagrams.compute(LoadDiagrams.fromSimulation(sim, Math.toRadians(5), false));
+		LoadDiagrams.Input in = LoadDiagrams.fromSimulation(sim, Math.toRadians(5), false);
+		Map<String, Object> out = LoadDiagrams.compute(in);
+		String[] svg = LoadDiagrams.svgs(out, in, "Test");
+		assertTrue(svg[0].startsWith("<svg") && svg[0].contains("bending moment") && svg[0].contains("<path"), "moment plot");
+		assertTrue(svg[1].contains("shear") && svg[1].contains("<path"), "shear plot");
 		List<Map<String, Object>> st = (List<Map<String, Object>>) out.get("stations");
 		Map<String, Object> last = st.get(st.size() - 1);
 		double lift = (double) out.get("lift"), maxM = Math.abs(((double[]) out.get("maxMoment"))[0]);

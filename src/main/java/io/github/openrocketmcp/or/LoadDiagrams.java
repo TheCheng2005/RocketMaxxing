@@ -237,6 +237,41 @@ public final class LoadDiagrams {
 
 	// ------------------------------------------------------------------------------------------------ the report
 
+	/**
+	 * The bending moment and shear diagrams as SVG line charts (display units), with the joints marked: {moment, shear}.
+	 * Shear is drawn as steps, since it jumps at each concentrated load and stays level between them.
+	 */
+	@SuppressWarnings("unchecked")
+	public static String[] svgs(Map<String, Object> r, Input in, String name) {
+		List<Map<String, Object>> rows = (List<Map<String, Object>>) r.get("stations");
+		String lu = Units.plotUnit(Dim.LENGTH), fu = Units.plotUnit(Dim.FORCE);
+		boolean imperial = "lbf".equals(fu);
+		double xk = Units.fromSi(1, lu), fk = Units.fromSi(1, fu), mk = imperial ? 1 / 1.3558179483 : 1;
+		int n = rows.size();
+		double[] x = new double[n], m = new double[n], sx = new double[2 * n], sv = new double[2 * n];
+		double prev = 0;
+		for (int i = 0; i < n; i++) {
+			Map<String, Object> row = rows.get(i);
+			x[i] = (double) row.get("x") * xk;
+			m[i] = (double) row.get("moment") * mk;
+			sx[2 * i] = x[i];
+			sv[2 * i] = prev;
+			prev = (double) row.get("shear") * fk;
+			sx[2 * i + 1] = x[i];
+			sv[2 * i + 1] = prev;
+		}
+		List<io.github.openrocketmcp.report.Svg.Marker> marks = new ArrayList<>();
+		for (Joint j : in.joints) {
+			marks.add(new io.github.openrocketmcp.report.Svg.Marker(j.x * xk, j.name));
+		}
+		String at = " at max q, " + Units.num(Math.toDegrees(in.alpha())) + " deg angle of attack";
+		String xl = "Station from the nose tip (" + lu + ")";
+		return new String[] {
+				io.github.openrocketmcp.report.Svg.line(name + ": bending moment" + at, xl,
+						"Bending moment (" + (imperial ? "lbf·ft" : "N·m") + ")", x, m, Double.NaN, null, marks),
+				io.github.openrocketmcp.report.Svg.line(name + ": shear" + at, xl, "Shear (" + fu + ")", sx, sv, Double.NaN, null, marks) };
+	}
+
 	/** The result in the team's units, for people: key numbers, the stations (to plot), the joints, how it was made. */
 	@SuppressWarnings("unchecked")
 	public static Map<String, Object> report(Map<String, Object> r, Input in, String source, StringBuilder csv) {

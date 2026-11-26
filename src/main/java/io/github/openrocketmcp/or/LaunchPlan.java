@@ -266,6 +266,12 @@ public final class LaunchPlan {
 
 	/** Each flight in one member's weather; the control flown as the forecast as it stands. Map data in lat/lon. */
 	public static Map<String, Object> plan(Simulation base, OpenRocketDocument doc, Ensemble e, Settings s, double lat, double lon) {
+		return plan(base, doc, e, s, lat, lon, null);
+	}
+
+	/** As {@link #plan}, also drawing the landings and their 95% areas (SVG, east and north of the pad) to {@code plot}. */
+	public static Map<String, Object> plan(Simulation base, OpenRocketDocument doc, Ensemble e, Settings s, double lat, double lon,
+			java.nio.file.Path plot) {
 		SimulationOptions bo = base.getOptions();
 		Random rnd = new Random(s.seed());
 		List<Simulation> sims = new ArrayList<>();
@@ -350,6 +356,9 @@ public final class LaunchPlan {
 
 		// Where it lands, per stage
 		List<Map<String, Object>> areas = new ArrayList<>();
+		String unit = Units.plotUnit(Dim.DISTANCE);
+		double uk = Units.fromSi(1, unit);
+		List<io.github.openrocketmcp.report.Svg.Cloud> clouds = new ArrayList<>();
 		double farthest = 0;
 		for (Map.Entry<String, List<double[]>> en : landings.entrySet()) {
 			List<double[]> pts = en.getValue();
@@ -375,6 +384,14 @@ public final class LaunchPlan {
 				ring.put("semiMinor", ax[1]);
 				ring.put("polygon", polygon(c, ax, lat, lon));
 				rings.add(ring);
+				if (p == 95) {
+					double[] x = new double[pts.size()], y = new double[pts.size()];
+					for (int i = 0; i < x.length; i++) {
+						x[i] = pts.get(i)[0] * uk;
+						y[i] = pts.get(i)[1] * uk;
+					}
+					clouds.add(new io.github.openrocketmcp.report.Svg.Cloud(en.getKey(), x, y, c[0] * uk, c[1] * uk, ax[0] * uk, ax[1] * uk, ax[2]));
+				}
 			}
 			a.put("centre", Units.fmt(Math.hypot(c[0], c[1]), Dim.DISTANCE) + " " + compass(Math.atan2(c[0], c[1])) + " of the pad");
 			a.put("centreLatLon", latLon(c[0], c[1], lat, lon));
@@ -397,6 +414,19 @@ public final class LaunchPlan {
 		out.put("verdict", "95% of " + first.get("landings") + " flights land inside an area " + r95.get("size") + ", centred "
 				+ first.get("centre") + (areas.size() > 1 ? " (" + first.get("branch") + ")" : "") + ".");
 		out.put("landing", areas);
+		if (plot != null) {
+			try {
+				if (plot.getParent() != null) {
+					java.nio.file.Files.createDirectories(plot.getParent());
+				}
+				java.nio.file.Files.writeString(plot, io.github.openrocketmcp.report.Svg.landingMap(
+						"Where it lands: " + first.get("landings") + " flights, " + e.model().label.split(" \\(")[0], unit, clouds,
+						"95% of landings"));
+				out.put("plot", plot.toAbsolutePath().toString());
+			} catch (IOException ex) {
+				throw new ToolException("Could not write the landing map to " + plot + ": " + ex.getMessage());
+			}
+		}
 
 		// The forecast as it stands: its trajectory and landing.
 		if (asIs.ok()) {

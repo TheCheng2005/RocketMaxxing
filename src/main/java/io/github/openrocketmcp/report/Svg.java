@@ -136,6 +136,11 @@ public final class Svg {
 	 * (e.g. sustainer and booster).
 	 */
 	public static String landingMap(String title, String unit, List<Cloud> clouds) {
+		return landingMap(title, unit, clouds, "2-sigma ellipse");
+	}
+
+	/** As {@link #landingMap(String, String, List)}, naming the ellipse in the legend (e.g. "95% of landings"). */
+	public static String landingMap(String title, String unit, List<Cloud> clouds, String ellipse) {
 		final int w = 620, h = 620, l = 64, r = 24, t = 56, b = 52;
 		double xmin = 0, xmax = 0, ymin = 0, ymax = 0; // always show the pad
 		for (Cloud c : clouds) {
@@ -205,10 +210,10 @@ public final class Svg {
 						-Math.toDegrees(c.theta()), sx.applyAsDouble(c.cx()), sy.applyAsDouble(c.cy())));
 			}
 			int ly = t - 14;
-			int lx = l + 170 * k;
+			int lx = l + 240 * k;
 			s.append(String.format(Locale.ROOT, "<circle class=\"p%d\" cx=\"%d\" cy=\"%d\" r=\"4\"/>"
-					+ "<text class=\"t2\" x=\"%d\" y=\"%d\">%s (%d, 2-sigma ellipse)</text>%n", k, lx + 4, ly, lx + 12, ly + 4,
-					Xml.esc(c.name()), c.x().length));
+					+ "<text class=\"t2\" x=\"%d\" y=\"%d\">%s (%d, %s)</text>%n", k, lx + 4, ly, lx + 12, ly + 4,
+					Xml.esc(c.name()), c.x().length, Xml.esc(ellipse)));
 		}
 		double px = sx.applyAsDouble(0), py = sy.applyAsDouble(0);
 		s.append(String.format(Locale.ROOT, "<path class=\"pad\" d=\"M%.1f %.1f l6 10 h-12 z\"/>%n", px, py - 6));

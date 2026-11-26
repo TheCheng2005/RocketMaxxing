@@ -298,6 +298,7 @@ from the model by hosts that show views). Bold marks the main job of each tool.
     read as the script reads them, with `joints` to report. On the script's Discovery inputs it gives the script's
     numbers to 10⁻⁶ (`LoadDiagramsTest`).
   - **Output:** maxima with their stations, values at each joint, every station to plot, and `csvPath` for a CSV.
+    `plotPath` draws the bending moment diagram (SVG) and the shear diagram beside it (`-shear.svg`), joints marked.
 
 ### Mass
 
@@ -522,6 +523,7 @@ from the model by hosts that show views). Bold marks the main job of each tool.
     - with `radius`, how many land beyond the recovery area
   - **Map data:** `mapData: true` adds every landing point, the areas' outlines and the trajectory in latitude and
     longitude. It is off by default, so an assistant gets the numbers without thousands of coordinates.
+  - **Plot:** `plotPath` draws every landing east and north of the pad with the area holding 95% of them (SVG).
   - **Offline:** `ensembleJson` (inline or a file); with `model: gfs`, also `forecastJson`. `savePath` keeps the plan.
     The app's Launch page shows it on a satellite map and keeps saved plans in the designs folder's `plans/`.
 - `weather_forecast`: a **site forecast by GPS coordinates** from Open-Meteo: ground wind, gusts, temperature, pressure

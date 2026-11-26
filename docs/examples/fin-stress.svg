@@ -246,7 +246,7 @@
 <rect x="550" y="319.20" width="16" height="5.90" fill="#d9e8f5"/>
 <rect x="550" y="324.60" width="16" height="5.90" fill="#deebf7"/>
 <text x="586" y="52" font-size="11" text-anchor="end">largest principal</text>
-<text x="546" y="68" font-size="11" text-anchor="end">23.1 MPa</text>
+<text x="546" y="68" font-size="11" text-anchor="end">23.2 MPa</text>
 <text x="546" y="330" font-size="11" text-anchor="end">0</text>
 <text x="50" y="44" font-size="11" fill="#444">allowable / safety factor 225 MPa; the highest element is at 10% of it</text>
 </svg>

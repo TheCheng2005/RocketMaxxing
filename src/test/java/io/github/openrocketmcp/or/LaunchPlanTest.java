@@ -113,15 +113,17 @@ class LaunchPlanTest {
 
 	@Test
 	@SuppressWarnings("unchecked")
-	void landingAreasDownwind() throws Exception {
+	void landingAreasDownwind(@org.junit.jupiter.api.io.TempDir java.nio.file.Path tmp) throws Exception {
 		OrRuntime.init();
 		Designs ds = new Designs();
 		Designs.Design d = ds.openExample("Dual parachute");
 		var base = Sims.prepare(d, null, null, Sims.Overrides.none(), io.github.openrocketmcp.standards.Standards.defaults());
 		LaunchPlan.Ensemble e = LaunchPlan.parse(ensemble(10, true), LaunchPlan.Model.ECMWF, "2027-08-21T10:00", null);
 		Map<String, Object> out = LaunchPlan.plan(base, d.doc, e, new LaunchPlan.Settings(60, Math.toRadians(1), Math.toRadians(5), 7, 2000),
-				47.97, -81.85);
+				47.97, -81.85, tmp.resolve("plots/landing.svg"));
 		assertEquals(0, out.get("failedRuns"), out.toString());
+		String svg = java.nio.file.Files.readString(tmp.resolve("plots/landing.svg"));
+		assertTrue(svg.contains("<ellipse") && svg.contains("95% of landings"), "the landing map");
 		List<Map<String, Object>> land = (List<Map<String, Object>>) out.get("landing");
 		Map<String, Object> main = land.get(0);
 		List<double[]> pts = (List<double[]>) main.get("points");

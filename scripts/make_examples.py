@@ -33,8 +33,12 @@ def table(rows, cols, headers=None):
     w()
 
 
-def ask(n, prompt, tools):
-    w(f"### {n}. \"{prompt}\"")
+STEP = [0]
+
+
+def ask(prompt, tools):
+    STEP[0] += 1
+    w(f"### {STEP[0]}. \"{prompt}\"")
     w()
     w(f"<sub>Tools Claude uses: {', '.join('`' + t + '`' for t in tools)}</sub>")
     w()
@@ -96,8 +100,9 @@ def main():
     w("appear right in the chat, and long runs (optimizers, Monte Carlo) show their progress and can be stopped. Not sure what")
     w("to ask? Ask Claude what it can do: it also offers related things as you work.")
     w()
-    w("Using [RocketMaxxing](ROCKETMAXXING.md), the desktop app? Every step below is an analysis on its Analysis page too:")
-    w("open the same design and run them there, no assistant needed.")
+    w("Using [RocketMaxxing](ROCKETMAXXING.md), the desktop app? Nearly every step below is an analysis on its Analysis page")
+    w("too, and the rest are on its Design, Flights and Launch pages: open the same design and do them there, no assistant")
+    w("needed.")
     w()
     w("The Maple 10K is a made-up rocket. For a real one, checked against the log of its flight, see the")
     w("[worked example](WORKED_EXAMPLE.md).")
@@ -146,7 +151,7 @@ def main():
 
     w("## Design")
     w()
-    ask(1, "Design a 4 inch fiberglass rocket with a 75 mm motor mount, dual deploy: 18 in drogue at apogee, 60 in main at "
+    ask("Design a 4 inch fiberglass rocket with a 75 mm motor mount, dual deploy: 18 in drogue at apogee, 60 in main at "
            "1000 ft. 18 in ogive nose, 64 in of airframe, four trapezoidal fins.", ["open_design", "add_component", "set_deployment"])
     w("Claude builds the rocket part by part in OpenRocket, inside as well as out: nose bulkhead, motor mount with three "
       "centering rings, rail buttons, both parachutes (with realistic packed sizes) and their shock cords. It opens in the "
@@ -154,7 +159,7 @@ def main():
     w()
 
     bay = call("add_avionics_bay", {"designId": d})
-    ask(2, "Lay out the avionics bay between the two airframes: two independent altimeters, a GPS tracker, and the "
+    ask("Lay out the avionics bay between the two airframes: two independent altimeters, a GPS tracker, and the "
            "ejection charges.", ["add_avionics_bay"])
     w(f"> {bay['added']}: {bay['electronics']}; {bay['charges']}. Bay mass {bay['bayMass']}. Static ports: "
       f"{bay['staticPorts'].split(';')[0]}.")
@@ -197,7 +202,7 @@ def main():
     rank = best_motor()
     rows = rank["ranking"][:6]
     top = rows[0]
-    ask(3, "Which motor gets us closest to 10,000 ft?", ["rank_motors", "set_motor"])
+    ask("Which motor gets us closest to 10,000 ft?", ["rank_motors", "set_motor"])
     w(f"> **{top['motor']}**, {ft(top['apogee'].split(' (+')[0].split(' (-')[0])} predicted. {rank['candidates']}: each "
       "one was flown in the simulation, not just looked up, and motors that break a rule (rail exit speed, thrust-to-weight, "
       "stability) are ranked last.")
@@ -210,7 +215,7 @@ def main():
 
     # 3. Flutter -------------------------------------------------------------------------------------------------------
     fl = call("fin_flutter", {"designId": d})["finSets"][0]
-    ask(4, "It goes supersonic. Will our 1/8 in fins flutter?", ["fin_flutter"])
+    ask("It goes supersonic. Will our 1/8 in fins flutter?", ["fin_flutter"])
     wp = fl["worstPoint"]
     need = fl.get("toReachRequiredMargin", {})
     w(f"> **{fl['status'].split(':')[0]}.** At {wp['airspeed']} and {lead(wp['altitude'])} the estimated flutter speed is only "
@@ -225,7 +230,7 @@ def main():
     call("edit_components", {"designId": d, "changes": [{"component": "Fins", "properties": {
         "material": "Carbon fiber", "thickness": "0.25 in"}}]})
     fl = call("fin_flutter", {"designId": d})["finSets"][0]
-    ask(5, "We'll make the fins from 1/4 in quasi-isotropic carbon. Our coupon test gave a shear modulus of 16 GPa: save that "
+    ask("We'll make the fins from 1/4 in quasi-isotropic carbon. Our coupon test gave a shear modulus of 16 GPa: save that "
            "to our standards and check again.", ["update_standards", "edit_components", "fin_flutter"])
     w(f"> **{fl['status'].split(':')[0]}**, margin {fl['minMargin'].split(' ')[0]} (shear modulus {lead(fl['shearModulus'])} "
       "from your standards file, so every later check and the whole team use the measured value).")
@@ -254,7 +259,7 @@ def main():
         fl = call("fin_flutter", {"designId": d})["finSets"][0]
         if opt["feasible"] and fl["status"].startswith("PASS"):
             break
-    ask(6, "It has to meet the stability rules (also in 30 km/h wind): add the nose weight it needs, then optimize the fin "
+    ask("It has to meet the stability rules (also in 30 km/h wind): add the nose weight it needs, then optimize the fin "
            "shape for the least drag while staying clear of flutter (span no more than 8 in), and pick the motor again.",
         ["ballast", "add_component", "optimize_fins", "rank_motors", "fin_flutter"])
     best = opt["optimized"]
@@ -276,7 +281,7 @@ def main():
     w()
 
     draw = call("draw_rocket", {"designId": d, "path": os.path.join(IMG, "rocket.svg")})
-    ask(7, "Show me the rocket.", ["draw_rocket"])
+    ask("Show me the rocket.", ["draw_rocket"])
     w("![Maple 10K cut-away: nose with GPS tracker, main and shock cord, the avionics bay with both altimeter circuits and "
       "charges, drogue, motor mount and motor, with the separation points, CG and CP marked](examples/rocket.svg)")
     w()
@@ -291,7 +296,7 @@ def main():
     # What-if and undo --------------------------------------------------------------------------------------------------
     call("edit_components", {"designId": d, "changes": [{"component": "Fins", "properties": {"thickness": "1/8 in"}}]})
     thin = call("fin_flutter", {"designId": d})["finSets"][0]
-    ask(8, "What if we used 1/8 in carbon for the fins to save weight?", ["edit_components", "fin_flutter"])
+    ask("What if we used 1/8 in carbon for the fins to save weight?", ["edit_components", "fin_flutter"])
     w(f"> Claude makes the change and checks it: flutter **{thin['status'].split(':')[0]}**, margin "
       f"{thin['minMargin'].split(' ')[0]} (flutter speed / airspeed; the team wants {thin['requiredMargin'].split(' ')[0]}). "
       f"Thinner fins would need {lead(thin['toReachRequiredMargin']['thickness'])} to be safe."
@@ -299,7 +304,7 @@ def main():
     w()
     hist = call("history", {"designId": d})
     undo = call("undo", {"designId": d})
-    ask(9, "Undo that.", ["undo", "history"])
+    ask("Undo that.", ["undo", "history"])
     w(f"> Undone: *{undo['undone'][0].split(' (')[0]}* (the thickness change). Every edit in the session can be undone or "
       f"redone, newest first; `history` lists them ({len(hist['canUndo'])} so far in this session). Nothing touches the "
       "`.ork` file until you ask Claude to save.")
@@ -309,7 +314,7 @@ def main():
     w("## Recovery")
     w()
     size = call("size_parachute", {"designId": d, "device": "Main", "targetDescentRate": "20 ft/s"})
-    ask(10, "What main do we need to land at 20 ft/s? And a drogue for about 85 ft/s.", ["size_parachute", "edit_components"])
+    ask("What main do we need to land at 20 ft/s? And a drogue for about 85 ft/s.", ["size_parachute", "edit_components"])
     w(f"> The descending mass is {size['mass'].split(' (sim')[0]}, so the main needs a drag area of {size['requiredCdA']} "
       f"(a {lead(size['nominalDiameterAtCd0.8'])} flat canopy at Cd 0.8). Parachutes from OpenRocket's catalogue that do it:")
     w()
@@ -330,7 +335,7 @@ def main():
     w()
 
     rec = call("recovery_analysis", {"designId": d, "pinType": "4-40 nylon"})
-    ask(11, "What loads do the chutes see when they open, and how many 4-40 nylon shear pins do we need?",
+    ask("What loads do the chutes see when they open, and how many 4-40 nylon shear pins do we need?",
         ["recovery_analysis", "ejection_charge"])
     rows = [{"device": x["device"], "opens at": f"{lead(x['altitudeAGL'])}, {lead(x['airspeedAtDeployment'])}",
              "design load": x["designLoad"].split(" [")[0], "harness rating": lead(x["harnessWorkingLoad"]),
@@ -343,11 +348,42 @@ def main():
       "rating is twice the opening load, for shock cord, quick links and eye bolts.")
     w()
 
+    # Connectors: the hardware joining the harnesses, from the app's Connectors menu (same names, masses and sizes).
+    harness = max(float(re.search(r"\(([\d.]+) lbf\)", x["harnessWorkingLoad"]).group(1)) for x in rec["deployments"])
+    swivel = "Swivel, ball-bearing (1,000 lb)" if harness < 1000 else "Swivel, ball-bearing (2,000 lb)"
+    hw = {'Eyebolt 1/4"-20, forged': (0.034, 0.075, 0.015), 'Quick link 1/4" (6 mm)': (0.028, 0.06, 0.013),
+          "Swivel, ball-bearing (1,000 lb)": (0.008, 0.055, 0.008), "Swivel, ball-bearing (2,000 lb)": (0.018, 0.07, 0.011)}
+    fit = [("Nose cone", 'Eyebolt 1/4"-20, forged', "22 in", "on the nose bulkhead"),
+           ("Upper airframe", 'Quick link 1/4" (6 mm)', "25 in", "main harness to the nose"),
+           ("Upper airframe", swivel, "33 in", "main to its harness"),
+           ("Upper airframe", 'Quick link 1/4" (6 mm)', "36 in", "main harness to the bay"),
+           ("Lower airframe", 'Quick link 1/4" (6 mm)', "51.5 in", "drogue harness to the bay"),
+           ("Lower airframe", swivel, "53 in", "drogue to its harness"),
+           ("Lower airframe", 'Quick link 1/4" (6 mm)', "54 in", "drogue harness to the motor"),
+           ("Lower airframe", 'Eyebolt 1/4"-20, forged', "55 in", "in the motor's forward closure")]
+    for parent, name, at, _ in fit:
+        m_, l_, r_ = hw[name]
+        add(parent, "MassComponent", name, {"massComponentType": "RECOVERYHARDWARE", "componentMass": m_, "length": l_,
+                                             "radius": r_, "axialMethod": "ABSOLUTE", "axialOffset": at})
+    total = sum(hw[name][0] for _, name, _, _ in fit)
+    ask("Add the connectors: a forged 1/4 in eyebolt on the nose bulkhead and the motor's forward closure, 1/4 in quick "
+        "links at both ends of each shock cord and a swivel on each chute.", ["add_component"])
+    conn_step = STEP[0]
+    w(f"> {len(fit)} connectors, {total * 1000:.0f} g in all, each where it hangs (the bay's U-bolts came with it in step 2). "
+      f"The harnesses need a rating of {harness:,.0f} lbf, so the swivels are the {swivel.split('(')[1].rstrip(')')} ones.")
+    w()
+    table([{"part": n_, "where": why} for _, n_, _, why in fit], ["part", "where"], ["Connector", "Joins"])
+    w("Connectors are mass components marked as recovery hardware, so they count in the mass, CG and descent rates, and "
+      "the 3-D views draw each one as what it is. In RocketMaxxing they are one click away: **Add part → Connectors** "
+      "lists eyebolts (#10-24 to 1/2\"), U-bolts, eye nuts, quick links (3.5 to 10 mm), swivels and shackles with real "
+      "masses, in grams or ounces.")
+    w()
+
     # 8. Rules ---------------------------------------------------------------------------------------------------------
     w("## Flight and rules")
     w()
     req = call("check_requirements", {"designId": d})
-    ask(12, "Does it pass Launch Canada?", ["check_requirements"])
+    ask("Does it pass Launch Canada?", ["check_requirements"])
     w(f"> **{req['summary']}** Every check cites its rule, and there is a checklist of "
       f"{len(req.get('manualChecks', []))} things to verify by hand (electronics, radio, structures, operations).")
     w()
@@ -357,7 +393,7 @@ def main():
 
     sim = call("run_simulation", {"designId": d, "plotPath": os.path.join(IMG, "flight-profile.svg")})
     f = sim["flight"]
-    ask(13, "Simulate the flight and plot it.", ["run_simulation"])
+    ask("Simulate the flight and plot it.", ["run_simulation"])
     w(f"> Apogee **{f['apogee']}** at {f['timeToApogee']}. Top speed {f['maxVelocity']} (Mach {f['maxMach']}), "
       f"{f['maxAcceleration'].split(' = ')[-1]} peak, {f['railExitVelocity']} off the rail.")
     w()
@@ -368,7 +404,7 @@ def main():
                               "massSd": 0.03, "dragSd": 0.1, "thrustSd": 0.03, "chuteCdSd": 0.1,
                               "plotPath": os.path.join(IMG, "landing.svg"), "kmlPath": os.path.join(IMG, "landing.kml"),
                               "siteLatitude": 48.47, "siteLongitude": -81.33})
-    ask(14, "Where will it land in a 15 km/h west wind? Include our build and motor uncertainty, and give us a map for "
+    ask("Where will it land in a 15 km/h west wind? Include our build and motor uncertainty, and give us a map for "
             "Google Earth.", ["monte_carlo"])
     land = next(iter(mc["landing"].values()))
     ap = mc["apogee"]
@@ -398,7 +434,7 @@ def main():
     w("## Design studies")
     w()
     sh = call("compare_shapes", {"designId": d})
-    ask(15, "Would a different nose cone or fin shape fly higher?", ["compare_shapes"])
+    ask("Would a different nose cone or fin shape fly higher?", ["compare_shapes"])
     w(f"> Best that keeps the stability: **{sh.get('bestMeetingStability', '')}**. Every nose profile and fin edge was "
       f"flown; CD at the design Mach ({sh['designMach'].split(' ')[0]}) shows where the gain comes from.")
     w()
@@ -421,7 +457,7 @@ def main():
     fea = call("fin_fea", {"designId": d, "outDir": os.path.join(tmp, "fea"), "youngsModulus": "45 GPa",
                            "poissonRatio": 0.3, "plotPath": os.path.join(IMG, "fin-stress.svg")})
     loads = call("structural_loads", {"designId": d, "csvPath": os.path.join(tmp, "joint-loads.csv")})
-    ask(16, "Check the fins in FEA: our quasi-isotropic laminate has E = 45 GPa and Poisson's ratio 0.3. And give us the "
+    ask("Check the fins in FEA: our quasi-isotropic laminate has E = 45 GPa and Poisson's ratio 0.3. And give us the "
             "joint loads for the airframe FEA.", ["fin_fea", "structural_loads"])
     fe, ld = fea["fea"], fea["load"]
     if isinstance(fe, dict):
@@ -444,9 +480,33 @@ def main():
         w(f"> {fe}")
     w()
 
+    ldg = call("load_diagrams", {"designId": d, "plotPath": os.path.join(IMG, "bending-moment.svg")})
+    ask("Draw the shear and bending moment diagrams at max q, the way our UTAT load script does.", ["load_diagrams"])
+    mq = ldg["atMaxQ"]
+    w(f"> The largest bending moment is **{lead(ldg['maxBendingMoment'].split(' at ')[0])}**, "
+      f"{lead(ldg['maxBendingMoment'].split(' at ')[1])} from the nose tip, and the largest shear "
+      f"{lead(ldg['maxShear'].split(' at ')[0])}, both where the fins take the lift. That is at max q: "
+      f"{lead(mq['dynamicPressure'])} at Mach {mq['mach']}, {mq['time']} into the flight, held at {mq['angleOfAttack']} "
+      "angle of attack.")
+    w()
+    w("![Bending moment along the Maple 10K at max q, with the airframe joints marked](examples/bending-moment.svg)")
+    w()
+    w("![Shear along the Maple 10K at max q: a step at each lift and part](examples/bending-moment-shear.svg)")
+    w()
+    rows = [{"at": j["at"], "station": lead(j["station"]), "shear": lead(j["shear"]), "moment": lead(j["bendingMoment"]),
+             "axial": lead(j["axialForce"])} for j in ldg["joints"]]
+    table(rows, ["at", "station", "shear", "moment", "axial"], ["Joint", "Station", "Shear", "Bending moment", "Axial force"])
+    w("This is the University of Toronto Aerospace Team's load calculation ([`Load_calculations.py`]"
+      "(https://github.com/ArthurJWH/UTAT-Rocketry), by Fred Chun, edited by Nat Espinosa, Alexander Boldis and Nadim "
+      "Hatoum): the rocket as a rigid body at max q, each lifting part's lift at its centre of pressure and every part's "
+      "inertia answering it. Here the parts, masses, lift slopes and CPs come from the design; give Claude the team's own "
+      "parts, conditions and AeroLab files instead and it runs them as the script does (the two agree to a millionth). "
+      "In RocketMaxxing it is **Load diagrams** on the Analysis page, with the four plots.")
+    w()
+
     geo = call("export_geometry", {"designId": d, "outDir": os.path.join(tmp, "cfd")})
     shutil.copy(os.path.join(tmp, "cfd", "preview.svg"), os.path.join(IMG, "cfd-model.svg"))
-    ask(17, "Export it for CFD, and tell us which cases to run.", ["export_geometry"])
+    ask("Export it for CFD, and tell us which cases to run.", ["export_geometry"])
     w(f"> The rocket as STL ({geo['files']['stl'].split('(')[1].split(';')[0]}, one region per part so the solver reports "
       "the force on each), the fin cutting pattern as DXF for the waterjet or laser, and a run matrix taken from the simulated flight: each Mach "
       "number at the altitude where the rocket reaches it. When the CFD results are in, `import_aero_table` reads them "
@@ -476,7 +536,7 @@ def main():
     lines += ["Fin fillets and tip-to-tip epoxy,140,measured,no,Lower airframe", "Paint and primer,90,estimated,no,Upper airframe"]
     weigh = "\n".join(lines) + "\n"
     mb = call("mass_budget", {"designId": d, "csv": weigh, "targetLaunchMass": "12 kg", "contingency": 0.1})
-    ask(18, "We weighed the parts we've built. Here is our weigh-in sheet; how does it compare with the model? Our launch mass "
+    ask("We weighed the parts we've built. Here is our weigh-in sheet; how does it compare with the model? Our launch mass "
            "target is 12 kg.", ["mass_budget"])
     w("<details><summary>Weigh-in sheet (sample numbers)</summary>")
     w()
@@ -494,7 +554,7 @@ def main():
       f"{', '.join(mb.get('heaviestNotInBudget', [])[:3])}), which stay at the model's values.")
     w()
     ap_ = call("mass_budget", {"designId": d, "csv": weigh, "apply": True})
-    ask(19, "Put the weigh-ins into the design.", ["mass_budget"])
+    ask("Put the weigh-ins into the design.", ["mass_budget"])
     ch = ap_["change"]
     w(f"> Done: {len(ap_['applied'])} changes (mass overrides on the weighed parts, the fillets and paint added as mass "
       f"components). Launch mass {ch['launchMass']}, CG {ch['cgAtLaunch']}, stability {ch['stabilityAtLaunch']}. Every later "
@@ -505,7 +565,7 @@ def main():
     w("## Reviews")
     w()
     stat = call("design_status", {"designId": d})
-    ask(20, "Where do we stand? What's left before CDR?", ["design_status"])
+    ask("Where do we stand? What's left before CDR?", ["design_status"])
     w(f"> **{stat['readiness']}.** {stat.get('ruleCheck', '')}")
     w()
     rows = [{"area": i["area"], "status": i["status"], "finding": i["finding"]} for i in stat["items"]][:8]
@@ -519,7 +579,7 @@ def main():
     rep_dir = os.path.join(tmp, "report")
     call("generate_report", {"designId": d, "outputDir": rep_dir, "title": "Maple 10K design review"})
     shutil.copy(os.path.join(rep_dir, "stability-ascent.svg"), os.path.join(IMG, "stability-ascent.svg"))
-    ask(21, "Make the design review package.", ["generate_report"])
+    ask("Make the design review package.", ["generate_report"])
     w("Claude writes a folder with `report.md` (requirement checks, vehicle, flight, stability, recovery, wind table, "
       "methods), the stability-vs-time plots Launch Canada asks for (DTEG R10.3.2), the drawing, the flight profile and a CSV "
       "of the flight data.")
@@ -529,7 +589,7 @@ def main():
 
     call("save_design", {"designId": d, "path": os.path.join(IMG, "maple-10k.ork")})
     diff = call("compare_designs", {"designId": d, "baselinePath": os.path.join(tmp, "maple-pdr.ork")})
-    ask(22, "What changed since the version we showed at PDR?", ["compare_designs"])
+    ask("What changed since the version we showed at PDR?", ["compare_designs"])
     for line in diff["summary"]:
         w(f"- {line}")
     w()
@@ -542,7 +602,7 @@ def main():
     w("## Launch day")
     w()
     sample = open(os.path.join(ROOT, "src", "test", "resources", "open-meteo-sample.json")).read()
-    ask(23, "We launch at 48.47, -81.33 on August 21 at 3 pm. What will the winds do, and make us the flight card.",
+    ask("We launch at 48.47, -81.33 on August 21 at 3 pm. What will the winds do, and make us the flight card.",
         ["weather_forecast", "flight_card"])
     wx = call("weather_forecast", {"designId": d, "forecastJson": sample, "time": "2027-08-21T15:00"})
     g = wx["ground"]
@@ -575,8 +635,43 @@ def main():
     w()
 
 
+    ens = os.path.join(ROOT, "src", "test", "resources", "open-meteo-ensemble-sample.json")
+    lp = call("launch_planner", {"designId": d, "latitude": 48.47, "longitude": -81.33, "time": "2027-08-21T10:00",
+                                 "ensembleJson": ens, "runs": 300, "radius": "3 km",
+                                 "plotPath": os.path.join(IMG, "launch-plan.svg")})
+    ask("We could also fly the morning window. A week out, fly it through every forecast of the ensemble for 10 am: where "
+        "could it land, and does it stay inside the 3 km recovery area?", ["launch_planner"])
+    land = lp["landing"][0]
+    beyond = land.get("beyondRadius", "")
+    if beyond.startswith("0 of "):
+        beyond = "None of the " + beyond[len("0 of "):].replace(" land more than ", " flights land more than ", 1)
+    beyond = re.sub(r"(\d[\d.]*) m \(([\d.]+) ft\)", lambda m_: f"{float(m_.group(1)) / 1000:g} km", beyond)
+    w(f"> {lp['verdict']} {beyond}. "
+      f"Apogee {lead(lp['summary']['apogee'])} ({' to '.join(lead(x) for x in lp['summary']['apogeeRange'].replace(' in 90% of flights', '').split(' to '))} "
+      f"in 90% of the flights); in the forecast as it stands it lands {lead(lp['summary']['landingAsIs'])} "
+      f"{lp['summary']['landingAsIs'].split(')')[-1].strip()}.")
+    w()
+    w("![Every landing east and north of the pad, with the area holding 95% of them](examples/launch-plan.svg)")
+    w()
+    table([{"p": f"{a['percent']}%", "size": lead(a["size"].split(" by ")[0]) + " by " + lead(a["size"].split(" by ")[1])}
+           for a in land["areas"]], ["p", "size"], ["Landings inside", "Area"])
+    w("Winds the forecasts agree on, and how far they spread:")
+    w()
+    table([{"h": lead(x["height"]), "s": lead(x["speed"]), "r": lead(x["ensembleRange"].split(" to ")[0]) + " to "
+            + lead(x["ensembleRange"].split(" to ")[1]), "f": x["from"]} for x in lp["winds"][:6]],
+          ["h", "s", "r", "f"], ["Height", "Wind", "Across the forecasts", "From"])
+    w("Each flight flies one forecast of the ECMWF ensemble (51 forecasts with their own winds aloft, 15 days ahead; or "
+      "NOAA's GEFS, 31 forecasts), with the launch angle and rod direction dispersed. The spread of the forecasts is the "
+      "uncertainty in the weather itself, so the area shrinks as the day gets closer. In RocketMaxxing the **Launch** "
+      "page draws the same areas over satellite imagery of the site, keeps the map for the field without internet, and "
+      "saves each plan to compare as the day comes.")
+    w()
+    w("<sub>(A recorded ensemble of 11 forecasts keeps the page reproducible; with internet access Claude fetches all 51 "
+      "from Open-Meteo.)</sub>")
+    w()
+
     rb = call("rail_buttons", {"designId": d})
-    ask(24, "Where should the rail buttons go to get the most out of the rail?", ["rail_buttons"])
+    ask("Where should the rail buttons go to get the most out of the rail?", ["rail_buttons"])
     rec, cur = rb["recommended"], rb.get("current", {})
     w(f"> The aft button goes {lead(rec['aftButton'].split(' above')[0])} above the aft end and the forward one "
       f"{lead(rec['forwardButton'].split(' above')[0])} up, {lead(rec['spacing'])} apart. The rocket leaves the rail at "
@@ -601,18 +696,19 @@ def main():
     w("## Show it off")
     w()
     ex = call("render_3d", {"designId": d, "view": "exploded", "path": os.path.join(IMG, "exploded.png")})
-    ask(25, "Make an exploded view for our design review poster, with the parts list.", ["render_3d"])
+    ask("Make an exploded view for our design review poster, with the parts list.", ["render_3d"])
     w("![Exploded 3-D view of Maple 10K: airframe pieces pulled apart, fins slid out, every internal part laid out below "
-      "the piece it goes in, with numbered balloons and a parts list with masses](examples/exploded.png)")
+      "the piece it goes in, parachutes open, with numbered balloons and a parts list with masses](examples/exploded.png)")
     w()
     heavy = sorted(ex["parts"], key=lambda p: -float(re.sub(r"[^\d.]", "", lead(p["mass"])) or 0)
                    * (1000 if lead(p["mass"]).endswith("kg") else 1))[:3]
     w(f"{len(ex['parts'])} parts, each with OpenRocket's mass (the weighed values from the mass budget). The heaviest: "
-      + ", ".join(f"{p['name']} ({lead(p['mass'])})" for p in heavy) + ". Ask for `cutaway` to see them in place instead.")
+      + ", ".join(f"{p['name']} ({lead(p['mass'])})" for p in heavy) + ". The parachutes open into canopies on their lines, "
+      f"and the connectors from step {conn_step} hang where they go. Ask for `cutaway` to see everything in place instead.")
     w()
     an = call("animate_flight", {"designId": d, "path": os.path.join(IMG, "flight.gif"), "duration": 22, "fps": 10,
                                  "gifWidth": 560, "mp4": False})
-    ask(26, "Animate the flight for our social media post.", ["animate_flight"])
+    ask("Animate the flight for our social media post.", ["animate_flight"])
     w("![3-D animation of the simulated flight with the flight clock, altitude, speed, Mach and distance from the pad, "
       "captions at burnout, apogee and each deployment](examples/flight.gif)")
     w()
@@ -628,7 +724,7 @@ def main():
 
     # Two stages ------------------------------------------------------------------------------------------------------
     ts = call("open_design", {"example": "Two stage high power"})["designId"]
-    ask(27, "We're also flying a two-stage rocket. Simulate the staging, show it pulled apart and animate it.",
+    ask("We're also flying a two-stage rocket. Simulate the staging, show it pulled apart and animate it.",
         ["run_simulation", "render_3d", "animate_flight"])
     run = call("run_simulation", {"designId": ts})
     ign = [i for i in run["ignitions"] if "altitudeAtIgnition" in i]
@@ -685,7 +781,7 @@ def main():
 
     sample_log(os.path.join(lib, "2023/dual-deploy-flight1.csv"), 790)
     sample_log(os.path.join(lib, "2024/two-stage-flight1.csv"), 610)
-    ask(28, "Here's our folder of past rockets and flight logs. Which 4 in rockets have we flown, and how good were our "
+    ask("Here's our folder of past rockets and flight logs. Which 4 in rockets have we flown, and how good were our "
         "apogee predictions over the years?", ["design_library"])
     allr = call("design_library", {"folder": lib, "simulate": True})
     four = call("design_library", {"folder": lib, "minDiameter": "3.9 in", "maxDiameter": "4.1 in"})
@@ -709,7 +805,7 @@ def main():
     w()
     w("## Electronics")
     w()
-    ask(29, "Will our flight computer's sensors cope with this flight, and what do we set the altimeters to?",
+    ask("Will our flight computer's sensors cope with this flight, and what do we set the altimeters to?",
         ["sensor_check", "altimeter_settings"])
     chk = call("sensor_check", {"designId": d})
     w(f"> {chk['summary'].capitalize()}. Against the team's sensors (typical student parts, set in the standards):")
@@ -722,7 +818,7 @@ def main():
     table(alt["channels"], ["device", "primary", "backup"], ["Parachute", "Primary altimeter", "Backup altimeter"])
     w(f"> Mach lockout: {alt['lockout']['machLockout']}. Static ports: {alt['staticPorts'].split(';')[0]}.")
     w()
-    ask(30, "Give us simulated sensor data to test our flight software.", ["sensor_data"])
+    ask("Give us simulated sensor data to test our flight software.", ["sensor_data"])
     csv_path = os.path.join(tmp, "maple-sensors.csv")
     sd = call("sensor_data", {"designId": d, "path": csv_path})
     w(f"> {sd['samples']}, plus the true event times in a separate file. A few rows:")
@@ -745,7 +841,7 @@ def main():
     w(f"The ±16 g part {verdict}. Under the main both read about −1 g (the canopy holding the rocket). Columns follow "
       "the team's sensors in the standards; pass your own parts with `sensors`.")
     w()
-    ask(31, "Do our batteries last a two-hour pad wait, and will we hear the GPS tracker all the way down?",
+    ask("Do our batteries last a two-hour pad wait, and will we hear the GPS tracker all the way down?",
         ["power_budget", "radio_link"])
     pw = call("power_budget", {"designId": d})
     w(f"> {pw['time']}. Each circuit against its battery (the team's parts, set in the standards):")
@@ -765,7 +861,7 @@ def main():
     w()
     w("## Parachutes and product links")
     w()
-    ask(32, "Plot our main's size against descent rate for Cd 0.85, 1.5 and 2.2.", ["parachute_sizes"])
+    ask("Plot our main's size against descent rate for Cd 0.85, 1.5 and 2.2.", ["parachute_sizes"])
     ch = call("parachute_sizes", {"designId": d, "cds": [0.85, 1.5, 2.2],
                                   "plotPath": os.path.join(IMG, "parachute-sizes.svg")})
     w(f"> {ch['mass']}; the drogue stays attached under the main, so {lead(ch['otherDrag'])} of drag is counted "
@@ -782,7 +878,7 @@ def main():
         table(cm, ["parachute", "diameter", "cd", "descentRate"], ["Parachute", "Diameter", "Cd", "Rate"])
     w("`apply: true` with one Cd sets the main to that size (rounded up to a whole inch) and re-flies the rocket.")
     w()
-    ask(33, "Here's the chute we want to buy: put it in as our main.", ["add_from_link"])
+    ask("Here's the chute we want to buy: put it in as our main.", ["add_from_link"])
     page = "Fruity Chutes\nIris Ultra 84\" Compact Parachute\nToroidal canopy for large high power rockets."
     link = call("add_from_link", {"designId": d, "pageText": page, "component": "Main"})
     rows = [{"value": k, "found": v} for k, v in link["fromThePage"].items() if k != "catalogMatch"]
@@ -795,7 +891,7 @@ def main():
     w()
     w("## Explore it in the chat")
     w()
-    ask(34, "Show us the rocket and its flight so we can click through it.", ["show_design"])
+    ask("Show us the rocket and its flight so we can click through it.", ["show_design"])
     view = call("show_design", {"designId": d, "path": os.path.join(IMG, "maple-10k-view.html")})
     w(f"> {view['summary']}. Rule checks: {view['checks']}")
     w()
