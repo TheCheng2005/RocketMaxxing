@@ -9,7 +9,8 @@
   const ScaleDialog = () => import("./ScaleDialog.svelte");
   import { app, move, canMove, duplicate, removeSelected, findNode } from "../state.svelte";
   import { keys } from "../keys";
-  import { isOpen, setOpen } from "../panels.svelte";
+  import { isOpen, setOpen, sizeOf } from "../panels.svelte";
+  import Splitter from "../Splitter.svelte";
   import Panel from "../Panel.svelte";
   import Tree from "./Tree.svelte";
   import Palette from "./Palette.svelte";
@@ -62,6 +63,12 @@
   let scaling = $state<string | null>(null);
   // The first time the page is shown, a line above the view offers the tour (once; the View panel keeps a button).
   let offer = $state(!seen("design"));
+  // The side panels can be dragged wider, as long as the view in the middle keeps at least 420 px.
+  let leftEl: HTMLDivElement;
+  let rightEl: HTMLDivElement;
+  function sideMax(other: HTMLDivElement | undefined): number {
+    return window.innerWidth - 72 - (other?.getBoundingClientRect().width ?? 0) - 420 - 48;
+  }
   function noThanks() {
     markSeen("design");
     offer = false;
@@ -69,7 +76,8 @@
 </script>
 
 <div class="design">
-  <div class="left" class:shut={!isOpen("design.parts")}>
+  <div class="left" class:shut={!isOpen("design.parts")} bind:this={leftEl}
+    style:width={isOpen("design.parts") && sizeOf("design.parts.w") ? `${sizeOf("design.parts.w")}px` : null}>
     <Panel id="design.parts" icon={ListTree} title="Parts" side="left">
       {#snippet tools()}
         <button class="tool" title="Move up (Alt+↑)" disabled={!canMove(-1)} onclick={() => move(-1)}><ArrowUp size={15} /></button>
@@ -80,6 +88,10 @@
       <Tree />
     </Panel>
   </div>
+  {#if isOpen("design.parts")}
+    <Splitter id="design.parts.w" min={200} max={() => sideMax(rightEl)} label="the parts list"
+      measure={() => leftEl.getBoundingClientRect().width} />
+  {/if}
 
   <div class="center">
     {#if offer}
@@ -90,7 +102,7 @@
         <button class="tool" onclick={noThanks} aria-label="Not now" title="Not now (the View panel has a Tour button)"><X size={15} /></button>
       </div>
     {/if}
-    <Panel id="design.view" icon={Box} title="View" fill>
+    <Panel id="design.view" icon={Box} title="View" fill height={sizeOf("design.view.h")}>
       {#snippet tools()}
         <button class="tool wide" title="A guided tour of this page" onclick={() => { offer = false; designTour(); }}><Route size={15} /> Tour</button>
         <button class="tool wide" data-tour="picture" title="Picture or drawing of the design, for reviews and build notes" onclick={() => (picture = true)}><Image size={15} /> Picture</button>
@@ -98,6 +110,10 @@
       {/snippet}
       <div class="view"><RocketView picture={() => (picture = true)} /></div>
     </Panel>
+    {#if isOpen("design.view")}
+      <Splitter id="design.view.h" axis="y" min={280} max={() => window.innerHeight * 1.5} label="the 3-D view"
+        measure={() => document.querySelector('[data-panel="design.view"]')?.getBoundingClientRect().height ?? 400} />
+    {/if}
     <Panel id="design.add" icon={SquarePlus} title="Add part">
       {#snippet tools()}<span class="to">to {target}</span>{/snippet}
       <Palette />
@@ -121,7 +137,12 @@
     {/if}
   </div>
 
-  <div class="right" class:shut={!isOpen("design.props")}>
+  {#if isOpen("design.props")}
+    <Splitter id="design.props.w" grow={-1} min={280} max={() => sideMax(leftEl)} label="the properties"
+      measure={() => rightEl.getBoundingClientRect().width} />
+  {/if}
+  <div class="right" class:shut={!isOpen("design.props")} bind:this={rightEl}
+    style:width={isOpen("design.props") && sizeOf("design.props.w") ? `${sizeOf("design.props.w")}px` : null}>
     <Panel id="design.props" icon={SlidersHorizontal} title="Properties" side="right">
       <Inspector />
     </Panel>

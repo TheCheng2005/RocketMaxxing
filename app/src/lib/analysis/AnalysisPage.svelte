@@ -9,8 +9,9 @@
   import { untrack } from "svelte";
   import { call, callFull, tools as listTools, type ToolInfo } from "../api";
   import { app, refresh, run, type TreeNode } from "../state.svelte";
-  import { isOpen, toggle } from "../panels.svelte";
+  import { isOpen, toggle, sizeOf } from "../panels.svelte";
   import Panel from "../Panel.svelte";
+  import Splitter from "../Splitter.svelte";
   import Result from "./Result.svelte";
   import RuleCheck from "../design/RuleCheck.svelte";
   import ResultPlot from "./ResultPlot.svelte";
@@ -36,6 +37,8 @@
 
   // The engine's analyses: pick one, fill in what it needs (the design is filled in), run, read the result.
 
+  let listEl: HTMLDivElement;
+  let mainEl: HTMLDivElement;
   let infos = $state<Record<string, ToolInfo>>({});
   let sims = $state<string[]>([]);
   let designs = $state<{ designId: string; name: string }[]>([]);
@@ -548,7 +551,8 @@
 {/snippet}
 
 <div class="page">
-  <div class="left" class:shut={!isOpen("analysis.list")}>
+  <div class="left" class:shut={!isOpen("analysis.list")} bind:this={listEl}
+    style:width={isOpen("analysis.list") && sizeOf("analysis.list.w") ? `${sizeOf("analysis.list.w")}px` : null}>
     <Panel id="analysis.list" icon={ClipboardList} title="Analyses" side="left">
       <div class="filter">
         <Search size={14} />
@@ -589,14 +593,18 @@
       </nav>
     </Panel>
   </div>
+  {#if isOpen("analysis.list")}
+    <Splitter id="analysis.list.w" min={200} max={() => window.innerWidth - 72 - 520} label="the list of analyses"
+      measure={() => listEl.getBoundingClientRect().width} />
+  {/if}
 
-  <div class="main">
+  <div class="main" bind:this={mainEl}>
     {#if starting}
     <Panel id="analysis.start" icon={Compass} title="Start here: which analysis answers your question?" fill>
       <StartHere choose={(tool) => { const a = CATALOG.flatMap((g) => g.items).find((x) => x.tool === tool); if (a) choose(a); }} />
     </Panel>
     {:else}
-    <Panel id="analysis.inputs" icon={SlidersHorizontal} title={entry.label}>
+    <Panel id="analysis.inputs" icon={SlidersHorizontal} title={entry.label} height={sizeOf("analysis.inputs.h")}>
       {#snippet tools()}
         {#if missing.length}<span class="meta">Needs: {missing.join(", ")}</span>{/if}
         <button class="btn primary run" disabled={running || !info || missing.length > 0} onclick={go}><Play size={14} /> {running ? "Running…" : "Run"}</button>
@@ -629,6 +637,10 @@
         {/key}
       </div>
     </Panel>
+    {#if isOpen("analysis.inputs") && isOpen("analysis.results")}
+      <Splitter id="analysis.inputs.h" axis="y" min={120} max={() => mainEl.getBoundingClientRect().height - 200}
+        label="the inputs and the result" measure={() => document.querySelector('[data-panel="analysis.inputs"]')?.getBoundingClientRect().height ?? 300} />
+    {/if}
 
     <Panel id="analysis.results" icon={ListChecks} title="Result" fill>
       {#snippet tools()}

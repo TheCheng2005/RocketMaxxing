@@ -1,4 +1,8 @@
 <script lang="ts">
+  import Splitter from "../Splitter.svelte";
+  import { sizeOf } from "../panels.svelte";
+  let pageEl: HTMLDivElement;
+  let leftEl: HTMLDivElement;
   import { ChartSpline, Library as LibraryIcon, FolderOpen, Play } from "@lucide/svelte";
   import { call } from "../api";
   import { app, run, openPath } from "../state.svelte";
@@ -130,8 +134,10 @@
   let flightsOf = (file: string) => (lib?.flights ?? []).filter((f) => f.design === file);
 </script>
 
-<div class="page">
-  <div class="col">
+<div class="page" bind:this={pageEl} style:--left={sizeOf("flightdata.left.w") ? `${sizeOf("flightdata.left.w")}px` : null}>
+  <div class="col first" bind:this={leftEl}>
+    <Splitter id="flightdata.left.w" edge="end" min={360} max={() => pageEl.getBoundingClientRect().width - 380} hideBelow={1100}
+      label="the flight log and the past rockets" measure={() => leftEl.getBoundingClientRect().width} />
     <Panel id="flightdata.log" icon={ChartSpline} title="Flight log against the simulation" fill>
       <div class="body">
         <div class="form">
@@ -285,11 +291,15 @@
 </div>
 
 <style>
+  .first {
+    position: relative;
+  }
+
   .page {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: var(--left, minmax(0, 1fr)) minmax(0, 1fr);
     gap: var(--gap);
     padding: var(--gap);
   }

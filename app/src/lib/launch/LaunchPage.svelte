@@ -1,4 +1,8 @@
 <script lang="ts">
+  import Splitter from "../Splitter.svelte";
+  import { sizeOf } from "../panels.svelte";
+  let pageEl: HTMLDivElement;
+  let leftEl: HTMLDivElement;
   import { MapPinned, Play, Save, Trash2, FolderOpen, Wind } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { call, ToolError } from "../api";
@@ -162,8 +166,8 @@
   ];
 </script>
 
-<div class="page">
-  <div class="col side">
+<div class="page" bind:this={pageEl} style:--left={sizeOf("launch.left.w") ? `${sizeOf("launch.left.w")}px` : null}>
+  <div class="col side" bind:this={leftEl}>
     <Panel id="launch.plan" icon={MapPinned} title="Launch planner">
       <div class="body">
         <p class="muted small">Your design flown hundreds of times in the ensemble weather forecast for the site and hour: where it lands, with the areas holding 50, 95 and 99% of the flights.</p>
@@ -258,6 +262,8 @@
   </div>
 
   <div class="col mapcol">
+    <Splitter id="launch.left.w" edge="start" min={300} max={() => pageEl.getBoundingClientRect().width - 400} hideBelow={1000}
+      label="the planner and the map" measure={() => leftEl.getBoundingClientRect().width} />
     <LaunchMap plan={launch.plan} {site} {radius} />
     {#if launch.plan}
       <p class="muted small credit">Forecast: Open-Meteo (open-meteo.com, CC BY 4.0). {launch.plan.notes[0]}</p>
@@ -266,11 +272,15 @@
 </div>
 
 <style>
+  .mapcol {
+    position: relative;
+  }
+
   .page {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(340px, 420px) minmax(0, 1fr);
+    grid-template-columns: var(--left, minmax(340px, 420px)) minmax(0, 1fr);
     gap: var(--gap);
     padding: var(--gap);
   }

@@ -9,6 +9,8 @@
   import FlightPlot from "./FlightPlot.svelte";
   import SimForm from "./SimForm.svelte";
   import Panel from "../Panel.svelte";
+  import Splitter from "../Splitter.svelte";
+  import { isOpen as panelOpen, sizeOf } from "../panels.svelte";
   import { context, pageMenu, copyText, type MenuItem } from "../menu/menu.svelte";
   import { ask, confirmIt, selectConfig, toast } from "../state.svelte";
   import { analysis } from "../analysis/store.svelte";
@@ -155,8 +157,8 @@
     {#if running}<RocketLoader size="small" />{/if}
   </div>
 
-  <Panel id="flights.list" icon={Rocket} title="Simulations">
-    <div class="list">
+  <Panel id="flights.list" icon={Rocket} title="Simulations" height={sizeOf("flights.list.h")}>
+    <div class="list" class:sized={sizeOf("flights.list.h") !== undefined}>
       <table class="grid">
         <thead>
           <tr>
@@ -229,6 +231,10 @@
       {#if !sims.length}<p class="muted empty">No simulations.</p>{/if}
     </div>
   </Panel>
+  {#if panelOpen("flights.list")}
+    <Splitter id="flights.list.h" axis="y" min={96} max={() => window.innerHeight * 0.85} label="the simulations"
+      measure={() => document.querySelector('[data-panel="flights.list"]')?.getBoundingClientRect().height ?? 200} />
+  {/if}
 
   {#if current}
     <div class="bottom">
@@ -270,8 +276,13 @@
     overflow: auto;
   }
   .list {
-    resize: vertical;
     min-height: 64px;
+  }
+  /* Dragged to a height (the handle under it): the table fills it and scrolls. */
+  .list.sized {
+    max-height: none;
+    flex: 1;
+    min-height: 0;
   }
   .list tr {
     cursor: default;

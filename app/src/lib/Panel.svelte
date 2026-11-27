@@ -12,6 +12,7 @@
     side,
     initial = true,
     fill = false,
+    height,
     tools,
     status,
     children,
@@ -23,6 +24,8 @@
     side?: "left" | "right";
     initial?: boolean;
     fill?: boolean;
+    /** A height the user dragged it to (px): it keeps that height rather than filling or fitting its content. */
+    height?: number;
     tools?: Snippet;
     status?: Snippet;
     children: Snippet;
@@ -51,7 +54,8 @@
     <span>{title}</span>
   </button>
 {:else}
-  <section class="panel" class:fill={fill && open} class:side data-panel={id}>
+  <section class="panel" class:fill={fill && open} class:side data-panel={id}
+    style:height={open && height ? `${height}px` : null} style:flex={open && height ? "none" : null}>
     <header use:context={menuItems}>
       {#if side}
         <span class="title">{#if Icon}<span class="ico"><Icon size={15} /></span>{/if}{title}</span>

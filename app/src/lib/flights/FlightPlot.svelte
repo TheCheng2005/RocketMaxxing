@@ -6,6 +6,8 @@
   import { choices, pretty, toShown, unitOf, type Dim, type UnitDef } from "../units.svelte";
   import Plot, { plotCsv as csvOf, type Series } from "../Plot.svelte";
   import Panel from "../Panel.svelte";
+  import Splitter from "../Splitter.svelte";
+  import { isOpen, sizeOf } from "../panels.svelte";
   import { context, copyText, type MenuItem } from "../menu/menu.svelte";
   import { analysis } from "../analysis/store.svelte";
   import { fd } from "../flightdata/store.svelte";
@@ -383,7 +385,8 @@
   // expanded over the page to nearly the whole window.
   let big = $state(false);
   let winH = $state(900);
-  let plotH = $derived(big ? Math.max(320, winH - 230) : Math.max(320, Math.min(900, winH - 470)));
+  // On the page it can also be dragged to a height of its own (the handle under it), kept for next time.
+  let plotH = $derived(big ? Math.max(320, winH - 230) : sizeOf("flights.plot.h") ?? Math.max(320, Math.min(900, winH - 470)));
 </script>
 
 {#snippet unitPick(n: string)}
@@ -509,6 +512,9 @@
     {/if}
   </div>
 </Panel>
+{#if !big && isOpen("flights.plot")}
+  <Splitter id="flights.plot.h" axis="y" edge="end" min={240} max={3000} label="the plot" measure={() => plotH} />
+{/if}
 </div>
 
 <style>
@@ -519,6 +525,7 @@
     margin: 4px 0 0;
   }
   .holder {
+    position: relative;
     flex: 1;
     min-width: 0;
     display: flex;

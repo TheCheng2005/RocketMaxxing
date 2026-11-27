@@ -209,8 +209,8 @@
       <div class="row">
         <span>Layout</span>
         <div class="acts">
-          <button class="btn" onclick={() => (resetLayout(), toast("Panels, the plot setup and the 3-D view are back as they start"))}
-            title="Opens or folds every panel as it starts, and forgets the plot setup and the 3-D view's mode (saved plots stay)">Reset the layout</button>
+          <button class="btn" onclick={() => (resetLayout(), toast("Panels, their sizes, the plot setup and the 3-D view are back as they start"))}
+            title="Opens or folds every panel as it starts, gives dragged panels their own size back, and forgets the plot setup and the 3-D view's mode (saved plots stay)">Reset the layout</button>
           <button class="btn" onclick={() => (resetTours(), toast("Each page shows its tour again the next time you open it"))}>Show the tours again</button>
         </div>
       </div>
