@@ -147,6 +147,12 @@ body {
   height: 100%;
 }
 
+/* Icons keep their size in a row whose text wraps (a shrunk icon moves the text beside it out of line). */
+svg.lucide-icon,
+button > svg {
+  flex-shrink: 0;
+}
+
 /* Settings > Density. */
 :root[data-density="compact"] {
   --control-base: 26px;
@@ -273,6 +279,11 @@ textarea:focus {
 
 .num {
   font-variant-numeric: tabular-nums;
+}
+
+/* A number and its unit stay on one line in tables ("75 mm", not "75" over "mm"). */
+td.num {
+  white-space: nowrap;
 }
 
 table.grid {

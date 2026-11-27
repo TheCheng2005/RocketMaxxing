@@ -118,20 +118,27 @@
     display: flex;
     gap: 2px;
   }
+  /* Icons on one line and labels starting on one line, whether a label takes one line or two (centring each tile's
+     content made one-line tiles sit lower than their two-line neighbours). */
   .tile {
     width: 62px;
-    height: 58px;
+    min-height: 58px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 3px;
+    padding: 3px 0 2px;
     border: 1px solid transparent;
     border-radius: var(--radius);
     background: transparent;
     font-size: calc(11px * var(--text));
     color: var(--ink-2);
     line-height: 1.05;
+    text-align: center;
+  }
+  .tile span {
+    line-height: 1.15;
     text-align: center;
   }
   .tile:hover:not(:disabled) {
