@@ -1,4 +1,8 @@
 <script lang="ts">
+  import Splitter from "../Splitter.svelte";
+  import { sizeOf } from "../panels.svelte";
+  let pageEl: HTMLDivElement;
+  let leftEl: HTMLDivElement;
   import { History, Undo2, Clock, ShieldCheck, Save, FolderOpen, Pencil, Bot, User, RotateCcw } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { call } from "../api";
@@ -122,8 +126,10 @@
   ]);
 </script>
 
-<div class="page">
-  <div class="col">
+<div class="page" bind:this={pageEl} style:--left={sizeOf("history.left.w") ? `${sizeOf("history.left.w")}px` : null}>
+  <div class="col first" bind:this={leftEl}>
+    <Splitter id="history.left.w" edge="end" min={300} max={() => pageEl.getBoundingClientRect().width - 380} hideBelow={1000}
+      label="the two columns" measure={() => leftEl.getBoundingClientRect().width} />
     {#if app.design && scope === "design"}
       <Panel id="history.since" icon={Clock} title="Since the last save">
         {#snippet status()}<span class="meta">{h?.unsaved ? `${h?.sinceSave?.length ?? 0} change${(h?.sinceSave?.length ?? 0) === 1 ? "" : "s"}` : "Saved"}</span>{/snippet}
@@ -209,11 +215,14 @@
 </div>
 
 <style>
+  .first {
+    position: relative;
+  }
   .page {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(320px, 1fr) minmax(0, 2fr);
+    grid-template-columns: var(--left, minmax(320px, 1fr)) minmax(0, 2fr);
     gap: var(--gap);
     padding: var(--gap);
     overflow: auto;

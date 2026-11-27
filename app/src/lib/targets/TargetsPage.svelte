@@ -1,6 +1,9 @@
 <script lang="ts">
+  import Splitter from "../Splitter.svelte";
+  let pageEl: HTMLDivElement;
+  let leftEl: HTMLDivElement;
   import { ShieldCheck, Target as TargetIcon, RefreshCw, ChevronDown, Mountain, ArrowUpFromLine, Gauge as GaugeIcon, Umbrella, Weight, Bot } from "@lucide/svelte";
-  import { isOpen, toggle } from "../panels.svelte";
+  import { isOpen, toggle, sizeOf } from "../panels.svelte";
 
   // The targets in groups that fold, each with its counts, so the long list reads in parts.
   const GROUPS: { id: string; title: string; icon: typeof Mountain; ids: string[] }[] = [
@@ -176,8 +179,10 @@
   }
 </script>
 
-<div class="page">
-  <div class="main">
+<div class="page" bind:this={pageEl} style:--left={sizeOf("targets.left.w") ? `${sizeOf("targets.left.w")}px` : null}>
+  <div class="main" bind:this={leftEl}>
+    <Splitter id="targets.left.w" edge="end" min={420} max={() => pageEl.getBoundingClientRect().width - 380} hideBelow={1100}
+      label="the targets and the rules" measure={() => leftEl.getBoundingClientRect().width} />
     <Panel id="targets.list" icon={TargetIcon} title="Targets" fill>
       {#snippet status()}
         <span class="counts">
@@ -305,11 +310,15 @@
 </div>
 
 <style>
+  .main {
+    position: relative;
+  }
+
   .page {
     flex: 1;
     min-height: 0;
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(360px, 1fr);
+    grid-template-columns: var(--left, minmax(0, 2fr)) minmax(360px, 1fr);
     gap: var(--gap);
     padding: var(--gap);
   }

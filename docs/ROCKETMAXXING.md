@@ -132,7 +132,11 @@ Help › About lists the third-party software inside and its licences (`THIRD-PA
 | Analysis | (not in OpenRocket) | 54 analyses from the engine, by area: rule check, readiness, checking meeting notes against the design, Launch Canada probation level; stability and drag vs Mach, ballast, shape trades; recovery loads, parachute sizing, late deployment, shear pins, ejection charge, opening shock, bay fit, parachute catalogue, landing energy; fin flutter, fin stress (FEA with CalculiX), airframe loads, load diagrams (the UTAT method: shear, bending moment and axial force along the rocket), heating, material trade, pressure vessel; avionics bay, launch-day forecast, rail buttons, flight card, altimeter settings, sensors, simulated sensor data for flight software, radio link, power budget, winds aloft; Monte Carlo, engine prediction (a solid, hybrid or liquid engine's thrust from its design, before a firing), motor ranking, parameter sweep, fin planform optimizer, optimizer; part from a shop link, compare designs, progress log, edit history, RASAero table import, flight log against the simulation; report, CSV and geometry export, templates to print. Pick one, fill in what it asks for (simulation, parts and other designs from lists, files with Browse, lists of items as small tables), run. Results show as tables with pass, warn and fail in colour, plots, and a Show button for files it writes. |
 
 Every panel and section folds (click its title). The Parts and Properties panels fold to a strip at the side to give
-the view more room. What is folded is remembered.
+the view more room. Panels can also be **resized**: drag the gap between two panels (a line shows where it can be
+dragged). That covers the parts list, Properties and the 3-D view's height on Design, the list of analyses and the
+inputs' height on Analysis, the simulations and the plot on Flights, and the two columns of Launch, Targets, Flight
+data and History. Double-click the gap for the panel's own size again, or use the arrow keys on it. What is folded and
+how big each panel is are remembered; Settings › Reset the layout puts them back.
 
 ### RocketMaxxing projects (.rmx)
 
